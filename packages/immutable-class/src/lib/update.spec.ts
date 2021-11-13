@@ -1,15 +1,10 @@
-import { Expose } from 'class-transformer';
 import { immerable } from 'immer';
 import 'reflect-metadata';
 import { update } from './update';
 
 class TestCls {
   [immerable] = true;
-
-  @Expose()
   readonly foo!: string;
-
-  @Expose()
   readonly bar?: string;
 }
 

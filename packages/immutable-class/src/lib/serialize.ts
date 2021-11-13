@@ -4,16 +4,12 @@ import {
 } from 'class-transformer';
 
 /**
- * Convert a class to an immutable plain object. Note that any fields that do
- * not have the class-transformer `@Expose` decorator will be ignored by the
- * function.
+ * Convert a class to an immutable plain object.
  *
  * @example
  * ```typescript
  * class Test {
- *   \@Expose()
  *   readonly foo!: string;
- *   \@Expose()
  *   readonly bar?: string
  * }
  *
@@ -34,11 +30,5 @@ export const serialize = <ClassType>(
   classToTransform: ClassType,
   options?: ClassTransformOptions
 ): string => {
-  const cls = _serialize(classToTransform, {
-    excludeExtraneousValues: true,
-    exposeUnsetFields: true,
-    exposeDefaultValues: true,
-    ...options,
-  });
-  return cls;
+  return _serialize(classToTransform, options);
 };

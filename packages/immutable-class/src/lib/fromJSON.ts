@@ -6,16 +6,12 @@ import {
 import deepFreeze from 'deep-freeze-strict';
 
 /**
- * Create an immutable class from a JSON object. Note that any fields that do
- * not have the class-transformer `@Expose` decorator will be ignored by the
- * function.
+ * Create an immutable class from a JSON object.
  *
  * @example
  * ```typescript
  * class Test {
- *   \@Expose()
  *   readonly foo!: string;
- *   \@Expose()
  *   readonly bar?: string
  * }
  *
@@ -32,15 +28,10 @@ import deepFreeze from 'deep-freeze-strict';
  * @returns an immutable class
  */
 export const fromJSON = <ClassType>(
-  classToCreate: ClassConstructor<ClassType>,
+  classCtor: ClassConstructor<ClassType>,
   json: Partial<ClassType>,
   options?: ClassTransformOptions
 ): ClassType => {
-  const cls = plainToClass(classToCreate, json, {
-    excludeExtraneousValues: true,
-    exposeUnsetFields: true,
-    exposeDefaultValues: true,
-    ...options,
-  });
+  const cls = plainToClass(classCtor, json, options);
   return deepFreeze(cls);
 };

@@ -2,16 +2,12 @@ import { ClassConstructor, ClassTransformOptions } from 'class-transformer';
 import { fromJSON } from './fromJSON';
 
 /**
- * Create an immutable instance of a class. Note that any fields that do not
- * have the class-transformer `@Expose` decorator will be ignored by the
- * function. The decorator is also exported from this library for convenience.
+ * Create an immutable instance of a class.
  *
  * @example
  * ```typescript
  * class Test {
- *   \@Expose()
  *   readonly foo!: string;
- *   \@Expose()
  *   readonly bar?: string
  * }
  *
@@ -27,8 +23,8 @@ import { fromJSON } from './fromJSON';
  * @returns an immutable class
  */
 export const create = <ClassType>(
-  classToCreate: ClassConstructor<ClassType>,
+  classCtor: ClassConstructor<ClassType>,
   options?: ClassTransformOptions
 ): ClassType => {
-  return fromJSON(classToCreate, {}, options);
+  return fromJSON(classCtor, {}, options);
 };

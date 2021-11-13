@@ -6,15 +6,13 @@ export type ValidRecipeReturnType<State> = State | void | undefined;
 /**
  * Update an immutable class. This function will leave the original class
  * unmodified and return an updated copy of the class. Note that classes must
- * be marked with "[immerable]: true" in order to use this function.
+ * be marked with `[immerable]: true` in order to use this function.
  *
  * @example
  * ```typescript
  * class Test {
  *   [immerable] = true;
- *   \@Expose()
  *   readonly foo!: string;
- *   \@Expose()
  *   readonly bar?: string
  * }
  * const cls = create(Test)
