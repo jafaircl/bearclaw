@@ -3,10 +3,7 @@ import 'reflect-metadata';
 import { serialize } from './serialize';
 
 class TestCls {
-  @Expose()
   foo!: string;
-
-  @Expose()
   bar?: string;
 }
 

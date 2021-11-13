@@ -2,15 +2,12 @@ import { classToClass, ClassTransformOptions } from 'class-transformer';
 import deepFreeze from 'deep-freeze-strict';
 
 /**
- * Clone an existing immutable class. Note that any fields that do not have the
- * class-transformer `@Expose` decorator will be ignored by the function.
+ * Clone an existing immutable class.
  *
  * @example
  * ```typescript
  * class Test {
- *   \@Expose()
  *   readonly foo!: string;
- *   \@Expose()
  *   readonly bar?: string
  * }
  *
@@ -28,14 +25,9 @@ import deepFreeze from 'deep-freeze-strict';
  * @returns an immutable copy of the class to clone
  */
 export const clone = <ClassType>(
-  classToClone: ClassType,
+  classCtor: ClassType,
   options?: ClassTransformOptions
 ): ClassType => {
-  const cls = classToClass(classToClone, {
-    excludeExtraneousValues: true,
-    exposeUnsetFields: true,
-    exposeDefaultValues: true,
-    ...options,
-  });
+  const cls = classToClass(classCtor, options);
   return deepFreeze(cls);
 };

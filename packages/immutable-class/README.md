@@ -1,11 +1,12 @@
 # immutable-class
 
-This library provides helper functions to extend `class-transformer` functionality to make the generated classes immutable. It also provides helper functions to work with immutable classes using `immer`.
+This library provides helper functions to extend `class-transformer` functionality to create immutable classes. It also provides helper functions to work with immutable classes using `immer`.
 
 - [immutable-class](#immutable-class)
   - [fromJSON](#fromjson)
   - [toJSON](#tojson)
   - [deserialize](#deserialize)
+  - [deserializeArray](#deserializearray)
   - [serialize](#serialize)
   - [clone](#clone)
   - [update](#update)
@@ -15,13 +16,11 @@ This library provides helper functions to extend `class-transformer` functionali
 
 ## fromJSON
 
-Create an immutable class from a JSON object. Note that any fields that do not have the class-transformer `@Expose` decorator will be ignored by the function. The decorator is also exported from this library for convenience.
+Create an immutable class from a JSON object.
 
 ```typescript
 class Test {
-  @Expose()
   readonly foo!: string;
-  @Expose()
   readonly bar?: string
 }
 
@@ -34,14 +33,12 @@ const cls = fromJSON(Test, { foo: 'asdf' });
 
 ## toJSON
 
-Convert a class to an immutable plain object. Note that any fields that do not have the class-transformer `@Expose` decorator will be ignored by the function.
+Convert a class to an immutable plain object.
 
 
 ```typescript
 class Test {
-  @Expose()
   foo!: string;
-  @Expose()
   bar?: string
 }
 
@@ -62,13 +59,11 @@ const setJson = toJSON(cls)
 
 ## deserialize
 
-Create an immutable class from a JSON string. Note that any fields that do not have the class-transformer `@Expose` decorator will be ignored by the function.
+Create an immutable class from a JSON string.
 
 ```typescript
 class Test {
-  @Expose()
   readonly foo!: string;
-  @Expose()
   readonly bar?: string
 }
 
@@ -79,15 +74,30 @@ const cls = fromJSON(Test, `{ "foo": "asdf" }`);
 // }
 ```
 
-## serialize
+## deserializeArray
 
-Convert a class to an immutable plain object. Note that any fields that do not have the class-transformer `@Expose` decorator will be ignored by the function.
+Create an array of immutable classes from a JSON string.
 
 ```typescript
 class Test {
-  @Expose()
+  readonly foo!: string;
+  readonly bar?: string
+}
+
+const cls = fromJSON(Test, `[{ "foo": "asdf" }]`);
+// cls: [Test {
+//   foo: 'asdf',
+//   bar: undefined,
+// }]
+```
+
+## serialize
+
+Convert a class to an immutable plain object.
+
+```typescript
+class Test {
   foo!: string;
-  @Expose()
   bar?: string
 }
 
@@ -102,13 +112,11 @@ const setJson = toJSON(cls)
 
 ## clone
 
-Clone an existing immutable class. Note that any fields that do not have the class-transformer `@Expose` decorator will be ignored by the function.
+Clone an existing immutable class.
 
 ```typescript
 class Test {
-  @Expose()
   foo!: string;
-  @Expose()
   bar?: string
 }
 
@@ -128,9 +136,7 @@ Update an immutable class. This function will leave the original class unmodifie
 ```typescript
 class Test {
   [immerable] = true;
-  @Expose()
   readonly foo!: string;
-  @Expose()
   readonly bar?: string
 }
 const cls = create(Test)
@@ -145,14 +151,12 @@ const updated = update(cls, x => {
 
 ## patch
 
-Patch an immutable class with a JSON value. This function will leave the original class unmodified and return an updated copy of the class. Note that classes must be marked with "[immerable]: true" in order to use this function. Like other functions, any fields that do not have the class-transformer `@Expose` decorator will be ignored by the function.
+Patch an immutable class with a JSON value. This function will leave the original class unmodified and return an updated copy of the class. Note that classes must be marked with "[immerable]: true" in order to use this function.
 
 ```typescript
 class Test {
   [immerable] = true;
-  @Expose()
   readonly foo!: string;
-  @Expose()
   readonly bar?: string
 }
 const cls = create(Test)

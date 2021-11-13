@@ -1,12 +1,12 @@
 import {
   ClassConstructor,
   ClassTransformOptions,
-  deserialize as _deserialize,
+  deserializeArray as _deserializeArray,
 } from 'class-transformer';
 import deepFreeze from 'deep-freeze-strict';
 
 /**
- * Create an immutable instance of a class from a JSON string.
+ * Create an array of immutable classes from a JSON string.
  *
  * @example
  * ```typescript
@@ -15,23 +15,23 @@ import deepFreeze from 'deep-freeze-strict';
  *   readonly bar?: string
  * }
  *
- * const cls = deserialize(Test, `{ "foo": "asdf" }`);
- * // cls: Test {
+ * const classes = deserialize(Test, `[{ "foo": "asdf" }]`);
+ * // classes: [Test {
  * //   foo: 'asdf',
  * //   bar: undefined,
- * // }
+ * // }]
  * ```
  *
- * @param classToCreate the class to create an instance of
+ * @param classToCreate the class constructor
  * @param str the string input
  * @param options any additional class-transformer options to pass
- * @returns an immutable class
+ * @returns an array of immutable classes
  */
-export const deserialize = <ClassType>(
+export const deserializeArray = <ClassType>(
   classCtor: ClassConstructor<ClassType>,
   str: string,
   options?: ClassTransformOptions
-): ClassType => {
-  const cls = _deserialize(classCtor, str, options);
-  return deepFreeze(cls);
+): ClassType[] => {
+  const classes = _deserializeArray(classCtor, str, options);
+  return classes.map((cls) => deepFreeze(cls));
 };

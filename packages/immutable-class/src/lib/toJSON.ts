@@ -2,16 +2,12 @@ import { classToPlain, ClassTransformOptions } from 'class-transformer';
 import deepFreeze from 'deep-freeze-strict';
 
 /**
- * Convert a class to an immutable plain object. Note that any fields that do
- * not have the class-transformer `@Expose` decorator will be ignored by the
- * function.
+ * Convert a class to an immutable plain object.
  *
  * @example
  * ```typescript
  * class Test {
- *   \@Expose()
  *   readonly foo!: string;
- *   \@Expose()
  *   readonly bar?: string
  * }
  *
@@ -42,11 +38,6 @@ export const toJSON = <
   classToTransform: ClassType,
   options?: ClassTransformOptions
 ): JSONType => {
-  const cls = classToPlain(classToTransform, {
-    excludeExtraneousValues: true,
-    exposeUnsetFields: true,
-    exposeDefaultValues: true,
-    ...options,
-  });
+  const cls = classToPlain(classToTransform, options);
   return deepFreeze(cls) as JSONType;
 };

@@ -3,10 +3,7 @@ import 'reflect-metadata';
 import { fromJSON } from './fromJSON';
 
 class TestCls {
-  @Expose()
   readonly foo!: string;
-
-  @Expose()
   readonly bar?: string;
 }
 
@@ -29,27 +26,35 @@ describe('fromJSON', () => {
     expect(cls.bar).toEqual('abc');
   });
 
-  it('should not set properties that are not on the class', () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const cls = fromJSON(TestCls, { test: '' } as any);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    expect((cls as any).test).toBeUndefined();
-  });
-
   it('should work with a nested class', () => {
     class Child {
-      @Expose()
       foo!: string;
     }
 
     class Parent {
-      @Expose()
       @Type(() => Child)
       child!: Child;
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const cls = fromJSON(Parent, { child: { foo: 'abc', bar: 1 } } as any);
+    const cls = fromJSON(Parent, { child: { foo: 'abc' } });
     expect(classToPlain(cls)).toStrictEqual({ child: { foo: 'abc' } });
+  });
+
+  it('should take options', () => {
+    class OptionsCls {
+      @Expose()
+      readonly foo!: string;
+
+      @Expose()
+      readonly bar?: string;
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const cls = fromJSON(OptionsCls, { abc: '123' } as any, {
+      excludeExtraneousValues: true,
+      exposeDefaultValues: true,
+      exposeUnsetFields: true,
+    });
+    expect(Object.keys(cls)).toStrictEqual(['foo', 'bar']);
   });
 });

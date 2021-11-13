@@ -1,11 +1,7 @@
-import { Expose } from 'class-transformer';
 import { create } from './create';
 
 class TestCls {
-  @Expose()
   readonly foo!: string;
-
-  @Expose()
   readonly bar?: string;
 }
 

@@ -1,15 +1,10 @@
-import { Expose } from 'class-transformer';
 import { immerable } from 'immer';
 import { clone } from './clone';
 import { patch } from './patch';
 
 class TestCls {
   [immerable] = true;
-
-  @Expose()
   foo!: string;
-
-  @Expose()
   bar?: string;
 }
 
