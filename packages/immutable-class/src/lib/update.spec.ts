@@ -1,16 +1,16 @@
 import { immerable } from 'immer';
 import 'reflect-metadata';
+import { create } from './create';
 import { update } from './update';
 
 class TestCls {
-  [immerable] = true;
   readonly foo!: string;
   readonly bar?: string;
 }
 
 describe('update', () => {
   it('should work', () => {
-    const cls = new TestCls();
+    const cls = create(TestCls);
     const updated = update(cls, (x) => {
       x.foo = 'abc';
     });
@@ -19,7 +19,7 @@ describe('update', () => {
   });
 
   it('should create a frozen class instance', () => {
-    const cls = new TestCls();
+    const cls = create(TestCls);
     const updated = update(cls, (x) => {
       x.foo = 'abc';
     });
@@ -30,11 +30,20 @@ describe('update', () => {
   });
 
   it('should leave the original class intact', () => {
-    const cls = new TestCls();
+    const cls = create(TestCls);
     const updated = update(cls, (x) => {
       x.foo = 'abc';
     });
     expect(cls.foo).toEqual(undefined);
+    expect(updated.foo).toEqual('abc');
+  });
+
+  it('should not add [immerable]=true to the original class', () => {
+    const cls = create(TestCls);
+    const updated = update(cls, (x) => {
+      x.foo = 'abc';
+    });
+    expect(cls[immerable]).toEqual(undefined);
     expect(updated.foo).toEqual('abc');
   });
 });

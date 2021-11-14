@@ -131,11 +131,10 @@ const copy = clone(cls)
 
 ## update
 
-Update an immutable class. This function will leave the original class unmodified and return an updated copy of the class. Note that classes must be marked with "[immerable]: true" in order to use this function.
+Update an immutable class. This function will leave the original class unmodified and return an updated copy of the class. Note this will add `[immerable]=true` to the returned class.
 
 ```typescript
 class Test {
-  [immerable] = true;
   readonly foo!: string;
   readonly bar?: string
 }
@@ -151,11 +150,10 @@ const updated = update(cls, x => {
 
 ## patch
 
-Patch an immutable class with a JSON value. This function will leave the original class unmodified and return an updated copy of the class. Note that classes must be marked with "[immerable]: true" in order to use this function.
+Patch an immutable class with a JSON value. This function will leave the original class unmodified and return an updated copy of the class. Note this will add `[immerable]=true` to the returned class.
 
 ```typescript
 class Test {
-  [immerable] = true;
   readonly foo!: string;
   readonly bar?: string
 }

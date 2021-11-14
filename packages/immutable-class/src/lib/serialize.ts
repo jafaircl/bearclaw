@@ -23,7 +23,7 @@ import {
  * ```
  *
  * @param classToTransform the class you want to transform
- * @param options any additional class-transformer options to pass
+ * @param options any class-transformer options to pass
  * @returns a JSON string representation of the class instance
  */
 export const serialize = <ClassType>(
