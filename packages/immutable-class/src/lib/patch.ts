@@ -6,14 +6,12 @@ import { update } from './update';
 
 /**
  * Patch an immutable class with a JSON value. This function will leave the
- * original class unmodified and return an updated copy of the class. Note that
- * classes must be marked with "[immerable]: true" in order to use this
- * function.
+ * original class unmodified and return an updated copy of the class. Note this
+ * will add `[immerable]=true` to the returned class.
  *
  * @example
  * ```typescript
  * class Test {
- *   [immerable] = true;
  *   readonly foo!: string;
  *   readonly bar?: string
  * }
@@ -27,6 +25,7 @@ import { update } from './update';
  *
  * @param classToUpdate the existing class instance to update
  * @param json the JSON input
+ * @param options any class-transformer options to pass
  * @returns an updated immutable class instance
  */
 export const patch = <ClassType>(

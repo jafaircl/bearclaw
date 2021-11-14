@@ -24,7 +24,7 @@ import deepFreeze from 'deep-freeze-strict';
  *
  * @param classToCreate the class to create an instance of
  * @param str the string input
- * @param options any additional class-transformer options to pass
+ * @param options any class-transformer options to pass
  * @returns an immutable class
  */
 export const deserialize = <ClassType>(
