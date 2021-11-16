@@ -1,6 +1,7 @@
 {
   "version": 2,
   "projects": {
-    "immutable-class": "packages/immutable-class"
+    "immutable-class": "packages/immutable-class",
+    "is": "packages/is"
   }
 }
