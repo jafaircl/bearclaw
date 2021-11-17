@@ -3,17 +3,31 @@ const values = {
   arrayOfObjects: [{}],
   arrayOfPrimitives: [1],
   arrowFunction: () => 'a',
+  asyncArrowFunction: async () => 'a',
+  asyncTraditionalFunction: async function () {
+    return 'a';
+  },
   // BigInt literals are not avaliable when targeting less than ES2020
   bigIntObject: BigInt(1),
   bigIntCtor: BigInt,
   booleanCtor: Boolean,
   booleanObject: Boolean(true),
+  boundFunction: function () {
+    return 'a';
+  }.bind(this),
+  classCtor: class Person {},
+  dateCtor: Date,
+  dateNow: Date.now(),
+  dateObject: new Date(),
   emptyArray: [],
   emptyMap: new Map(),
   emptyObject: {},
   emptySet: new Set(),
   emptyString: '',
   false: false,
+  generatorFunction: function* () {
+    yield 'a';
+  },
   infinity: Infinity,
   infinityNegative: -Infinity,
   map: new Map([['a', 'b']]),
@@ -23,6 +37,9 @@ const values = {
   number: 1,
   numberCtor: Number,
   numberObject: new Number(1),
+  promiseCtor: Promise,
+  promiseNew: new Promise((resolve) => resolve('a')),
+  promiseResolve: Promise.resolve('a'),
   set: new Set(['a']),
   setCtor: Set,
   string: 'abc',

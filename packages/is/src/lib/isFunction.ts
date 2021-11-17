@@ -13,5 +13,5 @@
  */
 // eslint-disable-next-line @typescript-eslint/ban-types
 export const isFunction = (value: unknown): value is Function => {
-  return Object.prototype.toString.call(value) === '[object Function]';
+  return typeof value === 'function';
 };

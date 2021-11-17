@@ -9,6 +9,7 @@ describe('isPrimitive', () => {
   testValues(isPrimitive, [
     'bigIntObject',
     'booleanObject',
+    'dateNow',
     'emptyString',
     'false',
     'infinity',

@@ -9,12 +9,15 @@ describe('isObject', () => {
   testValues(isObject, [
     'arrayOfObjects',
     'arrayOfPrimitives',
+    'dateObject',
     'emptyArray',
     'emptyMap',
     'emptyObject',
     'emptySet',
     'map',
     'numberObject',
+    'promiseNew',
+    'promiseResolve',
     'set',
     'stringObject',
   ]);

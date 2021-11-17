@@ -10,6 +10,7 @@ describe('isJSON', () => {
     'arrayOfObjects',
     'arrayOfPrimitives',
     'booleanObject',
+    'dateNow',
     'emptyArray',
     'emptyObject',
     'emptyString',

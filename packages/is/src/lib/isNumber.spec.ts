@@ -7,6 +7,7 @@ describe('isNumber', () => {
   });
 
   testValues(isNumber, [
+    'dateNow',
     'infinity',
     'infinityNegative',
     'NaN',
