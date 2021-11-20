@@ -21,13 +21,13 @@ import deepFreeze from 'deep-freeze-strict';
  * ```
  *
  * @param classToClone the class to clone
- * @param options any additional class-transformer options to pass
+ * @param options any class-transformer options to pass
  * @returns an immutable copy of the class to clone
  */
 export const clone = <ClassType>(
-  classCtor: ClassType,
+  classToClone: ClassType,
   options?: ClassTransformOptions
 ): ClassType => {
-  const cls = classToClass(classCtor, options);
+  const cls = classToClass(classToClone, options);
   return deepFreeze(cls);
 };

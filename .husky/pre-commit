@@ -1,2 +1,2 @@
-nx affected:lint
-nx affected:test
+npx nx affected:lint --base=main --head=HEAD
+npx nx affected:test --base=main --head=HEAD

@@ -27,7 +27,7 @@ import deepFreeze from 'deep-freeze-strict';
  * ```
  *
  * @param classToTransform the class you want to transform
- * @param options any additional class-transformer options to pass
+ * @param options any class-transformer options to pass
  * @returns a JSON representation of the class instance
  */
 export const toJSON = <
