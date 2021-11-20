@@ -1,4 +1,6 @@
-const values = {
+const objRef = {};
+
+export const values = {
   arrayCtor: Array,
   arrayOfObjects: [{}],
   arrayOfPrimitives: [1],
@@ -24,7 +26,11 @@ const values = {
   emptyObject: {},
   emptySet: new Set(),
   emptyString: '',
+  emptyWeakMap: new WeakMap(),
+  emptyWeakSet: new WeakSet(),
   false: false,
+  frozenEmptyObject: Object.freeze({}),
+  frozenObject: Object.freeze({ foo: 'bar' }),
   generatorFunction: function* () {
     yield 'a';
   },
@@ -33,6 +39,8 @@ const values = {
   map: new Map([['a', 'b']]),
   mapCtor: Map,
   NaN: NaN,
+  negativeZero: -0,
+  nonEmptyObject: { foo: 'bar' },
   null: null,
   number: 1,
   numberCtor: Number,
@@ -40,6 +48,8 @@ const values = {
   promiseCtor: Promise,
   promiseNew: new Promise((resolve) => resolve('a')),
   promiseResolve: Promise.resolve('a'),
+  sealedEmptyObject: Object.seal({}),
+  sealedObject: Object.seal({ foo: 'bar' }),
   set: new Set(['a']),
   setCtor: Set,
   string: 'abc',
@@ -52,7 +62,12 @@ const values = {
   },
   true: true,
   undefined: undefined,
+  weakMapCtor: WeakMap,
+  weakMap: new WeakMap([[objRef, 1]]),
+  weakSetCtor: WeakSet,
+  weakSet: new WeakSet([]),
   zero: 0,
+  zeroBigInt: BigInt(0),
 };
 
 export const testValues = (

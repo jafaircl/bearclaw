@@ -24,5 +24,7 @@ describe('isFunction', () => {
     'stringCtor',
     'symbolCtor',
     'traditionalFunction',
+    'weakMapCtor',
+    'weakSetCtor',
   ]);
 });

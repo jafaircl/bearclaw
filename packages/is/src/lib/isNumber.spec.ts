@@ -11,6 +11,7 @@ describe('isNumber', () => {
     'infinity',
     'infinityNegative',
     'NaN',
+    'negativeZero',
     'number',
     'numberObject',
     'zero',

@@ -1,6 +1,6 @@
 import { isWebWorkerContext } from './isWebWorkerContext';
 
-describe('isBrowserContext', () => {
+describe('isWebWorkerContext', () => {
   it('should return false in a jest test', () => {
     expect(isWebWorkerContext()).toEqual(false);
   });

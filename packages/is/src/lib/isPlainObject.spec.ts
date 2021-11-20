@@ -6,5 +6,12 @@ describe('isPlainObject', () => {
     expect(typeof isPlainObject).toEqual('function');
   });
 
-  testValues(isPlainObject, ['emptyObject']);
+  testValues(isPlainObject, [
+    'emptyObject',
+    'frozenEmptyObject',
+    'frozenObject',
+    'nonEmptyObject',
+    'sealedEmptyObject',
+    'sealedObject',
+  ]);
 });

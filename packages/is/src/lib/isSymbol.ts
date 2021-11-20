@@ -4,8 +4,8 @@
  *
  * @example
  * ```ts
- * isSymbol('') // true
- * isSymbol(1) // false
+ * isSymbol(Symbol('')) // true
+ * isSymbol('') // false
  * ```
  *
  * @param value the value to check

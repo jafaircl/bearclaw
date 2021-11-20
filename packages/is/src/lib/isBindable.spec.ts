@@ -20,6 +20,8 @@ describe('isBindable', () => {
     'stringCtor',
     'symbolCtor',
     'traditionalFunction',
+    'weakMapCtor',
+    'weakSetCtor',
     // TODO: this should be true but is false in a jest environment. Working
     // theory: babel is transforming this function to a normal function that
     // returns a promise which breaks this validation. By all manual testing,

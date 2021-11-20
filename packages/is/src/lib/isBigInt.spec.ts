@@ -6,5 +6,5 @@ describe('isBigInt', () => {
     expect(typeof isBigInt).toEqual('function');
   });
 
-  testValues(isBigInt, ['bigIntObject']);
+  testValues(isBigInt, ['bigIntObject', 'zeroBigInt']);
 });
