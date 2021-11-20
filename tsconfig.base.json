@@ -9,14 +9,15 @@
     "esModuleInterop": true,
     "experimentalDecorators": true,
     "importHelpers": true,
-    "target": "es2015",
+    "target": "es2017",
     "module": "esnext",
     "lib": ["es2017", "dom"],
     "skipLibCheck": true,
     "skipDefaultLibCheck": true,
     "baseUrl": ".",
     "paths": {
-      "@bearclaw/immutable-class": ["packages/immutable-class/src/index.ts"]
+      "@bearclaw/immutable-class": ["packages/immutable-class/src/index.ts"],
+      "@bearclaw/is": ["packages/is/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]
