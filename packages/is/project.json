@@ -28,6 +28,9 @@
         "main": "packages/is/src/index.ts",
         "assets": ["packages/is/*.md"]
       }
+    },
+    "version": {
+      "executor": "@jscutlery/semver:version"
     }
   },
   "tags": []
