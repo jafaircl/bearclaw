@@ -42,6 +42,18 @@ describe('defaultHash', () => {
     expect(hash1).not.toEqual(hash2);
   });
 
+  it('should create the same hash when an objects keys are in a different order', () => {
+    const hash1 = defaultHash({ a: 'b', c: 'd' });
+    const hash2 = defaultHash({ c: 'd', a: 'b' });
+    expect(hash1).toEqual(hash2);
+  });
+
+  it(`should create the same hash when a nested object's keys are in a different order`, () => {
+    const hash1 = defaultHash({ a: { b: 'c', d: 'e' }, f: 'g' });
+    const hash2 = defaultHash({ f: 'g', a: { d: 'e', b: 'c' } });
+    expect(hash1).toEqual(hash2);
+  });
+
   it('should work for very large objects', () => {
     function createLargeObject(numKeys = 1000) {
       const obj = {};

@@ -1,13 +1,23 @@
 import stringify from 'fast-json-stable-stringify';
-import MurmurHash from 'imurmurhash';
-import { deepSortObject } from './deepSortObject';
-import { HashFn, Primitive } from './types';
-import { isArray, isPlainObject } from './validators';
+import { HashFn } from './types';
 
-export const defaultHash: HashFn = (value: unknown): Primitive => {
-  if (isPlainObject(value) || isArray(value)) {
-    deepSortObject(value);
+/**
+ *
+ *
+ * @param value the value to hash
+ * @returns a hashed value
+ */
+export const defaultHash: HashFn = (value: unknown) => {
+  const string = stringify(value);
+  // Algorithim is the same as the Java implementation
+  if (string.length === 0) {
+    return string;
   }
-  const stringified = stringify(value);
-  return MurmurHash(stringified).result();
+  let hash = 0;
+  for (let i = 0; i < string.length; i++) {
+    const char = string.charCodeAt(i);
+    hash = (hash << 5) - hash + char;
+    hash |= 0;
+  }
+  return hash;
 };

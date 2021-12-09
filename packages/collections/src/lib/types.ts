@@ -1,10 +1,3 @@
-export type Primitive =
-  | null
-  | undefined
-  | string
-  | number
-  | boolean
-  | symbol
-  | bigint;
+import { Primitive } from '@bearclaw/is';
 
 export type HashFn = (value: unknown) => Primitive;

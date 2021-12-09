@@ -1,4 +1,5 @@
 import { HashMap } from './HashMap';
+import { measure } from './test-utils';
 
 describe('HashMap', () => {
   it('set should work', () => {
@@ -42,5 +43,28 @@ describe('HashMap', () => {
   it('toStringTag should work', () => {
     const map = new HashMap();
     expect(Object.prototype.toString.call(map)).toEqual('[object HashMap]');
+  });
+
+  it('should be within an order of magnitude as fast as native Map', () => {
+    const measureMap = measure('Native Map', () => {
+      const map = new Map();
+      for (let i = 0; i < 100; i++) {
+        map.set(i, i);
+        map.has(i);
+        map.delete(i);
+      }
+    });
+    const measureHashMap = measure('HashMap', () => {
+      const map = new HashMap();
+      for (let i = 0; i < 100; i++) {
+        map.set(i, '');
+        map.has(i);
+        map.delete(i);
+      }
+    });
+    console.log(measureHashMap.opsPerSecond);
+    expect(measureMap.opsPerSecond / measureHashMap.opsPerSecond).toBeLessThan(
+      10
+    );
   });
 });
