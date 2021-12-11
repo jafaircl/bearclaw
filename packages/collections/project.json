@@ -1,0 +1,34 @@
+{
+  "root": "packages/collections",
+  "sourceRoot": "packages/collections/src",
+  "projectType": "library",
+  "targets": {
+    "lint": {
+      "executor": "@nrwl/linter:eslint",
+      "outputs": ["{options.outputFile}"],
+      "options": {
+        "lintFilePatterns": ["packages/collections/**/*.ts"]
+      }
+    },
+    "test": {
+      "executor": "@nrwl/jest:jest",
+      "outputs": ["coverage/packages/collections"],
+      "options": {
+        "jestConfig": "packages/collections/jest.config.js",
+        "passWithNoTests": true
+      }
+    },
+    "build": {
+      "executor": "@nrwl/node:package",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/packages/collections",
+        "tsConfig": "packages/collections/tsconfig.lib.json",
+        "packageJson": "packages/collections/package.json",
+        "main": "packages/collections/src/index.ts",
+        "assets": ["packages/collections/*.md"]
+      }
+    }
+  },
+  "tags": []
+}

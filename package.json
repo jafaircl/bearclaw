@@ -3,7 +3,8 @@
   "version": "0.0.1",
   "license": "MIT",
   "scripts": {
-    "cz": "cz"
+    "cz": "cz",
+    "nx": "nx"
   },
   "private": true,
   "devDependencies": {
@@ -37,6 +38,7 @@
   "dependencies": {
     "class-transformer": "^0.4.0",
     "deep-freeze-strict": "^1.1.1",
+    "fast-json-stable-stringify": "^2.1.0",
     "immer": "^9.0.6",
     "tslib": "^2.0.0"
   },
