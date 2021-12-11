@@ -1,5 +1,4 @@
 import { HashMap } from './HashMap';
-import { measure } from './test-utils';
 
 describe('HashMap', () => {
   it('set should work', () => {
@@ -13,6 +12,15 @@ describe('HashMap', () => {
     expect(map.has(1)).toEqual(true);
   });
 
+  it('should let you specify a custom hashing function', () => {
+    const hash = () => 'a';
+    const map = new HashMap(null, hash);
+    map.set({}, 1);
+    map.set({}, 2);
+    expect(map.has({})).toEqual(true);
+    expect(map.size).toEqual(1);
+  });
+
   it('should treat 2 instances of {} as equal keys', () => {
     const map = new HashMap();
     map.set({}, 'a');
@@ -20,8 +28,42 @@ describe('HashMap', () => {
     expect(map.size).toEqual(1);
   });
 
+  it('iterator should work', () => {
+    const map = new HashMap([[{}, 'a']]);
+    for (const [key, value] of map) {
+      expect(key).toEqual({});
+      expect(value).toEqual('a');
+    }
+  });
+
+  it('clear should work', () => {
+    const map = new HashMap([[{}, 'a']]);
+    expect(map.size).toEqual(1);
+    expect(map.has({})).toEqual(true);
+    map.clear();
+    expect(map.size).toEqual(0);
+    expect(map.has({})).toEqual(false);
+  });
+
+  it('delete should work', () => {
+    const map = new HashMap([[{}, 'a']]);
+    expect(map.size).toEqual(1);
+    expect(map.has({})).toEqual(true);
+    map.delete({});
+    expect(map.size).toEqual(0);
+    expect(map.has({})).toEqual(false);
+  });
+
+  it('entries should work', () => {
+    const set = new HashMap([[{}, 'a']]);
+    for (const [key, value] of set.entries()) {
+      expect(key).toEqual({});
+      expect(value).toEqual('a');
+    }
+  });
+
   it('forEach should work', () => {
-    const map = new HashMap([[1, 'a']]);
+    const map = new HashMap([[{}, 'a']]);
     map.forEach((value, key, _map) => {
       expect(value).toEqual('a');
       expect(key).toEqual(1);
@@ -30,7 +72,7 @@ describe('HashMap', () => {
   });
 
   it('forEach should bind the thisArg', () => {
-    const map = new HashMap([[1, 'a']]);
+    const map = new HashMap([[{}, 'a']]);
     map.forEach(
       () => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -40,31 +82,41 @@ describe('HashMap', () => {
     );
   });
 
+  it('get should work', () => {
+    const map = new HashMap([[{}, 'a']]);
+    expect(map.get({})).toEqual('a');
+    expect(map.get([])).toEqual(undefined);
+  });
+
+  it('has should work', () => {
+    const map = new HashMap([[{}, 'a']]);
+    expect(map.has({})).toEqual(true);
+    expect(map.has([])).toEqual(false);
+  });
+
+  it('keys should work', () => {
+    const map = new HashMap([[{}, 'a']]);
+    for (const key of map.keys()) {
+      expect(key).toEqual({});
+    }
+  });
+
+  it('set should work', () => {
+    const map = new HashMap();
+    expect(map.has({})).toEqual(false);
+    map.set({}, 'a');
+    expect(map.has({})).toEqual(true);
+  });
+
   it('toStringTag should work', () => {
     const map = new HashMap();
     expect(Object.prototype.toString.call(map)).toEqual('[object HashMap]');
   });
 
-  it('should be within an order of magnitude as fast as native Map', () => {
-    const measureMap = measure('Native Map', () => {
-      const map = new Map();
-      for (let i = 0; i < 100; i++) {
-        map.set(i, i);
-        map.has(i);
-        map.delete(i);
-      }
-    });
-    const measureHashMap = measure('HashMap', () => {
-      const map = new HashMap();
-      for (let i = 0; i < 100; i++) {
-        map.set(i, '');
-        map.has(i);
-        map.delete(i);
-      }
-    });
-    console.log(measureHashMap.opsPerSecond);
-    expect(measureMap.opsPerSecond / measureHashMap.opsPerSecond).toBeLessThan(
-      10
-    );
+  it('values should work', () => {
+    const map = new HashMap([[{}, 'a']]);
+    for (const value of map.values()) {
+      expect(value).toEqual('a');
+    }
   });
 });

@@ -10,11 +10,6 @@ export function measure(name: string, fn: () => unknown) {
   const times = [...Array(1000)].map(() => measureTime(fn));
   const medianTime = times.sort()[Math.round(times.length / 2)];
   const totalTime = times.reduce((sum, time) => sum + time, 0);
-  // console.log(
-  //   `${name}: ${medianTime}ms per run; ${
-  //     times.length / (totalTime / 1000)
-  //   } ops/sec`
-  // );
   return {
     name,
     medianTime,

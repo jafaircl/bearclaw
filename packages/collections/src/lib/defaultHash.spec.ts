@@ -6,6 +6,12 @@ describe('defaultHash', () => {
     expect(defaultHash).toBeInstanceOf(Function);
   });
 
+  it('should work for an empty string', () => {
+    const hash1 = defaultHash('');
+    const hash2 = defaultHash('');
+    expect(hash1).toEqual(hash2);
+  });
+
   it('should create the same hash for equivalent primitive types', () => {
     const hash1 = defaultHash('a');
     const hash2 = defaultHash('a');
