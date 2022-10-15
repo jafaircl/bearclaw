@@ -1,5 +1,5 @@
 {
-  "root": "packages/collections",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "packages/collections/src",
   "projectType": "library",
   "targets": {
@@ -12,14 +12,14 @@
     },
     "test": {
       "executor": "@nrwl/jest:jest",
-      "outputs": ["coverage/packages/collections"],
+      "outputs": ["{workspaceRoot}/coverage/packages/collections"],
       "options": {
-        "jestConfig": "packages/collections/jest.config.js",
+        "jestConfig": "packages/collections/jest.config.ts",
         "passWithNoTests": true
       }
     },
     "build": {
-      "executor": "@nrwl/node:package",
+      "executor": "@nrwl/js:tsc",
       "outputs": ["{options.outputPath}"],
       "options": {
         "outputPath": "dist/packages/collections",

@@ -4,5 +4,6 @@
     "collections": "packages/collections",
     "immutable-class": "packages/immutable-class",
     "is": "packages/is"
-  }
+  },
+  "$schema": "./node_modules/nx/schemas/workspace-schema.json"
 }
