@@ -19,6 +19,7 @@ export const primitiveValues = [
   'symbol',
   'true',
   'undefined',
+  'void0',
   'zero',
   'zeroBigInt',
 ];

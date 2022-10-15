@@ -62,6 +62,7 @@ export const values = {
   },
   true: true,
   undefined: undefined,
+  void0: void 0,
   weakMapCtor: WeakMap,
   weakMap: new WeakMap([[objRef, 1]]),
   weakSetCtor: WeakSet,

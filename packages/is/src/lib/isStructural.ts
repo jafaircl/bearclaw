@@ -1,4 +1,4 @@
-import { isPrimitive } from '..';
+import { isPrimitive } from './isPrimitive';
 
 /**
  * Is the value a structural type (object)?

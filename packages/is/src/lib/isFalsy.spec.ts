@@ -8,6 +8,7 @@ export const falsyValues = [
   'negativeZero',
   'null',
   'undefined',
+  'void0',
   'zero',
   'zeroBigInt',
 ];

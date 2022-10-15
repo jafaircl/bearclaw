@@ -6,5 +6,5 @@ describe('isUndefined', () => {
     expect(typeof isUndefined).toEqual('function');
   });
 
-  testValues(isUndefined, ['undefined']);
+  testValues(isUndefined, ['undefined', 'void0']);
 });

@@ -194,14 +194,14 @@ isNull(null) // true
 isNull(1) // false
 ```
 
-### isNullOrUndefined
+### isNil
 
 Is the value [null](https://developer.mozilla.org/en-US/docs/Glossary/Null) or [undefined](https://developer.mozilla.org/en-US/docs/Glossary/undefined)?
 
 ```typescript
-isNullOrUndefined(null) // true
-isNullOrUndefined(undefined) // true
-isNullOrUndefined(1) // false
+isNil(null) // true
+isNil(undefined) // true
+isNil(1) // false
 ```
 
 ### isNumber
