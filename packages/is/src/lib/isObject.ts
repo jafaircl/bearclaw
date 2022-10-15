@@ -1,4 +1,4 @@
-import { isNullOrUndefined } from '..';
+import { isNil } from './isNil';
 
 /**
  * Is the value a non-null Object?
@@ -16,5 +16,5 @@ import { isNullOrUndefined } from '..';
 export const isObject = <K extends string | number | symbol, V>(
   value: unknown | Record<K, V>
 ): value is Record<K, V> => {
-  return !isNullOrUndefined(value) && typeof value === 'object';
+  return !isNil(value) && typeof value === 'object';
 };

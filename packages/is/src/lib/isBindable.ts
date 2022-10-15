@@ -1,4 +1,4 @@
-import { isNullOrUndefined } from './isNullOrUndefined';
+import { isNil } from './isNil';
 
 /**
  * Is the value bindable? Arrow functions, constructors and functions that are
@@ -18,5 +18,5 @@ import { isNullOrUndefined } from './isNullOrUndefined';
 // eslint-disable-next-line @typescript-eslint/ban-types
 export const isBindable = (value: unknown): value is Function => {
   // eslint-disable-next-line no-prototype-builtins
-  return !isNullOrUndefined(value) && value.hasOwnProperty('prototype');
+  return !isNil(value) && value.hasOwnProperty('prototype');
 };

@@ -1,5 +1,5 @@
-import { isFunction } from '..';
 import { isBindable } from './isBindable';
+import { isFunction } from './isFunction';
 
 /**
  * Is the value a bound function?
