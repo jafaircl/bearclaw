@@ -1,10 +1,21 @@
-import { isEmptySet } from './isEmptySet';
-import { testValues } from './test-utils.spec';
+import { assertEmptySet, isEmptySet, validateEmptySet } from './isEmptySet';
+import {
+  testAssertAgainstValues,
+  testIsAgainstValues,
+  testValidateAgainstValues,
+  values,
+} from './test-utils.spec';
+
+export const emptySetValues: (keyof typeof values)[] = ['emptySet'];
 
 describe('isEmptySet', () => {
   it('should be a function', () => {
     expect(typeof isEmptySet).toEqual('function');
   });
 
-  testValues(isEmptySet, ['emptySet']);
+  testIsAgainstValues(isEmptySet, emptySetValues);
+
+  testValidateAgainstValues(validateEmptySet, emptySetValues);
+
+  testAssertAgainstValues(assertEmptySet, emptySetValues);
 });

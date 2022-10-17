@@ -1,7 +1,12 @@
-import { isPrimitive } from './isPrimitive';
-import { testValues } from './test-utils.spec';
+import { assertPrimitive, isPrimitive, validatePrimitive } from './isPrimitive';
+import {
+  testAssertAgainstValues,
+  testIsAgainstValues,
+  testValidateAgainstValues,
+  values,
+} from './test-utils.spec';
 
-export const primitiveValues = [
+export const primitiveValues: (keyof typeof values)[] = [
   'bigIntObject',
   'booleanObject',
   'dateNow',
@@ -29,6 +34,9 @@ describe('isPrimitive', () => {
     expect(typeof isPrimitive).toEqual('function');
   });
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  testValues(isPrimitive, primitiveValues as any);
+  testIsAgainstValues(isPrimitive, primitiveValues);
+
+  testValidateAgainstValues(validatePrimitive, primitiveValues);
+
+  testAssertAgainstValues(assertPrimitive, primitiveValues);
 });

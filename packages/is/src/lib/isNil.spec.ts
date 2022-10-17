@@ -1,10 +1,25 @@
-import { isNil } from './isNil';
-import { testValues } from './test-utils.spec';
+import { assertNil, isNil, validateNil } from './isNil';
+import {
+  testAssertAgainstValues,
+  testIsAgainstValues,
+  testValidateAgainstValues,
+  values,
+} from './test-utils.spec';
+
+export const nilValues: (keyof typeof values)[] = [
+  'null',
+  'undefined',
+  'void0',
+];
 
 describe('isNil', () => {
   it('should be a function', () => {
     expect(typeof isNil).toEqual('function');
   });
 
-  testValues(isNil, ['null', 'undefined', 'void0']);
+  testIsAgainstValues(isNil, nilValues);
+
+  testValidateAgainstValues(validateNil, nilValues);
+
+  testAssertAgainstValues(assertNil, nilValues);
 });

@@ -1,3 +1,6 @@
+import { AssertionException } from './AssertionException';
+import { ValidationException } from './ValidationException';
+
 const objRef = {};
 
 export const values = {
@@ -71,7 +74,7 @@ export const values = {
   zeroBigInt: BigInt(0),
 };
 
-export const testValues = (
+export const testIsAgainstValues = (
   fnToTest: (v: unknown) => boolean,
   shouldBeTrue: (keyof typeof values)[]
 ) => {
@@ -88,6 +91,51 @@ export const testValues = (
   }
 };
 
+export const testValidateAgainstValues = (
+  fnToTest: (v: unknown) => ValidationException | null,
+  shouldBeTrue: (keyof typeof values)[]
+) => {
+  for (const [key, value] of Object.entries(values)) {
+    if (shouldBeTrue.includes(key as keyof typeof values)) {
+      it(`should return null for ${key} values`, () => {
+        expect(fnToTest(value)).toEqual(null);
+      });
+    } else {
+      it(`should return a ValidationException for ${key} values`, () => {
+        const err = fnToTest(value);
+        expect(err).toBeInstanceOf(ValidationException);
+        expect(err.message).toEqual(fnToTest.name.replace('validate', 'is'));
+      });
+    }
+  }
+};
+
+export const testAssertAgainstValues = (
+  fnToTest: (v: unknown) => void,
+  shouldBeTrue: (keyof typeof values)[]
+) => {
+  for (const [key, value] of Object.entries(values)) {
+    if (shouldBeTrue.includes(key as keyof typeof values)) {
+      it(`should not throw for ${key} values`, () => {
+        expect(() => {
+          fnToTest(value);
+        }).not.toThrow();
+      });
+    } else {
+      it(`should throw for ${key} values`, () => {
+        try {
+          fnToTest(value);
+          // Make sure to fail the test if we reach here
+          expect(true).toEqual(false);
+        } catch (err) {
+          expect(err).toBeInstanceOf(AssertionException);
+          expect(err.message).toEqual(fnToTest.name.replace('assert', 'is'));
+        }
+      });
+    }
+  }
+};
+
 describe('test-utils', () => {
-  testValues(() => false, []);
+  testIsAgainstValues(() => false, []);
 });

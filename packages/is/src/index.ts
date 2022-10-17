@@ -1,3 +1,5 @@
+export * from './lib/assert';
+export * from './lib/AssertionException';
 export * from './lib/isArray';
 export * from './lib/isArrowFunction';
 export * from './lib/isAsyncFunction';
@@ -37,3 +39,5 @@ export * from './lib/isUndefined';
 export * from './lib/isWeakMap';
 export * from './lib/isWeakSet';
 export * from './lib/isWebWorkerContext';
+export * from './lib/validate';
+export * from './lib/ValidationException';

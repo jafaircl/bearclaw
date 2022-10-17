@@ -1,10 +1,24 @@
-import { isWeakMap } from './isWeakMap';
-import { testValues } from './test-utils.spec';
+import { assertWeakMap, isWeakMap, validateWeakMap } from './isWeakMap';
+import {
+  testAssertAgainstValues,
+  testIsAgainstValues,
+  testValidateAgainstValues,
+  values,
+} from './test-utils.spec';
+
+export const weakMapValues: (keyof typeof values)[] = [
+  'emptyWeakMap',
+  'weakMap',
+];
 
 describe('isWeakMap', () => {
   it('should be a function', () => {
     expect(typeof isWeakMap).toEqual('function');
   });
 
-  testValues(isWeakMap, ['emptyWeakMap', 'weakMap']);
+  testIsAgainstValues(isWeakMap, weakMapValues);
+
+  testValidateAgainstValues(validateWeakMap, weakMapValues);
+
+  testAssertAgainstValues(assertWeakMap, weakMapValues);
 });

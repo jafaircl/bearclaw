@@ -1,9 +1,12 @@
+import { assert } from './assert';
 import { isArray } from './isArray';
 import { isBoolean } from './isBoolean';
 import { isNull } from './isNull';
 import { isNumber } from './isNumber';
 import { isPlainObject } from './isPlainObject';
 import { isString } from './isString';
+import { validate } from './validate';
+import { ValidationException } from './ValidationException';
 
 export type JSONType =
   | string
@@ -11,7 +14,7 @@ export type JSONType =
   | boolean
   | null
   | JSONType[]
-  | { [key: string]: JSONType };
+  | { [key: string | number]: JSONType };
 
 /**
  * Is the value a valid JSON value?
@@ -41,3 +44,36 @@ export const isJSON = (value: unknown): value is JSONType => {
   }
   return false;
 };
+
+/**
+ * Validate that the value is a valid JSON value.
+ * See: https://www.ecma-international.org/publications-and-standards/standards/ecma-404/
+ *
+ * @example
+ * ```ts
+ * validateJSON({ 'foo': 'bar' }) // null
+ * validateJSON(new Map()) // ValidationException
+ * ```
+ *
+ * @param value the value to check
+ * @returns `null` the value is the expected type or a `ValidationException` if
+ * not
+ */
+export const validateJSON = (value: unknown): ValidationException | null =>
+  validate(isJSON(value), 'isJSON');
+
+/**
+ * Assert that the value is a valid JSON value.
+ * See: https://www.ecma-international.org/publications-and-standards/standards/ecma-404/
+ *
+ * @example
+ * ```ts
+ * assertJSON({ 'foo': 'bar' }) // void
+ * assertJSON(new Map()) // throws AssertionException
+ * ```
+ *
+ * @param value the value to check
+ * @throws an `AssertionException` if the value is not the expected type
+ */
+export const assertJSON = (value: unknown): asserts value is JSONType =>
+  assert(isJSON(value), 'isJSON');

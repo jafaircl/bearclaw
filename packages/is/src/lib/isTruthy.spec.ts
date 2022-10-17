@@ -1,16 +1,24 @@
 import { falsyValues } from './isFalsy.spec';
-import { isTruthy } from './isTruthy';
-import { testValues, values } from './test-utils.spec';
+import { assertTruthy, isTruthy, validateTruthy } from './isTruthy';
+import {
+  testAssertAgainstValues,
+  testIsAgainstValues,
+  testValidateAgainstValues,
+  values,
+} from './test-utils.spec';
+
+export const truthyValues: (keyof typeof values)[] = Object.keys(values).filter(
+  (key: keyof typeof values) => falsyValues.indexOf(key) === -1
+) as (keyof typeof values)[];
 
 describe('isTruthy', () => {
   it('should be a function', () => {
     expect(typeof isTruthy).toEqual('function');
   });
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  testValues(
-    isTruthy,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    Object.keys(values).filter((key) => falsyValues.indexOf(key) === -1) as any
-  );
+  testIsAgainstValues(isTruthy, truthyValues);
+
+  testValidateAgainstValues(validateTruthy, truthyValues);
+
+  testAssertAgainstValues(assertTruthy, truthyValues);
 });
