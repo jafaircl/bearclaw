@@ -1,18 +1,27 @@
-import { isImmutable } from './isImmutable';
+import { assertImmutable, isImmutable, validateImmutable } from './isImmutable';
 import { primitiveValues } from './isPrimitive.spec';
-import { testValues } from './test-utils.spec';
+import {
+  testAssertAgainstValues,
+  testIsAgainstValues,
+  testValidateAgainstValues,
+  values,
+} from './test-utils.spec';
+
+export const immutableValues: (keyof typeof values)[] = [
+  ...primitiveValues,
+  'frozenObject',
+  'frozenEmptyObject',
+  'sealedEmptyObject',
+];
 
 describe('isImmutable', () => {
   it('should be a function', () => {
     expect(typeof isImmutable).toEqual('function');
   });
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  testValues(isImmutable, [
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ...(primitiveValues as any),
-    'frozenObject',
-    'frozenEmptyObject',
-    'sealedEmptyObject',
-  ]);
+  testIsAgainstValues(isImmutable, immutableValues);
+
+  testValidateAgainstValues(validateImmutable, immutableValues);
+
+  testAssertAgainstValues(assertImmutable, immutableValues);
 });

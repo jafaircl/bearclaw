@@ -1,7 +1,12 @@
-import { isFalsy } from './isFalsy';
-import { testValues } from './test-utils.spec';
+import { assertFalsy, isFalsy, validateFalsy } from './isFalsy';
+import {
+  testAssertAgainstValues,
+  testIsAgainstValues,
+  testValidateAgainstValues,
+  values,
+} from './test-utils.spec';
 
-export const falsyValues = [
+export const falsyValues: (keyof typeof values)[] = [
   'emptyString',
   'false',
   'NaN',
@@ -18,6 +23,9 @@ describe('isFalsy', () => {
     expect(typeof isFalsy).toEqual('function');
   });
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  testValues(isFalsy, falsyValues as any);
+  testIsAgainstValues(isFalsy, falsyValues);
+
+  testValidateAgainstValues(validateFalsy, falsyValues);
+
+  testAssertAgainstValues(assertFalsy, falsyValues);
 });
