@@ -160,6 +160,22 @@ assertDateObject(new Date()) // void
 assertDateObject(1) // throws AssertionException
 ```
 
+### isEmpty
+
+Is the value an empty string, `null`, `undefined`, `NaN` or an array, map, object or set with no values?
+
+```typescript
+isEmpty('') // true
+isEmpty([]) // true
+isEmpty('example') // false
+validateEmpty('') // null
+validateEmpty([]) // null
+validateEmpty('example') // ValidationException
+assertEmpty('') // void
+assertEmpty([]) // void
+assertEmpty('example') // throws AssertionException
+```
+
 ### isEmptyArray
 
 Is the value an [array](https://developer.mozilla.org/en-US/docs/Glossary/array) with no values?
@@ -199,6 +215,19 @@ assertEmptyObject({}) // void
 assertEmptyObject({ foo: 'bar' }) // throws AssertionException
 ```
 
+### isEmptyPrimitive
+
+Is the value an empty string, `null`, `undefined` or `NaN`?
+
+```typescript
+isEmptyPrimitive('') // true
+isEmptyPrimitive('example') // false
+validateEmptyPrimitive('') // null
+validateEmptyPrimitive('example') // ValidationException
+assertEmptyPrimitive('') // void
+assertEmptyPrimitive('example') // throws AssertionException
+```
+
 ### isEmptySet
 
 Is the value a [Set](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Set) with no values?
@@ -223,6 +252,19 @@ validateEmptyString('') // null
 validateEmptyString('1') // ValidationException
 assertEmptyString('') // void
 assertEmptyString('1') // throws AssertionException
+```
+
+### isEmptyStructural
+
+Is the value an array, map, object or set with no values?
+
+```typescript
+isEmptyStructural([]) // true
+isEmptyStructural(['example']) // false
+validateEmptyStructural([]) // null
+validateEmptyStructural(['example']) // ValidtionException
+assertEmptyStructural([]) // void
+assertEmptyStructural(['example']) // throws AssertionException
 ```
 
 ### isFalsy
