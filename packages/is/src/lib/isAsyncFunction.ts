@@ -1,4 +1,5 @@
 import { assert } from './assert';
+import { isType } from './isType';
 import { validate } from './validate';
 import { ValidationException } from './ValidationException';
 
@@ -16,9 +17,8 @@ import { ValidationException } from './ValidationException';
  * @returns a boolean indicating whether the value is the expected type
  */
 // eslint-disable-next-line @typescript-eslint/ban-types
-export const isAsyncFunction = (value: unknown): value is Function => {
-  return value?.constructor?.name === 'AsyncFunction';
-};
+export const isAsyncFunction = (value: unknown): value is Function =>
+  isType('AsyncFunction', value);
 
 /**
  * Validate that the value is an async function.
@@ -31,8 +31,8 @@ export const isAsyncFunction = (value: unknown): value is Function => {
  * ```
  *
  * @param value the value to check
- * @returns `null` the value is the expected type or a `ValidationException` if
- * not
+ * @returns `null` if the value is the expected type or a `ValidationException`
+ * if not
  */
 export const validateAsyncFunction = (
   value: unknown

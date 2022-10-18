@@ -34,8 +34,8 @@ export const isFalsy = (value: unknown): value is Falsy => {
  * ```
  *
  * @param value the value to check
- * @returns `null` the value is the expected type or a `ValidationException` if
- * not
+ * @returns `null` if the value is the expected type or a `ValidationException`
+ * if not
  */
 export const validateFalsy = (value: unknown): ValidationException | null =>
   validate(isFalsy(value), 'isFalsy');

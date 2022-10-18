@@ -1,4 +1,5 @@
 import { assert } from './assert';
+import { isType } from './isType';
 import { validate } from './validate';
 import { ValidationException } from './ValidationException';
 
@@ -15,9 +16,8 @@ import { ValidationException } from './ValidationException';
  * @param value the value to check
  * @returns a boolean indicating whether the value is the expected type
  */
-export const isMap = <K, V>(value: unknown | Map<K, V>): value is Map<K, V> => {
-  return Object.prototype.toString.call(value) === '[object Map]';
-};
+export const isMap = <K, V>(value: unknown | Map<K, V>): value is Map<K, V> =>
+  isType('Map', value);
 
 /**
  * Validate that the value is a Map.
@@ -30,8 +30,8 @@ export const isMap = <K, V>(value: unknown | Map<K, V>): value is Map<K, V> => {
  * ```
  *
  * @param value the value to check
- * @returns `null` the value is the expected type or a `ValidationException` if
- * not
+ * @returns `null` if the value is the expected type or a `ValidationException`
+ * if not
  */
 export const validateMap = (value: unknown): ValidationException | null =>
   validate(isMap(value), 'isMap');

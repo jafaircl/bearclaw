@@ -1,5 +1,5 @@
-import { ClassConstructor } from 'class-transformer';
 import { assert } from './assert';
+import { ClassConstructor } from './ClassConstructor';
 import { isFunction } from './isFunction';
 import { validate } from './validate';
 import { ValidationException } from './ValidationException';
@@ -34,8 +34,8 @@ export const isClassCtor = <T>(
  * ```
  *
  * @param value the value to check
- * @returns `null` the value is the expected type or a `ValidationException` if
- * not
+ * @returns `null` if the value is the expected type or a `ValidationException`
+ * if not
  */
 export const validateClassCtor = (value: unknown): ValidationException | null =>
   validate(isClassCtor(value), 'isClassCtor');

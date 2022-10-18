@@ -37,8 +37,8 @@ export const isBindable = (value: unknown): value is Function => {
  * ```
  *
  * @param value the value to check
- * @returns `null` the value is the expected type or a `ValidationException` if
- * not
+ * @returns `null` if the value is the expected type or a `ValidationException`
+ * if not
  */
 export const validateBindable = (
   value: unknown

@@ -29,8 +29,8 @@ export const isNull = (value: unknown): value is null => {
  * ```
  *
  * @param value the value to check
- * @returns `null` the value is the expected type or a `ValidationException` if
- * not
+ * @returns `null` if the value is the expected type or a `ValidationException`
+ * if not
  */
 export const validateNull = (value: unknown) =>
   validate(isNull(value), 'isNull');

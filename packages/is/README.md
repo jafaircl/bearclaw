@@ -2,7 +2,7 @@
 
 `@bearclaw/is` is a set of runtime type-checking and environment-detecting functions.
 
-## Validation & Assertion
+## Helpers
 
 ### validate
 
@@ -26,6 +26,16 @@ function assertIsNotNil(value: unknown) {
 }
 assertIsNotNil({}) // void
 assertIsNotNil(null) // throws AssertionException
+```
+
+### getType
+
+Get a value's type. Uses `Object.prototype.toString` so it will not work with custom classes unless `[Symbol.toStringTag]` is defined. See: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures
+
+```typescript
+getType([]) // "Array"
+getType(1) // "Number"
+getType('1') // "String"
 ```
 
 ## Type Checking
@@ -270,6 +280,19 @@ assertImmutable(Object.freeze({})) // void
 assertImmutable({}) // throws AssertionException
 ```
 
+### isInstanceOf
+
+Is the value an [instance of](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/instanceof) the provided [constructor](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures)?
+
+```typescript
+isInstanceOf(Number, 1) // true
+isInstanceOf(String, 1) // false
+validateInstanceOf(Number, 1) // null
+validateInstanceOf(String, 1) // ValidationException
+assertInstanceOf(Number, 1) // void
+assertInstanceOf(String, 1) // throws AssertionException
+```
+
 ### isJSON
 
 Is the value a [valid JSON value](https://www.ecma-international.org/publications-and-standards/standards/ecma-404/)?
@@ -453,6 +476,19 @@ validateTruthy(1) // null
 validateTruthy(0) // ValidationException
 assertTruthy(1) // void
 assertTruthy(0) // throws AssertionException
+```
+
+### isType
+
+Is the value the provided [type](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures)? Uses `Object.prototype.toString` so it will not work with custom classes unless `[Symbol.toStringTag]` is defined.
+
+```typescript
+isType('Number', 1) // true
+isType('String', 1) // false
+validateType('Number', 1) // null
+validateType('String', 1) // ValidationException
+assertType('Number', 1) // void
+assertType('String', 1) // throws AssertionException
 ```
 
 ### isUndefined

@@ -1,4 +1,5 @@
 import { assert } from './assert';
+import { isType } from './isType';
 import { validate } from './validate';
 import { ValidationException } from './ValidationException';
 
@@ -17,9 +18,7 @@ import { ValidationException } from './ValidationException';
  */
 export const isPromise = <T>(
   value: unknown | Promise<T>
-): value is Promise<T> => {
-  return Object.prototype.toString.call(value) === '[object Promise]';
-};
+): value is Promise<T> => isType('Promise', value);
 
 /**
  * Validate that the value is a promise.
@@ -32,8 +31,8 @@ export const isPromise = <T>(
  * ```
  *
  * @param value the value to check
- * @returns `null` the value is the expected type or a `ValidationException` if
- * not
+ * @returns `null` if the value is the expected type or a `ValidationException`
+ * if not
  */
 export const validatePromise = (value: unknown): ValidationException | null =>
   validate(isPromise(value), 'isPromise');

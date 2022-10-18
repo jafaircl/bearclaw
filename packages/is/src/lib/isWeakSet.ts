@@ -1,4 +1,5 @@
 import { assert } from './assert';
+import { isType } from './isType';
 import { validate } from './validate';
 import { ValidationException } from './ValidationException';
 
@@ -17,9 +18,7 @@ import { ValidationException } from './ValidationException';
  */
 export const isWeakSet = <T extends Record<string, unknown>>(
   value: unknown | WeakSet<T>
-): value is WeakSet<T> => {
-  return Object.prototype.toString.call(value) === '[object WeakSet]';
-};
+): value is WeakSet<T> => isType('WeakSet', value);
 
 /**
  * Validate that the value is a WeakSet.
@@ -32,8 +31,8 @@ export const isWeakSet = <T extends Record<string, unknown>>(
  * ```
  *
  * @param value the value to check
- * @returns `null` the value is the expected type or a `ValidationException` if
- * not
+ * @returns `null` if the value is the expected type or a `ValidationException`
+ * if not
  */
 export const validateWeakSet = (value: unknown): ValidationException | null =>
   validate(isWeakSet(value), 'isWeakSet');
