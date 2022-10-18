@@ -32,8 +32,8 @@ export const isNil = (value: unknown): value is null | undefined => {
  * ```
  *
  * @param value the value to check
- * @returns `null` the value is the expected type or a `ValidationException` if
- * not
+ * @returns `null` if the value is the expected type or a `ValidationException`
+ * if not
  */
 export const validateNil = (value: unknown): ValidationException | null =>
   validate(isNil(value), 'isNil');

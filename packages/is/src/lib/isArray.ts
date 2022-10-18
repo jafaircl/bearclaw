@@ -30,8 +30,8 @@ export const isArray = <T>(value: unknown | T[]): value is T[] => {
  * ```
  *
  * @param value the value to check
- * @returns `null` the value is the expected type or a `ValidationException` if
- * not
+ * @returns `null` if the value is the expected type or a `ValidationException`
+ * if not
  */
 export const validateArray = <T>(
   value: unknown | T[]

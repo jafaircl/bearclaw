@@ -1,4 +1,5 @@
 import { assert } from './assert';
+import { isType } from './isType';
 import { validate } from './validate';
 import { ValidationException } from './ValidationException';
 
@@ -15,9 +16,8 @@ import { ValidationException } from './ValidationException';
  * @param value the value to check
  * @returns a boolean indicating whether the value is the expected type
  */
-export const isDateObject = (value: unknown): value is Date => {
-  return Object.prototype.toString.call(value) === '[object Date]';
-};
+export const isDateObject = (value: unknown): value is Date =>
+  isType('Date', value);
 
 /**
  * Validate that the value is a date object.
@@ -30,8 +30,8 @@ export const isDateObject = (value: unknown): value is Date => {
  * ```
  *
  * @param value the value to check
- * @returns `null` the value is the expected type or a `ValidationException` if
- * not
+ * @returns `null` if the value is the expected type or a `ValidationException`
+ * if not
  */
 export const validateDateObject = (
   value: unknown

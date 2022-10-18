@@ -1,4 +1,5 @@
 import { assert } from './assert';
+import { isType } from './isType';
 import { validate } from './validate';
 import { ValidationException } from './ValidationException';
 
@@ -17,9 +18,7 @@ import { ValidationException } from './ValidationException';
  */
 export const isWeakMap = <K extends Record<string, unknown>, V>(
   value: unknown | WeakMap<K, V>
-): value is WeakMap<K, V> => {
-  return Object.prototype.toString.call(value) === '[object WeakMap]';
-};
+): value is WeakMap<K, V> => isType('WeakMap', value);
 
 /**
  * Validate that the value is a WeakMap.
@@ -32,8 +31,8 @@ export const isWeakMap = <K extends Record<string, unknown>, V>(
  * ```
  *
  * @param value the value to check
- * @returns `null` the value is the expected type or a `ValidationException` if
- * not
+ * @returns `null` if the value is the expected type or a `ValidationException`
+ * if not
  */
 export const validateWeakMap = (value: unknown): ValidationException | null =>
   validate(isWeakMap(value), 'isWeakMap');

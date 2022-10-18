@@ -1,4 +1,5 @@
 import { assert } from './assert';
+import { isType } from './isType';
 import { validate } from './validate';
 import { ValidationException } from './ValidationException';
 
@@ -15,9 +16,8 @@ import { ValidationException } from './ValidationException';
  * @param value the value to check
  * @returns a boolean indicating whether the value is the expected type
  */
-export const isString = (value: unknown): value is string => {
-  return Object.prototype.toString.call(value) === '[object String]';
-};
+export const isString = (value: unknown): value is string =>
+  isType('String', value);
 
 /**
  * Validate that the value is a sequence of characters.
@@ -30,8 +30,8 @@ export const isString = (value: unknown): value is string => {
  * ```
  *
  * @param value the value to check
- * @returns `null` the value is the expected type or a `ValidationException` if
- * not
+ * @returns `null` if the value is the expected type or a `ValidationException`
+ * if not
  */
 export const validateString = (value: unknown): ValidationException | null =>
   validate(isString(value), 'isString');

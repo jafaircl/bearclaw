@@ -1,4 +1,5 @@
 import { assert } from './assert';
+import { isType } from './isType';
 import { validate } from './validate';
 import { ValidationException } from './ValidationException';
 
@@ -15,9 +16,8 @@ import { ValidationException } from './ValidationException';
  * @param value the value to check
  * @returns a boolean indicating whether the value is the expected type
  */
-export const isSet = <T>(value: unknown | Set<T>): value is Set<T> => {
-  return Object.prototype.toString.call(value) === '[object Set]';
-};
+export const isSet = <T>(value: unknown | Set<T>): value is Set<T> =>
+  isType('Set', value);
 
 /**
  * Validate that the value is a Set.
@@ -30,8 +30,8 @@ export const isSet = <T>(value: unknown | Set<T>): value is Set<T> => {
  * ```
  *
  * @param value the value to check
- * @returns `null` the value is the expected type or a `ValidationException` if
- * not
+ * @returns `null` if the value is the expected type or a `ValidationException`
+ * if not
  */
 export const validateSet = (value: unknown): ValidationException | null =>
   validate(isSet(value), 'isSet');

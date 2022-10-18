@@ -33,8 +33,8 @@ export const isObject = <K extends string | number | symbol, V>(
  * ```
  *
  * @param value the value to check
- * @returns `null` the value is the expected type or a `ValidationException` if
- * not
+ * @returns `null` if the value is the expected type or a `ValidationException`
+ * if not
  */
 export const validateObject = (value: unknown): ValidationException | null =>
   validate(isObject(value), 'isObject');

@@ -54,8 +54,8 @@ export const isPrimitive = (value: unknown): value is Primitive => {
  * ```
  *
  * @param value the value to check
- * @returns `null` the value is the expected type or a `ValidationException` if
- * not
+ * @returns `null` if the value is the expected type or a `ValidationException`
+ * if not
  */
 export const validatePrimitive = (value: unknown): ValidationException | null =>
   validate(isPrimitive(value), 'isPrimitive');

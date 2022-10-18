@@ -1,4 +1,5 @@
 import { assert } from './assert';
+import { isType } from './isType';
 import { validate } from './validate';
 import { ValidationException } from './ValidationException';
 
@@ -15,9 +16,8 @@ import { ValidationException } from './ValidationException';
  * @param value the value to check
  * @returns a boolean indicating whether the value is the expected type
  */
-export const isBigInt = (value: unknown): value is bigint => {
-  return Object.prototype.toString.call(value) === '[object BigInt]';
-};
+export const isBigInt = (value: unknown): value is bigint =>
+  isType('BigInt', value);
 
 /**
  * Validate that the value is a BigInt.
@@ -30,8 +30,8 @@ export const isBigInt = (value: unknown): value is bigint => {
  * ```
  *
  * @param value the value to check
- * @returns `null` the value is the expected type or a `ValidationException` if
- * not
+ * @returns `null` if the value is the expected type or a `ValidationException`
+ * if not
  */
 export const validateBigInt = (value: unknown): ValidationException | null =>
   validate(isBigInt(value), 'isBigInt');

@@ -1,4 +1,5 @@
 import { assert } from './assert';
+import { isType } from './isType';
 import { validate } from './validate';
 import { ValidationException } from './ValidationException';
 
@@ -15,9 +16,8 @@ import { ValidationException } from './ValidationException';
  * @param value the value to check
  * @returns a boolean indicating whether the value is the expected type
  */
-export const isBoolean = (value: unknown): value is boolean => {
-  return Object.prototype.toString.call(value) === '[object Boolean]';
-};
+export const isBoolean = (value: unknown): value is boolean =>
+  isType('Boolean', value);
 
 /**
  * Validate that the value is a boolean.
@@ -30,8 +30,8 @@ export const isBoolean = (value: unknown): value is boolean => {
  * ```
  *
  * @param value the value to check
- * @returns `null` the value is the expected type or a `ValidationException` if
- * not
+ * @returns `null` if the value is the expected type or a `ValidationException`
+ * if not
  */
 export const validateBoolean = (value: unknown): ValidationException | null =>
   validate(isBoolean(value), 'isBoolean');

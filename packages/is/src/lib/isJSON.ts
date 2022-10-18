@@ -56,8 +56,8 @@ export const isJSON = (value: unknown): value is JSONType => {
  * ```
  *
  * @param value the value to check
- * @returns `null` the value is the expected type or a `ValidationException` if
- * not
+ * @returns `null` if the value is the expected type or a `ValidationException`
+ * if not
  */
 export const validateJSON = (value: unknown): ValidationException | null =>
   validate(isJSON(value), 'isJSON');
