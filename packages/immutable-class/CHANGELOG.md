@@ -2,6 +2,15 @@
 
 This file was generated using [@jscutlery/semver](https://github.com/jscutlery/semver).
 
+# [0.3.0](https://github.com/jafaircl/bearclaw/compare/immutable-class-0.2.0...immutable-class-0.3.0) (2022-10-19)
+
+
+### Features
+
+* **immutable-class:** update api to more closely match class-transformer ([f00fcbb](https://github.com/jafaircl/bearclaw/commit/f00fcbb853c09f97983039504edddd061bef27be)), closes [#28](https://github.com/jafaircl/bearclaw/issues/28)
+
+
+
 # 0.2.0 (2021-11-14)
 
 
