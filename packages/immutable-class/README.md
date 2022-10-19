@@ -3,166 +3,84 @@
 This library provides helper functions to extend `class-transformer` functionality to create immutable classes. It also provides helper functions to work with immutable classes using `immer`.
 
 - [immutable-class](#immutable-class)
-  - [fromJSON](#fromjson)
-  - [toJSON](#tojson)
-  - [deserialize](#deserialize)
-  - [deserializeArray](#deserializearray)
-  - [serialize](#serialize)
-  - [clone](#clone)
-  - [update](#update)
-  - [patch](#patch)
+  - [instanceToImmutableInstance](#instancetoimmutableinstance)
+  - [instanceToImmutablePlain](#instancetoimmutableplain)
+  - [patchImmutableInstance](#patchimmutableinstance)
+  - [plainToImmutableInstance](#plaintoimmutableinstance)
+  - [produceImmutableInstance](#produceimmutableinstance)
 - [Contributing](#contributing)
   - [Running unit tests](#running-unit-tests)
 
-## fromJSON
+## instanceToImmutableInstance
 
-Create an immutable class from a JSON object.
+Converts a class (constructor) object to a new immutable class (constructor) object. Also works with arrays.
 
 ```typescript
-class Test {
-  readonly foo!: string;
-  readonly bar?: string
+class MyClass {
+  foo!: string
 }
-
-const cls = fromJSON(Test, { foo: 'asdf' });
-// cls: Test {
-//   foo: 'asdf',
-//   bar: undefined,
-// }
+const existing = new MyClass();
+existing.foo = 'bar'; // No errors
+const instance = instanceToImmutableInstance(existing);
+instance.foo = 'foo'; // throws a read only property error
 ```
 
-## toJSON
+## instanceToImmutablePlain
 
-Convert a class to an immutable plain object.
-
+Converts a class (constructor) object to an immutable plain (literal) object. Also works with arrays.
 
 ```typescript
-class Test {
-  foo!: string;
-  bar?: string
+class MyClass {
+  foo!: string
 }
-
-const cls = new Test();
-const emptyJson = toJSON(cls);
-// emptyJson: {
-//   foo: undefined,
-//   bar: undefined,
-// }
-cls.foo = 'abc'
-cls.bar = '123'
-const setJson = toJSON(cls)
-// setJson: {
-//    foo: 'abc',
-//    bar: '123',
-// }
+const instance = new MyClass();
+instance.foo = 'bar'; // No errors
+const plain = instanceToImmutablePlain(instance);
+plain.foo = 'foo'; // throws a read only property error
 ```
 
-## deserialize
+## patchImmutableInstance
 
-Create an immutable class from a JSON string.
+Produce the next immutable class (constructor) object by patching the existing class (constructor) object. Also works with arrays.
 
 ```typescript
-class Test {
-  readonly foo!: string;
-  readonly bar?: string
+class MyClass {
+  foo!: string
 }
-
-const cls = fromJSON(Test, `{ "foo": "asdf" }`);
-// cls: Test {
-//   foo: 'asdf',
-//   bar: undefined,
-// }
+const instance = new MyClass();
+instance.foo = 'bar'; // No errors
+const updated = patchImmutableInstance(instance, { foo: 'some value' });
+instance.foo = 'foo'; // throws a read only property error
 ```
 
-## deserializeArray
+## plainToImmutableInstance
 
-Create an array of immutable classes from a JSON string.
+Converts a plain (literal) object to an immutable class (constructor) object. Also works with arrays.
 
 ```typescript
-class Test {
-  readonly foo!: string;
-  readonly bar?: string
+class MyClass {
+  foo!: string
 }
-
-const cls = fromJSON(Test, `[{ "foo": "asdf" }]`);
-// cls: [Test {
-//   foo: 'asdf',
-//   bar: undefined,
-// }]
+const plain = { foo: 'example' };
+plain.foo = 'bar'; // No errors
+const instance = plainToImmutableInstance(MyClass, plain);
+instance.foo = 'foo'; // throws a read only property error
 ```
 
-## serialize
+## produceImmutableInstance
 
-Convert a class to an immutable plain object.
-
-```typescript
-class Test {
-  foo!: string;
-  bar?: string
-}
-
-const cls = new Test();
-const emptyJson = toJSON(cls);
-// emptyJson: "{}""
-cls.foo = 'abc'
-cls.bar = '123'
-const setJson = toJSON(cls)
-// setJson: '{"foo":"abc","bar":"123"}'
-```
-
-## clone
-
-Clone an existing immutable class.
+Produce the next immutable class (constructor) object by modifying the current class (constructor) object with a recipe function. Also works with arrays.
 
 ```typescript
-class Test {
-  foo!: string;
-  bar?: string
+class MyClass {
+  foo!: string
 }
-
-const cls = new Test();
-cls.foo = 'test'
-const copy = clone(cls)
-// copy: Test {
-//   foo: 'test',
-//   bar: undefined
-// }
-```
-
-## update
-
-Update an immutable class. This function will leave the original class unmodified and return an updated copy of the class. Note this will add `[immerable]=true` to the returned class.
-
-```typescript
-class Test {
-  readonly foo!: string;
-  readonly bar?: string
-}
-const cls = create(Test)
-const updated = update(cls, x => {
-  x.foo = 'abc'
-})
-// updated: Test {
-//   foo: 'abc',
-//   bar: undefined
-// }
-```
-
-## patch
-
-Patch an immutable class with a JSON value. This function will leave the original class unmodified and return an updated copy of the class. Note this will add `[immerable]=true` to the returned class.
-
-```typescript
-class Test {
-  readonly foo!: string;
-  readonly bar?: string
-}
-const cls = create(Test)
-const patched = patch(cls, { foo: 'abc' })
-// patched: Test {
-//   foo: 'abc',
-//   bar: undefined
-// }
+const instance = new MyClass();
+instance.foo = 'bar'; // No errors
+const updated = produceImmutableInstance(instance, draft => {
+  draft.foo = 'some value'
+});
+instance.foo = 'foo'; // throws a read only property error
 ```
 
 # Contributing
