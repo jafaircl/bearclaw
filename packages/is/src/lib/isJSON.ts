@@ -14,7 +14,7 @@ export type JSONType =
   | boolean
   | null
   | JSONType[]
-  | { [key: string | number]: JSONType };
+  | { [key: string]: JSONType };
 
 /**
  * Is the value a valid JSON value?
