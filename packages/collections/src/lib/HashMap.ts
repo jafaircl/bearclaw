@@ -2,11 +2,20 @@ import { isFunction, Primitive } from '@bearclaw/is';
 import { defaultHash } from './defaultHash';
 import { HashFn } from './types';
 
+/**
+ * A simple hash map implementation.
+ */
 export class HashMap<K, V> implements Map<K, V> {
   private _keyMap = new Map<Primitive, K>();
   private _valueMap = new Map<Primitive, V>();
   private _hasherFn = defaultHash;
 
+  /**
+   * Build a new hash map from an iterable of key-value pairs
+   *
+   * @param entries the entries to add to the HashMap
+   * @param hasherFn the hashing function to use
+   */
   constructor(entries?: readonly (readonly [K, V])[], hasherFn?: HashFn) {
     if (isFunction(hasherFn)) {
       this._hasherFn = hasherFn;
@@ -19,7 +28,7 @@ export class HashMap<K, V> implements Map<K, V> {
   }
 
   /**
-   * Returns the number of elements in the HashSet
+   * Returns the number of elements in the HashMap
    */
   get size(): number {
     return this._keyMap.size;

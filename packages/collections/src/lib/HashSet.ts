@@ -2,10 +2,19 @@ import { isFunction, Primitive } from '@bearclaw/is';
 import { defaultHash } from './defaultHash';
 import { HashFn } from './types';
 
+/**
+ * A simple hash set implementation.
+ */
 export class HashSet<T> implements Set<T> {
   private _map = new Map<Primitive, T>();
   private _hasherFn = defaultHash;
 
+  /**
+   * Build a new HashSet from an iterable of values
+   *
+   * @param values the values to add to the HashSet
+   * @param hasherFn the hashing function to use
+   */
   constructor(values?: readonly T[], hasherFn?: HashFn) {
     if (isFunction(hasherFn)) {
       this._hasherFn = hasherFn;

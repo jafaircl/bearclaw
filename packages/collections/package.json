@@ -1,9 +1,13 @@
 {
   "name": "@bearclaw/collections",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "homepage": "https://github.com/jafaircl/bearclaw/tree/main/packages/collections",
   "repository": {
     "type": "git",
     "url": "https://github.com/jafaircl/bearclaw"
+  },
+  "dependencies": {
+    "@bearclaw/is": "^0.3.0",
+    "fast-json-stable-stringify": "^2.1.0"
   }
 }

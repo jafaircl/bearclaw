@@ -1,4 +1,23 @@
 import { HashSet } from './HashSet';
+import { measure } from './test-utils';
+
+function createSpeedTestSet() {
+  const set = new Set();
+  for (let i = 0; i < 1000; i += 1) {
+    set.add(i);
+    set.delete(i);
+  }
+  return set;
+}
+
+function createSpeedTestHashSet() {
+  const set = new HashSet();
+  for (let i = 0; i < 1000; i += 1) {
+    set.add(i);
+    set.delete(i);
+  }
+  return set;
+}
 
 describe('HashSet', () => {
   it('add should work', () => {
@@ -120,5 +139,11 @@ describe('HashSet', () => {
     for (const value of set.values()) {
       expect(value).toEqual({});
     }
+  });
+
+  it('speed should be within an order of magnitude of a native set', () => {
+    const setSpeed = measure('setSpeed', createSpeedTestSet);
+    const hashSetSpeed = measure('hashSetSpeed', createSpeedTestHashSet);
+    expect(setSpeed.opsPerSecond / hashSetSpeed.opsPerSecond).toBeLessThan(10);
   });
 });

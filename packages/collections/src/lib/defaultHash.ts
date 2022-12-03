@@ -2,20 +2,38 @@ import stringify from 'fast-json-stable-stringify';
 import { HashFn } from './types';
 
 /**
- * The default hashing function. This will stringify the value then use the
- * same hashing algorithm as Java's HashMap.
+ * If the value passed is an object or contains objects, sort the object(s) and
+ * return the result. Otherwise, return the value as-is.
+ *
+ * @param value the object to sort
+ * @returns a sorted version of the passed value
+ */
+function deepSortValue(value: unknown) {
+  if (typeof value !== 'object' || value === null) {
+    return value;
+  }
+
+  if (Array.isArray(value)) {
+    return value.map(deepSortValue);
+  }
+
+  const sortedObject = {};
+  const sortedKeys = Object.keys(value).sort();
+  for (let i = 0; i < sortedKeys.length; i += 1) {
+    const key = sortedKeys[i];
+    sortedObject[key] = deepSortValue(value[key]);
+  }
+
+  return sortedObject;
+}
+
+/**
+ * The default hashing function. This will simply sort then stringify the value.
  *
  * @param value the value to hash
  * @returns a hashed value
  */
 export const defaultHash: HashFn = (value: unknown) => {
-  const string = stringify(value);
-  // Algorithim is the same as the Java implementation
-  let hash = 0;
-  for (let i = 0; i < string.length; i++) {
-    const char = string.charCodeAt(i);
-    hash = (hash << 5) - hash + char;
-    hash |= 0;
-  }
-  return hash;
+  const sortedValue = deepSortValue(value);
+  return stringify(sortedValue);
 };

@@ -1,4 +1,23 @@
 import { HashMap } from './HashMap';
+import { measure } from './test-utils';
+
+function createSpeedTestMap() {
+  const map = new Map<string, number>();
+  for (let i = 0; i < 1000; i++) {
+    map.set(i.toString(), i);
+    map.delete(i.toString());
+  }
+  return map;
+}
+
+function createSpeedTestHashMap() {
+  const map = new HashMap<string, number>();
+  for (let i = 0; i < 1000; i++) {
+    map.set(i.toString(), i);
+    map.delete(i.toString());
+  }
+  return map;
+}
 
 describe('HashMap', () => {
   it('set should work', () => {
@@ -118,5 +137,11 @@ describe('HashMap', () => {
     for (const value of map.values()) {
       expect(value).toEqual('a');
     }
+  });
+
+  it('speed should be within an order of magnitude of native map', () => {
+    const mapSpeed = measure('mapSpeed', createSpeedTestMap);
+    const hashMapSpeed = measure('hashMapSpeed', createSpeedTestHashMap);
+    expect(mapSpeed.opsPerSecond / hashMapSpeed.opsPerSecond).toBeLessThan(10);
   });
 });
