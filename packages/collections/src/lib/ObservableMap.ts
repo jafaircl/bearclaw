@@ -24,6 +24,15 @@ export class ObservableMap<K, V> extends Map<K, V> {
     this._subject.next(this);
   }
 
+  /**
+   * A String value that is used in the creation of the default string
+   * description of an object. Called by the built-in method
+   * `Object.prototype.toString`.
+   */
+  get [Symbol.toStringTag](): string {
+    return 'ObservableMap';
+  }
+
   // Observable getters
 
   /**
@@ -40,10 +49,10 @@ export class ObservableMap<K, V> extends Map<K, V> {
    * ```
    */
   get size$(): Observable<number> {
-    return merge(
-      defer(() => of(this.size)),
-      this._subject.asObservable().pipe(map((map) => map.size))
-    ).pipe(distinctUntilChanged());
+    return this.asObservable().pipe(
+      map((_map) => _map.size),
+      distinctUntilChanged()
+    );
   }
 
   // Overrides for all mutating methods
@@ -102,10 +111,10 @@ export class ObservableMap<K, V> extends Map<K, V> {
    * @returns an Observable of booleans indicating whether the map has the key
    */
   has$(key: K): Observable<boolean> {
-    return merge(
-      defer(() => of(this.has(key))),
-      this._subject.asObservable().pipe(map((map) => map.has(key)))
-    ).pipe(distinctUntilChanged());
+    return this.asObservable().pipe(
+      map((_map) => _map.has(key)),
+      distinctUntilChanged()
+    );
   }
 
   /**
@@ -125,10 +134,10 @@ export class ObservableMap<K, V> extends Map<K, V> {
    * @returns an Observable of the value for the key
    */
   get$(key: K): Observable<V> {
-    return merge(
-      defer(() => of(this.get(key))),
-      this._subject.asObservable().pipe(map((map) => map.get(key)))
-    ).pipe(distinctUntilChanged());
+    return this.asObservable().pipe(
+      map((_map) => _map.get(key)),
+      distinctUntilChanged()
+    );
   }
 
   /**
@@ -151,10 +160,7 @@ export class ObservableMap<K, V> extends Map<K, V> {
    * @returns an Observable of the entries in the map
    */
   entries$(): Observable<IterableIterator<[K, V]>> {
-    return merge(
-      defer(() => of(this.entries())),
-      this._subject.asObservable().pipe(map((map) => map.entries()))
-    );
+    return this.asObservable().pipe(map((_map) => _map.entries()));
   }
 
   /**
@@ -176,10 +182,7 @@ export class ObservableMap<K, V> extends Map<K, V> {
    * @returns an Observable of the keys in the map
    */
   keys$(): Observable<IterableIterator<K>> {
-    return merge(
-      defer(() => of(this.keys())),
-      this._subject.asObservable().pipe(map((map) => map.keys()))
-    );
+    return this.asObservable().pipe(map((_map) => _map.keys()));
   }
 
   /**
@@ -201,13 +204,8 @@ export class ObservableMap<K, V> extends Map<K, V> {
    * @returns an Observable of the values in the map
    */
   values$(): Observable<IterableIterator<V>> {
-    return merge(
-      defer(() => of(this.values())),
-      this._subject.asObservable().pipe(map((map) => map.values()))
-    );
+    return this.asObservable().pipe(map((_map) => _map.values()));
   }
-
-  // Subscription methods
 
   /**
    * This will complete the underlying Subject, which will prevent any further
@@ -231,5 +229,28 @@ export class ObservableMap<K, V> extends Map<K, V> {
    */
   complete() {
     this._subject.complete();
+  }
+
+  /**
+   * Get the value of the map as an Observable.
+   *
+   * This will emit the current value of the map, and then emit again whenever
+   * the map changes.
+   *
+   * @example
+   * ```typescript
+   * const map = new ObservableMap();
+   * map.set('foo', 'bar');
+   * map.asObservable().subscribe((map) => console.log(map));
+   * // ObservableMap { 'foo' => 'bar' }
+   * ```
+   *
+   * @returns an Observable that emits the map whenever it changes
+   */
+  asObservable(): Observable<ObservableMap<K, V>> {
+    return merge(
+      defer(() => of(this)),
+      this._subject.asObservable()
+    );
   }
 }

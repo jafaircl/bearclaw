@@ -59,6 +59,13 @@ describe('ObservableSet', () => {
         setSpeed.opsPerSecond / observableSetSpeed.opsPerSecond
       ).toBeLessThan(15);
     });
+
+    it('should have the right toStringTag', () => {
+      const set = new ObservableSet<number>();
+      expect(Object.prototype.toString.call(set)).toEqual(
+        '[object ObservableSet]'
+      );
+    });
   });
 
   describe('size$', () => {
@@ -396,6 +403,27 @@ describe('ObservableSet', () => {
       obsrvableSet.complete();
       obsrvableSet.add(2);
       expect(results).toEqual([0, 1]);
+    });
+  });
+
+  describe('asObservable', () => {
+    it('should emit the set instance', () => {
+      testScheduler.run(({ expectObservable }) => {
+        const set = new ObservableSet();
+        const expected = '(a)';
+        const values = { a: set };
+        expectObservable(set.asObservable()).toBe(expected, values);
+      });
+    });
+
+    it('should emit the set instance to late subscribers', () => {
+      const observableSet = new ObservableSet();
+      observableSet.add(1);
+      const results = [];
+      observableSet
+        .asObservable()
+        .subscribe((set) => results.push(set === observableSet));
+      expect(results).toEqual([true]);
     });
   });
 });

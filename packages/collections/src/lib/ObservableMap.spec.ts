@@ -59,6 +59,13 @@ describe('ObservableMap', () => {
         mapSpeed.opsPerSecond / observableMapSpeed.opsPerSecond
       ).toBeLessThan(15);
     });
+
+    it('should have the right toStringTag', () => {
+      const map = new ObservableMap();
+      expect(Object.prototype.toString.call(map)).toEqual(
+        '[object ObservableMap]'
+      );
+    });
   });
 
   describe('size$', () => {
@@ -490,6 +497,27 @@ describe('ObservableMap', () => {
       observableMap.complete();
       observableMap.set(2, 2);
       expect(results).toEqual([0, 1]);
+    });
+  });
+
+  describe('asObservable', () => {
+    it('should emit the map instance', () => {
+      testScheduler.run(({ expectObservable }) => {
+        const observableMap = new ObservableMap();
+        const expected = '(a)';
+        const values = { a: observableMap };
+        expectObservable(observableMap.asObservable()).toBe(expected, values);
+      });
+    });
+
+    it('should emit the map instance to late subscribers', () => {
+      const observableMap = new ObservableMap();
+      observableMap.set(1, 1);
+      const results = [];
+      observableMap
+        .asObservable()
+        .subscribe((map) => results.push(map === observableMap));
+      expect(results).toEqual([true]);
     });
   });
 });

@@ -24,6 +24,15 @@ export class ObservableSet<V> extends Set<V> {
     this._subject.next(this);
   }
 
+  /**
+   * A String value that is used in the creation of the default string
+   * description of an object. Called by the built-in method
+   * `Object.prototype.toString`.
+   */
+  get [Symbol.toStringTag](): string {
+    return 'ObservableSet';
+  }
+
   // Observable getters
 
   /**
@@ -40,10 +49,10 @@ export class ObservableSet<V> extends Set<V> {
    * ```
    */
   get size$(): Observable<number> {
-    return merge(
-      defer(() => of(this.size)),
-      this._subject.asObservable().pipe(map((set) => set.size))
-    ).pipe(distinctUntilChanged());
+    return this.asObservable().pipe(
+      map((set) => set.size),
+      distinctUntilChanged()
+    );
   }
 
   // Overrides for all mutating methods
@@ -100,10 +109,10 @@ export class ObservableSet<V> extends Set<V> {
    * is in the set
    */
   has$(value: V): Observable<boolean> {
-    return merge(
-      defer(() => of(this.has(value))),
-      this._subject.asObservable().pipe(map((set) => set.has(value)))
-    ).pipe(distinctUntilChanged());
+    return this.asObservable().pipe(
+      map((set) => set.has(value)),
+      distinctUntilChanged()
+    );
   }
 
   /**
@@ -128,10 +137,7 @@ export class ObservableSet<V> extends Set<V> {
    * @returns an Observable of entries in the set
    */
   entries$(): Observable<IterableIterator<[V, V]>> {
-    return merge(
-      defer(() => of(this.entries())),
-      this._subject.asObservable().pipe(map((set) => set.entries()))
-    );
+    return this.asObservable().pipe(map((set) => set.entries()));
   }
 
   /**
@@ -155,10 +161,7 @@ export class ObservableSet<V> extends Set<V> {
    * @returns an Observable of keys in the set
    */
   keys$(): Observable<IterableIterator<V>> {
-    return merge(
-      defer(() => of(this.keys())),
-      this._subject.asObservable().pipe(map((set) => set.keys()))
-    );
+    return this.asObservable().pipe(map((set) => set.keys()));
   }
 
   /**
@@ -182,13 +185,8 @@ export class ObservableSet<V> extends Set<V> {
    * @returns an Observable of values in the set
    */
   values$(): Observable<IterableIterator<V>> {
-    return merge(
-      defer(() => of(this.values())),
-      this._subject.asObservable().pipe(map((set) => set.values()))
-    );
+    return this.asObservable().pipe(map((set) => set.values()));
   }
-
-  // Subscription methods
 
   /**
    * This will complete the underlying subject, which will prevent any further
@@ -211,5 +209,27 @@ export class ObservableSet<V> extends Set<V> {
    */
   complete(): void {
     this._subject.complete();
+  }
+
+  /**
+   * Get the value of the set as an Observable.
+   *
+   * This will emit the current value of the set, and then emit again whenever
+   * the set changes.
+   *
+   * @example
+   * ```typescript
+   * const set = new ObservableSet([1, 2, 3]);
+   * set.asObservable().subscribe((set) => console.log(set));
+   * // ObservableSet(3) { 1, 2, 3 }
+   * ```
+   *
+   * @returns an Observable that emits the set whenever it changes
+   */
+  asObservable(): Observable<ObservableSet<V>> {
+    return merge(
+      defer(() => of(this)),
+      this._subject.asObservable()
+    );
   }
 }
