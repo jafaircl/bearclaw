@@ -26,7 +26,6 @@ describe('ObservableMap', () => {
 
   beforeEach(() => {
     testScheduler = new TestScheduler((actual, expected) => {
-      // console.log(JSON.stringify({ actual, expected }, null, 2));
       expect(actual).toStrictEqual(expected);
     });
   });
@@ -63,7 +62,7 @@ describe('ObservableMap', () => {
   });
 
   describe('size$', () => {
-    it('should emit 0 immediately for a new map', () => {
+    it('should emit 0 for a new map', () => {
       testScheduler.run(({ expectObservable }) => {
         const map = new ObservableMap();
         const expected = '(a)';
@@ -72,7 +71,7 @@ describe('ObservableMap', () => {
       });
     });
 
-    it('should emit the size immediately with an initial value passed to the constructor', () => {
+    it('should emit the size with an initial value', () => {
       testScheduler.run(({ expectObservable }) => {
         const map = new ObservableMap([[1, 1]]);
         const expected = '(a)';
@@ -81,7 +80,7 @@ describe('ObservableMap', () => {
       });
     });
 
-    it('should emit the size immediately with an initial value passed after instantiation', () => {
+    it('should pass the current value to late subscribers', () => {
       testScheduler.run(({ expectObservable }) => {
         const map = new ObservableMap();
         map.set(1, 1);
@@ -126,7 +125,7 @@ describe('ObservableMap', () => {
       });
     });
 
-    it('should emit true immediately with an initial value passed to the constructor', () => {
+    it('should emit true with an initial value', () => {
       testScheduler.run(({ expectObservable }) => {
         const map = new ObservableMap([[1, 1]]);
         const expected = '(a)';
@@ -135,7 +134,7 @@ describe('ObservableMap', () => {
       });
     });
 
-    it('should emit true immediately with an initial value passed after instantiation', () => {
+    it('should pass the current value to late subscribers', () => {
       testScheduler.run(({ expectObservable }) => {
         const map = new ObservableMap();
         map.set(1, 1);
@@ -167,17 +166,6 @@ describe('ObservableMap', () => {
       expect(results).toEqual([false, true]);
     });
 
-    it('should not emit multiple times if the value is an object and the reference does not change', () => {
-      const map = new ObservableMap();
-      const results = [];
-      map.has$(1).subscribe((has) => results.push(has));
-      expect(results).toEqual([false]);
-      map.set(1, {});
-      expect(results).toEqual([false, true]);
-      map.set(1, {});
-      expect(results).toEqual([false, true]);
-    });
-
     it('should not emit if the value changes but the has does not', () => {
       const map = new ObservableMap();
       const results = [];
@@ -187,6 +175,15 @@ describe('ObservableMap', () => {
       expect(results).toEqual([false, true]);
       map.set(1, 2);
       expect(results).toEqual([false, true]);
+    });
+
+    it('should not emit for other keys', () => {
+      const map = new ObservableMap();
+      const results = [];
+      map.has$(1).subscribe((has) => results.push(has));
+      expect(results).toEqual([false]);
+      map.set(2, 1);
+      expect(results).toEqual([false]);
     });
 
     it('should not emit if a different key changes', () => {
@@ -211,7 +208,7 @@ describe('ObservableMap', () => {
       });
     });
 
-    it('should emit the value immediately with an initial value passed to the constructor', () => {
+    it('should emit the value with an initial value', () => {
       testScheduler.run(({ expectObservable }) => {
         const map = new ObservableMap([[1, 1]]);
         const expected = '(a)';
@@ -220,7 +217,7 @@ describe('ObservableMap', () => {
       });
     });
 
-    it('should emit the value immediately with an initial value passed after instantiation', () => {
+    it('should pass the current value to late subscribers', () => {
       testScheduler.run(({ expectObservable }) => {
         const map = new ObservableMap();
         map.set(1, 1);
@@ -277,6 +274,15 @@ describe('ObservableMap', () => {
       expect(results).toEqual([undefined, obj]);
     });
 
+    it('should not emit for other keys', () => {
+      const map = new ObservableMap();
+      const results = [];
+      map.get$(1).subscribe((value) => results.push(value));
+      expect(results).toEqual([undefined]);
+      map.set(2, 1);
+      expect(results).toEqual([undefined]);
+    });
+
     it('should not emit if a different key changes', () => {
       const map = new ObservableMap();
       const results = [];
@@ -290,7 +296,7 @@ describe('ObservableMap', () => {
   });
 
   describe('entries$', () => {
-    it('should emit an empty array immediately for a new map', () => {
+    it('should emit an empty iterable for a new map', () => {
       testScheduler.run(({ expectObservable }) => {
         const observableMap = new ObservableMap();
         const expected = '(a)';
@@ -301,7 +307,7 @@ describe('ObservableMap', () => {
       });
     });
 
-    it('should emit the entries immediately with an initial value passed to the constructor', () => {
+    it('should emit the entries with an initial value', () => {
       testScheduler.run(({ expectObservable }) => {
         const observableMap = new ObservableMap([[1, 1]]);
         const expected = '(a)';
@@ -312,7 +318,7 @@ describe('ObservableMap', () => {
       });
     });
 
-    it('should emit the entries immediately with an initial value passed after instantiation', () => {
+    it('should pass the current value to late subscribers', () => {
       testScheduler.run(({ expectObservable }) => {
         const observableMap = new ObservableMap();
         observableMap.set(1, 1);
@@ -339,7 +345,7 @@ describe('ObservableMap', () => {
   });
 
   describe('keys$', () => {
-    it('should emit an empty array immediately for a new map', () => {
+    it('should emit an empty iterable for a new map', () => {
       testScheduler.run(({ expectObservable }) => {
         const observableMap = new ObservableMap();
         const expected = '(a)';
@@ -351,7 +357,7 @@ describe('ObservableMap', () => {
       });
     });
 
-    it('should emit the keys immediately with an initial value passed to the constructor', () => {
+    it('should emit the keys with an initial value', () => {
       testScheduler.run(({ expectObservable }) => {
         const observableMap = new ObservableMap([[1, 1]]);
         const expected = '(a)';
@@ -363,7 +369,7 @@ describe('ObservableMap', () => {
       });
     });
 
-    it('should emit the keys immediately with an initial value passed after instantiation', () => {
+    it('should pass the current value to late subscribers', () => {
       testScheduler.run(({ expectObservable }) => {
         const observableMap = new ObservableMap();
         observableMap.set(1, 1);
@@ -391,7 +397,7 @@ describe('ObservableMap', () => {
   });
 
   describe('values$', () => {
-    it('should emit an empty array immediately for a new map', () => {
+    it('should emit an empty iterable for a new map', () => {
       testScheduler.run(({ expectObservable }) => {
         const observableMap = new ObservableMap();
         const expected = '(a)';
@@ -403,7 +409,7 @@ describe('ObservableMap', () => {
       });
     });
 
-    it('should emit the values immediately with an initial value passed to the constructor', () => {
+    it('should emit the values with an initial value', () => {
       testScheduler.run(({ expectObservable }) => {
         const observableMap = new ObservableMap([[1, 1]]);
         const expected = '(a)';
@@ -415,7 +421,7 @@ describe('ObservableMap', () => {
       });
     });
 
-    it('should emit the values immediately with an initial value passed after instantiation', () => {
+    it('should pass the current value to late subscribers', () => {
       testScheduler.run(({ expectObservable }) => {
         const observableMap = new ObservableMap();
         observableMap.set(1, 1);
@@ -439,6 +445,51 @@ describe('ObservableMap', () => {
       expect(results).toEqual([[], [1], [2]]);
       map.delete(1);
       expect(results).toEqual([[], [1], [2], []]);
+    });
+  });
+
+  describe('complete', () => {
+    it('should complete the observable when complete is called', () => {
+      testScheduler.run(({ expectObservable }) => {
+        const observableMap = new ObservableMap();
+        const expected = '(a|)';
+        const values = { a: 0 };
+        expectObservable(observableMap.size$).toBe(expected, values);
+        observableMap.complete();
+      });
+    });
+
+    it('should emit the last size when subscribing after complete', () => {
+      const observableMap = new ObservableMap();
+      observableMap.set(1, 1);
+      observableMap.complete();
+      const results = [];
+      observableMap.size$.subscribe((size) => results.push(size));
+      expect(results).toEqual([1]);
+    });
+
+    it('should keep emitting the last size when subscribing after complete', () => {
+      const observableMap = new ObservableMap();
+      observableMap.set(1, 1);
+      observableMap.complete();
+      const results1 = [];
+      observableMap.size$.subscribe((size) => results1.push(size));
+      expect(results1).toEqual([1]);
+      const results2 = [];
+      observableMap.size$.subscribe((size) => results2.push(size));
+      expect(results2).toEqual([1]);
+    });
+
+    it('should not next size after complete is called', () => {
+      const observableMap = new ObservableMap();
+      const results = [];
+      observableMap.size$.subscribe((size) => results.push(size));
+      expect(results).toEqual([0]);
+      observableMap.set(1, 1);
+      expect(results).toEqual([0, 1]);
+      observableMap.complete();
+      observableMap.set(2, 2);
+      expect(results).toEqual([0, 1]);
     });
   });
 });
