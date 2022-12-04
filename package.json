@@ -44,6 +44,7 @@
     "fast-json-stable-stringify": "^2.1.0",
     "immer": "^9.0.15",
     "just-extend": "^6.1.1",
+    "rxjs": "^7.5.7",
     "tslib": "^2.0.0"
   },
   "config": {
