@@ -2,7 +2,9 @@ import { map, Observable } from 'rxjs';
 import { TestScheduler } from 'rxjs/testing';
 import { observeEntries } from './observeEntries';
 import { observeHas } from './observeHas';
+import { observeKeys } from './observeKeys';
 import { observeSize } from './observeSize';
+import { observeValues } from './observeValues';
 import { SetSubject } from './SetSubject';
 
 describe('SetSubject', () => {
@@ -241,6 +243,38 @@ describe('SetSubject', () => {
             set.pipe(
               observeEntries(),
               map((e) => [...e])
+            )
+          ).toBe(expected, values);
+        });
+      });
+    });
+
+    describe('observeKeys', () => {
+      it('should emit the value', () => {
+        testScheduler.run(({ expectObservable }) => {
+          const set = new SetSubject(new Set(['foo']));
+          const expected = '(a)';
+          const values = { a: ['foo'] };
+          expectObservable(
+            set.pipe(
+              observeKeys(),
+              map((k) => [...k])
+            )
+          ).toBe(expected, values);
+        });
+      });
+    });
+
+    describe('observeValues', () => {
+      it('should emit the value', () => {
+        testScheduler.run(({ expectObservable }) => {
+          const set = new SetSubject(new Set(['foo']));
+          const expected = '(a)';
+          const values = { a: ['foo'] };
+          expectObservable(
+            set.pipe(
+              observeValues(),
+              map((v) => [...v])
             )
           ).toBe(expected, values);
         });

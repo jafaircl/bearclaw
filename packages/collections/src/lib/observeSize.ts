@@ -27,6 +27,6 @@ import { map } from 'rxjs';
  *
  * @returns an Observable of the size of the set or map
  */
-export function observeSize<K, V = K>() {
-  return map((setOrMap: Set<K> | Map<K, V>) => setOrMap.size);
+export function observeSize() {
+  return map((hasSize: { size: number }) => hasSize.size);
 }

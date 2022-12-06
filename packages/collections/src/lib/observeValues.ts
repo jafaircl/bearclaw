@@ -34,6 +34,8 @@ import { map } from 'rxjs';
  *
  * @returns an Observable of the values of the set or map
  */
-export function observeValues<K, V>() {
-  return map((setOrMap: Set<K> | Map<K, V>) => setOrMap.values());
+export function observeValues<V>() {
+  return map((hasValues: { values: () => IterableIterator<V> }) =>
+    hasValues.values()
+  );
 }

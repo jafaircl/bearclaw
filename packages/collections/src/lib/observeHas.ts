@@ -34,6 +34,6 @@ import { map } from 'rxjs';
  * @returns an Observable of a boolean indicating whether the set or map has
  * the key
  */
-export function observeHas<K, V>(key: K) {
-  return map((setOrMap: Set<K> | Map<K, V>) => setOrMap.has(key));
+export function observeHas<K>(key: K) {
+  return map((hasHas: { has: (k: K) => boolean }) => hasHas.has(key));
 }
