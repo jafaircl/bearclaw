@@ -2,6 +2,12 @@ import { isNil } from '@bearclaw/is';
 import { Observer, Subject, Subscription } from 'rxjs';
 
 /**
+ * A constructor for a Set-like class. This is useful for cases where you want
+ * to use a custom Set implementation with SetSubject.
+ */
+export type SetLikeCtor<T> = new (values?: readonly T[]) => Set<T>;
+
+/**
  * A Subject that emits a Set but also implements a Set-like interface. This is
  * useful for cases where you want to expose a Set-like interface, but also
  * want to be able to emit the Set as an Observable.
@@ -16,16 +22,30 @@ export class SetSubject<T> extends Subject<Set<T>> {
    * Build a new SetSubject from an array of values
    *
    * @param values the values to use as the initial value
+   * @param setCtor the constructor to use for the Set. This is useful for
+   * cases where you want to use a custom Set implementation.
    *
    * @example
    * ```typescript
    * const set = new SetSubject([1, 2, 3]);
    * set.subscribe((set) => console.log(set)); // Set(3) { 1, 2, 3 }
    * ```
+   *
+   * @example
+   * ```typescript
+   * class MySet<T> extends Set<T> {
+   *   constructor(values?: readonly T[]) {
+   *     super(values);
+   *   }
+   * }
+   *
+   * const set = new SetSubject([1, 2, 3], MySet);
+   * set.subscribe((set) => console.log(set)); // MySet(3) { 1, 2, 3 }
+   * ```
    */
-  constructor(values?: readonly T[]) {
+  constructor(values?: readonly T[], private setCtor: SetLikeCtor<T> = Set) {
     super();
-    this.next(new Set(values));
+    this.next(new this.setCtor(values));
   }
 
   /**
@@ -51,9 +71,9 @@ export class SetSubject<T> extends Subject<Set<T>> {
    */
   override next(value?: Set<T>): void {
     if (isNil(value)) {
-      return super.next(new Set(this._set));
+      return super.next(new this.setCtor([...this._set]));
     }
-    this._set = new Set(value);
+    this._set = new this.setCtor([...value]);
     return super.next(this._set);
   }
 

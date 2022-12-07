@@ -2,6 +2,14 @@ import { isNil } from '@bearclaw/is';
 import { Observer, Subject, Subscription } from 'rxjs';
 
 /**
+ * A constructor for a Map-like class. This is useful for cases where you want
+ * to use a custom Map implementation with MapSubject.
+ */
+export type MapLikeCtor<K, V> = new (
+  values?: readonly (readonly [K, V])[]
+) => Map<K, V>;
+
+/**
  * A Subject that emits a Map but also implements a Map-like interface. This is
  * useful for cases where you want to expose a Map-like interface, but also
  * want to be able to emit the Map as an Observable.
@@ -23,9 +31,12 @@ export class MapSubject<K, V> extends Subject<Map<K, V>> {
    *
    * @param values the key-value pairs to use as the initial value
    */
-  constructor(values?: readonly (readonly [K, V])[]) {
+  constructor(
+    values?: readonly (readonly [K, V])[],
+    private mapCtor: MapLikeCtor<K, V> = Map
+  ) {
     super();
-    this.next(new Map(values));
+    this.next(new this.mapCtor(values));
   }
 
   /**
@@ -51,9 +62,9 @@ export class MapSubject<K, V> extends Subject<Map<K, V>> {
    */
   override next(value?: Map<K, V>): void {
     if (isNil(value)) {
-      return super.next(new Map(this._map));
+      return super.next(new this.mapCtor([...this._map]));
     }
-    this._map = new Map(value);
+    this._map = new this.mapCtor([...value]);
     return super.next(this._map);
   }
 
