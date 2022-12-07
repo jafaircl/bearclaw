@@ -2,21 +2,37 @@ import { isNil } from '@bearclaw/is';
 import { Observer, Subject, Subscription } from 'rxjs';
 
 /**
- * A constructor for a Set-like class. This is useful for cases where you want
- * to use a custom Set implementation with SetSubject.
+ * An interface that represents a Set-like object.
  */
-export type SetLikeCtor<T> = new (values?: readonly T[]) => Set<T>;
+export interface SetLike<T> {
+  size: number;
+  has: (value: T) => boolean;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  add: (value: T) => any;
+  clear: () => void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  delete: (value: T) => any;
+  values: () => IterableIterator<T>;
+  keys: () => IterableIterator<T>;
+  entries: () => IterableIterator<[T, T]>;
+  [Symbol.iterator]: () => IterableIterator<T>;
+}
+
+/**
+ * A constructor for a Set-like class.
+ */
+export type SetLikeCtor<T> = new (values?: readonly T[]) => SetLike<T>;
 
 /**
  * A Subject that emits a Set but also implements a Set-like interface. This is
  * useful for cases where you want to expose a Set-like interface, but also
  * want to be able to emit the Set as an Observable.
  */
-export class SetSubject<T> extends Subject<Set<T>> {
+export class SetSubject<T> extends Subject<SetLike<T>> {
   /**
    * The underlying Set that is being emitted.
    */
-  protected _set: Set<T>;
+  protected _set: SetLike<T>;
 
   /**
    * Build a new SetSubject from an array of values
@@ -69,7 +85,7 @@ export class SetSubject<T> extends Subject<Set<T>> {
    *
    * @param value the Set to emit
    */
-  override next(value?: Set<T>): void {
+  override next(value?: SetLike<T>): void {
     if (isNil(value)) {
       return super.next(new this.setCtor([...this._set]));
     }
@@ -91,13 +107,15 @@ export class SetSubject<T> extends Subject<Set<T>> {
    * @param observer the observer or a next function
    * @returns a Subscription
    */
-  override subscribe(observer?: Partial<Observer<Set<T>>>): Subscription;
-  override subscribe(next?: (value: Set<T>) => void): Subscription;
+  override subscribe(observer?: Partial<Observer<SetLike<T>>>): Subscription;
+  override subscribe(next?: (value: SetLike<T>) => void): Subscription;
   override subscribe(
-    observerOrNext?: Partial<Observer<Set<T>>> | ((value: Set<T>) => void)
+    observerOrNext?:
+      | Partial<Observer<SetLike<T>>>
+      | ((value: SetLike<T>) => void)
   ): Subscription {
     const subscription = super.subscribe(
-      observerOrNext as Partial<Observer<Set<T>>>
+      observerOrNext as Partial<Observer<SetLike<T>>>
     );
     !subscription.closed && this.next();
     return subscription;

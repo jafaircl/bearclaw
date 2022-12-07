@@ -2,23 +2,40 @@ import { isNil } from '@bearclaw/is';
 import { Observer, Subject, Subscription } from 'rxjs';
 
 /**
- * A constructor for a Map-like class. This is useful for cases where you want
- * to use a custom Map implementation with MapSubject.
+ * An interface that represents a Map-like object.
+ */
+export interface MapLike<K, V> {
+  size: number;
+  has: (key: K) => boolean;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  set: (key: K, value: V) => any;
+  clear: () => void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  delete: (key: K) => any;
+  get: (key: K) => V | undefined;
+  entries: () => IterableIterator<[K, V]>;
+  keys: () => IterableIterator<K>;
+  values: () => IterableIterator<V>;
+  [Symbol.iterator]: () => IterableIterator<[K, V]>;
+}
+
+/**
+ * A constructor for a Map-like class.
  */
 export type MapLikeCtor<K, V> = new (
   values?: readonly (readonly [K, V])[]
-) => Map<K, V>;
+) => MapLike<K, V>;
 
 /**
  * A Subject that emits a Map but also implements a Map-like interface. This is
  * useful for cases where you want to expose a Map-like interface, but also
  * want to be able to emit the Map as an Observable.
  */
-export class MapSubject<K, V> extends Subject<Map<K, V>> {
+export class MapSubject<K, V> extends Subject<MapLike<K, V>> {
   /**
    * The underlying Map that is being emitted.
    */
-  private _map: Map<K, V>;
+  private _map: MapLike<K, V>;
 
   /**
    * Build a new MapSubject from an array of key-value pairs
@@ -32,11 +49,11 @@ export class MapSubject<K, V> extends Subject<Map<K, V>> {
    * @param values the key-value pairs to use as the initial value
    */
   constructor(
-    values?: readonly (readonly [K, V])[],
+    entries?: readonly (readonly [K, V])[],
     private mapCtor: MapLikeCtor<K, V> = Map
   ) {
     super();
-    this.next(new this.mapCtor(values));
+    this.next(new this.mapCtor(entries));
   }
 
   /**
@@ -60,7 +77,7 @@ export class MapSubject<K, V> extends Subject<Map<K, V>> {
    *
    * @param value the Map to emit
    */
-  override next(value?: Map<K, V>): void {
+  override next(value?: MapLike<K, V>): void {
     if (isNil(value)) {
       return super.next(new this.mapCtor([...this._map]));
     }
@@ -88,13 +105,15 @@ export class MapSubject<K, V> extends Subject<Map<K, V>> {
    * @param observer the observer or a next function
    * @returns a Subscription
    */
-  override subscribe(observer?: Partial<Observer<Map<K, V>>>): Subscription;
-  override subscribe(next?: (value: Map<K, V>) => void): Subscription;
+  override subscribe(observer?: Partial<Observer<MapLike<K, V>>>): Subscription;
+  override subscribe(next?: (value: MapLike<K, V>) => void): Subscription;
   override subscribe(
-    observerOrNext?: Partial<Observer<Map<K, V>>> | ((value: Map<K, V>) => void)
+    observerOrNext?:
+      | Partial<Observer<MapLike<K, V>>>
+      | ((value: MapLike<K, V>) => void)
   ): Subscription {
     const subscription = super.subscribe(
-      observerOrNext as Partial<Observer<Map<K, V>>>
+      observerOrNext as Partial<Observer<MapLike<K, V>>>
     );
     !subscription.closed && this.next();
     return subscription;
