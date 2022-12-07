@@ -151,7 +151,7 @@ describe('MapSubject', () => {
       });
 
       it('should overwrite the value from the constructor', () => {
-        const map = new MapSubject(new Map([['foo', 'bar']]));
+        const map = new MapSubject([['foo', 'bar']]);
         const results = [];
         map.subscribe((value) => results.push(value));
         map.next(new Map([['bar', 'baz']]));
@@ -162,7 +162,7 @@ describe('MapSubject', () => {
       });
 
       it('should re-emit the current value if called with no arguments', () => {
-        const map = new MapSubject(new Map([['foo', 'bar']]));
+        const map = new MapSubject([['foo', 'bar']]);
         const results = [];
         map.subscribe((value) => results.push(value));
         map.next();
@@ -170,14 +170,6 @@ describe('MapSubject', () => {
           new Map([['foo', 'bar']]),
           new Map([['foo', 'bar']]),
         ]);
-      });
-
-      it('should throw an error if the value is not a Map', () => {
-        const map = new MapSubject();
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        expect(() => map.next('foo' as any)).toThrowError(
-          'The value passed to MapSubject.next() must be a Map instance.'
-        );
       });
     });
 
@@ -189,7 +181,7 @@ describe('MapSubject', () => {
 
       it('should emit the value on subscription', () => {
         testScheduler.run(({ expectObservable }) => {
-          const map = new MapSubject(new Map([['foo', 'bar']]));
+          const map = new MapSubject([['foo', 'bar']]);
           const expected = '(a)';
           const values = { a: new Map([['foo', 'bar']]) };
           expectObservable(map.asObservable()).toBe(expected, values);
@@ -211,7 +203,7 @@ describe('MapSubject', () => {
 
     describe('delete', () => {
       it('should emit the value', () => {
-        const map = new MapSubject(new Map([['foo', 'bar']]));
+        const map = new MapSubject([['foo', 'bar']]);
         const results = [];
         map.subscribe((value) => results.push(value));
         map.delete('foo');
@@ -219,7 +211,7 @@ describe('MapSubject', () => {
       });
 
       it('should not emit if the value does not exist', () => {
-        const map = new MapSubject(new Map([['foo', 'bar']]));
+        const map = new MapSubject([['foo', 'bar']]);
         const results = [];
         map.subscribe((value) => results.push(value));
         map.delete('bar');
@@ -229,7 +221,7 @@ describe('MapSubject', () => {
 
     describe('clear', () => {
       it('should emit the value', () => {
-        const map = new MapSubject(new Map([['foo', 'bar']]));
+        const map = new MapSubject([['foo', 'bar']]);
         const results = [];
         map.subscribe((value) => results.push(value));
         map.clear();
@@ -240,22 +232,15 @@ describe('MapSubject', () => {
 
   describe('consructor', () => {
     it('should accept a Map instance with values', () => {
-      const map = new MapSubject(new Map([['foo', 'bar']]));
+      const map = new MapSubject([['foo', 'bar']]);
       expect(map.get('foo')).toEqual('bar');
-    });
-
-    it('should throw an error if the value is not a Map', () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      expect(() => new MapSubject('foo' as any)).toThrowError(
-        'The value passed to MapSubject constructor must be a Map instance.'
-      );
     });
   });
 
   describe('usage with operators', () => {
     it('should work with has', () => {
       testScheduler.run(({ expectObservable }) => {
-        const map = new MapSubject(new Map([['foo', 'bar']]));
+        const map = new MapSubject([['foo', 'bar']]);
         const expected = '(a)';
         const values = { a: true };
         expectObservable(map.pipe(has('foo'))).toBe(expected, values);
@@ -264,7 +249,7 @@ describe('MapSubject', () => {
 
     it('should work with get', () => {
       testScheduler.run(({ expectObservable }) => {
-        const map = new MapSubject(new Map([['foo', 'bar']]));
+        const map = new MapSubject([['foo', 'bar']]);
         const expected = '(a)';
         const values = { a: 'bar' };
         expectObservable(map.pipe(get('foo'))).toBe(expected, values);
@@ -273,7 +258,7 @@ describe('MapSubject', () => {
 
     it('should work with size', () => {
       testScheduler.run(({ expectObservable }) => {
-        const map = new MapSubject(new Map([['foo', 'bar']]));
+        const map = new MapSubject([['foo', 'bar']]);
         const expected = '(a)';
         const values = { a: 1 };
         expectObservable(map.pipe(size())).toBe(expected, values);
@@ -282,7 +267,7 @@ describe('MapSubject', () => {
 
     it('should work with entries', () => {
       testScheduler.run(({ expectObservable }) => {
-        const _map = new MapSubject(new Map([['foo', 'bar']]));
+        const _map = new MapSubject([['foo', 'bar']]);
         const expected = '(a)';
         const values = { a: [['foo', 'bar']] };
         expectObservable(
@@ -296,7 +281,7 @@ describe('MapSubject', () => {
 
     it('should work with keys', () => {
       testScheduler.run(({ expectObservable }) => {
-        const _map = new MapSubject(new Map([['foo', 'bar']]));
+        const _map = new MapSubject([['foo', 'bar']]);
         const expected = '(a)';
         const values = { a: ['foo'] };
         expectObservable(
@@ -310,7 +295,7 @@ describe('MapSubject', () => {
 
     it('should work with values', () => {
       testScheduler.run(({ expectObservable }) => {
-        const _map = new MapSubject(new Map([['foo', 'bar']]));
+        const _map = new MapSubject([['foo', 'bar']]);
         const expected = '(a)';
         const _values = { a: ['bar'] };
         expectObservable(

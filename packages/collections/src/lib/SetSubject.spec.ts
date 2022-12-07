@@ -112,7 +112,7 @@ describe('SetSubject', () => {
       });
 
       it('should overwrite the value from the constructor', () => {
-        const set = new SetSubject(new Set(['foo']));
+        const set = new SetSubject(['foo']);
         const results = [];
         set.subscribe((value) => results.push(value));
         set.next(new Set(['bar']));
@@ -120,19 +120,11 @@ describe('SetSubject', () => {
       });
 
       it('should re-emit the current value if called with no arguments', () => {
-        const set = new SetSubject(new Set(['foo']));
+        const set = new SetSubject(['foo']);
         const results = [];
         set.subscribe((value) => results.push(value));
         set.next();
         expect(results).toEqual([new Set(['foo']), new Set(['foo'])]);
-      });
-
-      it('should throw an error if the value is not a Set', () => {
-        const set = new SetSubject();
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        expect(() => set.next('foo' as any)).toThrowError(
-          'The value passed to SetSubject.next() must be a Set instance.'
-        );
       });
     });
 
@@ -154,7 +146,7 @@ describe('SetSubject', () => {
 
       it('should emit the value on subscription if the value was set in the constructor', () => {
         testScheduler.run(({ expectObservable }) => {
-          const set = new SetSubject(new Set(['foo']));
+          const set = new SetSubject(['foo']);
           const expected = '(a)';
           const values = { a: new Set(['foo']) };
           expectObservable(set.asObservable()).toBe(expected, values);
@@ -176,7 +168,7 @@ describe('SetSubject', () => {
 
     describe('delete', () => {
       it('should emit the value', () => {
-        const set = new SetSubject(new Set(['foo']));
+        const set = new SetSubject(['foo']);
         const results = [];
         set.subscribe((value) => results.push(value));
         expect(results).toEqual([new Set(['foo'])]);
@@ -185,7 +177,7 @@ describe('SetSubject', () => {
       });
 
       it('should not emit the value if the value does not exist', () => {
-        const set = new SetSubject(new Set(['foo']));
+        const set = new SetSubject(['foo']);
         const results = [];
         set.subscribe((value) => results.push(value));
         expect(results).toEqual([new Set(['foo'])]);
@@ -196,7 +188,7 @@ describe('SetSubject', () => {
 
     describe('clear', () => {
       it('should emit the value', () => {
-        const set = new SetSubject(new Set(['foo']));
+        const set = new SetSubject(['foo']);
         const results = [];
         set.subscribe((value) => results.push(value));
         expect(results).toEqual([new Set(['foo'])]);
@@ -207,16 +199,9 @@ describe('SetSubject', () => {
   });
 
   describe('constructor', () => {
-    it('should accept a Set instance with values', () => {
-      const set = new SetSubject(new Set(['foo']));
+    it('should accept an array of values', () => {
+      const set = new SetSubject(['foo']);
       expect(set.has('foo')).toEqual(true);
-    });
-
-    it('should throw an error if the value is not a Set', () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      expect(() => new SetSubject('foo' as any)).toThrowError(
-        'The value passed to SetSubject constructor must be a Set instance.'
-      );
     });
   });
 
@@ -224,7 +209,7 @@ describe('SetSubject', () => {
     describe('has', () => {
       it('should emit the value', () => {
         testScheduler.run(({ expectObservable }) => {
-          const set = new SetSubject(new Set(['foo']));
+          const set = new SetSubject(['foo']);
           const expected = '(a)';
           const values = { a: true };
           expectObservable(set.pipe(has('foo'))).toBe(expected, values);
@@ -235,7 +220,7 @@ describe('SetSubject', () => {
     describe('size', () => {
       it('should emit the value', () => {
         testScheduler.run(({ expectObservable }) => {
-          const set = new SetSubject(new Set(['foo']));
+          const set = new SetSubject(['foo']);
           const expected = '(a)';
           const values = { a: 1 };
           expectObservable(set.pipe(size())).toBe(expected, values);
@@ -246,7 +231,7 @@ describe('SetSubject', () => {
     describe('entries', () => {
       it('should emit the value', () => {
         testScheduler.run(({ expectObservable }) => {
-          const set = new SetSubject(new Set(['foo']));
+          const set = new SetSubject(['foo']);
           const expected = '(a)';
           const values = { a: [['foo', 'foo']] };
           expectObservable(
@@ -262,7 +247,7 @@ describe('SetSubject', () => {
     describe('keys', () => {
       it('should emit the value', () => {
         testScheduler.run(({ expectObservable }) => {
-          const set = new SetSubject(new Set(['foo']));
+          const set = new SetSubject(['foo']);
           const expected = '(a)';
           const values = { a: ['foo'] };
           expectObservable(
@@ -278,7 +263,7 @@ describe('SetSubject', () => {
     describe('values', () => {
       it('should emit the value', () => {
         testScheduler.run(({ expectObservable }) => {
-          const set = new SetSubject(new Set(['foo']));
+          const set = new SetSubject(['foo']);
           const expected = '(a)';
           const _values = { a: ['foo'] };
           expectObservable(

@@ -1,4 +1,4 @@
-import { assert, isNil, isSet } from '@bearclaw/is';
+import { isNil } from '@bearclaw/is';
 import { Observer, Subject, Subscription } from 'rxjs';
 
 /**
@@ -10,29 +10,22 @@ export class SetSubject<T> extends Subject<Set<T>> {
   /**
    * The underlying Set that is being emitted.
    */
-  private _set: Set<T>;
+  protected _set: Set<T>;
 
   /**
-   * Build a new SetSubject from a Set instance
-   * @param set the set to use as the initial value
+   * Build a new SetSubject from an array of values
+   *
+   * @param values the values to use as the initial value
+   *
    * @example
    * ```typescript
-   * const set = new SetSubject(new Set([1, 2, 3]));
+   * const set = new SetSubject([1, 2, 3]);
    * set.subscribe((set) => console.log(set)); // Set(3) { 1, 2, 3 }
    * ```
    */
-  constructor(set?: Set<T>) {
+  constructor(values?: readonly T[]) {
     super();
-    if (!isNil(set)) {
-      assert(
-        isSet(set),
-        'The value passed to SetSubject constructor must be a Set instance.'
-      );
-      this._set = set;
-    } else {
-      this._set = new Set<T>();
-    }
-    this.next(set);
+    this.next(new Set(values));
   }
 
   /**
@@ -46,7 +39,7 @@ export class SetSubject<T> extends Subject<Set<T>> {
    *
    * @example
    * ```typescript
-   * const set = new SetSubject(new Set([1, 2, 3]));
+   * const set = new SetSubject([1, 2, 3]);
    * set.subscribe((set) => console.log(set)); // Set(3) { 1, 2, 3 }
    * set.next(new Set([4, 5, 6]));
    * set.subscribe((set) => console.log(set)); // Set(3) { 4, 5, 6 }
@@ -57,14 +50,11 @@ export class SetSubject<T> extends Subject<Set<T>> {
    * @param value the Set to emit
    */
   override next(value?: Set<T>): void {
-    if (!isNil(value)) {
-      assert(
-        isSet(value),
-        'The value passed to SetSubject.next() must be a Set instance.'
-      );
-      this._set = value;
+    if (isNil(value)) {
+      return super.next(new Set(this._set));
     }
-    super.next(new Set(this._set));
+    this._set = new Set(value);
+    return super.next(this._set);
   }
 
   /**
@@ -100,7 +90,7 @@ export class SetSubject<T> extends Subject<Set<T>> {
    *
    * @example
    * ```typescript
-   * const set = new SetSubject(new Set([1, 2, 3]));
+   * const set = new SetSubject([1, 2, 3]);
    * set.subscribe((set) => console.log(set)); // Set(3) { 1, 2, 3 }
    * set.add(4);
    * set.subscribe((set) => console.log(set)); // Set(4) { 1, 2, 3, 4 }
@@ -121,7 +111,7 @@ export class SetSubject<T> extends Subject<Set<T>> {
    *
    * @example
    * ```typescript
-   * const set = new SetSubject(new Set([1, 2, 3]));
+   * const set = new SetSubject([1, 2, 3]);
    * set.subscribe((set) => console.log(set)); // Set(3) { 1, 2, 3 }
    * set.delete(2);
    * set.subscribe((set) => console.log(set)); // Set(2) { 1, 3 }
@@ -144,7 +134,7 @@ export class SetSubject<T> extends Subject<Set<T>> {
    *
    * @example
    * ```typescript
-   * const set = new SetSubject(new Set([1, 2, 3]));
+   * const set = new SetSubject([1, 2, 3]);
    * set.subscribe((set) => console.log(set)); // Set(3) { 1, 2, 3 }
    * set.clear();
    * set.subscribe((set) => console.log(set)); // Set(0) {}
@@ -167,7 +157,7 @@ export class SetSubject<T> extends Subject<Set<T>> {
    *
    * @example
    * ```typescript
-   * const set = new SetSubject(new Set([1, 2, 3]));
+   * const set = new SetSubject([1, 2, 3]);
    * const array = [...set];
    * console.log(array); // [1, 2, 3]
    * ```
@@ -183,7 +173,7 @@ export class SetSubject<T> extends Subject<Set<T>> {
    *
    * @example
    * ```typescript
-   * const set = new SetSubject(new Set([1, 2, 3]));
+   * const set = new SetSubject([1, 2, 3]);
    * console.log(set.size); // 3
    * ```
    *
@@ -198,7 +188,7 @@ export class SetSubject<T> extends Subject<Set<T>> {
    *
    * @example
    * ```typescript
-   * const set = new SetSubject(new Set([1, 2, 3]));
+   * const set = new SetSubject([1, 2, 3]);
    * console.log(set.has(2)); // true
    * console.log(set.has(4)); // false
    * ```
@@ -218,7 +208,7 @@ export class SetSubject<T> extends Subject<Set<T>> {
    *
    * @example
    * ```typescript
-   * const set = new SetSubject(new Set([1, 2, 3]));
+   * const set = new SetSubject([1, 2, 3]);
    * const array = [...set.entries()];
    * console.log(array); // [[1, 1], [2, 2], [3, 3]]
    * ```
@@ -237,7 +227,7 @@ export class SetSubject<T> extends Subject<Set<T>> {
    *
    * @example
    * ```typescript
-   * const set = new SetSubject(new Set([1, 2, 3]));
+   * const set = new SetSubject([1, 2, 3]);
    * const array = [...set.keys()];
    * console.log(array); // [1, 2, 3]
    * ```
@@ -256,7 +246,7 @@ export class SetSubject<T> extends Subject<Set<T>> {
    *
    * @example
    * ```typescript
-   * const set = new SetSubject(new Set([1, 2, 3]));
+   * const set = new SetSubject([1, 2, 3]);
    * const array = [...set.values()];
    * console.log(array); // [1, 2, 3]
    * ```

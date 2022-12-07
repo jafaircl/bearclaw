@@ -1,4 +1,4 @@
-import { assert, isMap, isNil } from '@bearclaw/is';
+import { isNil } from '@bearclaw/is';
 import { Observer, Subject, Subscription } from 'rxjs';
 
 /**
@@ -13,28 +13,19 @@ export class MapSubject<K, V> extends Subject<Map<K, V>> {
   private _map: Map<K, V>;
 
   /**
-   * Build a new MapSubject from a Map instance
+   * Build a new MapSubject from an array of key-value pairs
    *
    * @example
    * ```typescript
-   * const map = new MapSubject(new Map([['foo', 'bar']]));
+   * const map = new MapSubject([['foo', 'bar']]);
    * map.subscribe((map) => console.log(map)); // Map(1) { 'foo' => 'bar' }
    * ```
    *
-   * @param map the map to use as the initial value
+   * @param values the key-value pairs to use as the initial value
    */
-  constructor(map?: Map<K, V>) {
+  constructor(values?: readonly (readonly [K, V])[]) {
     super();
-    if (!isNil(map)) {
-      assert(
-        isMap(map),
-        'The value passed to MapSubject constructor must be a Map instance.'
-      );
-      this._map = map;
-    } else {
-      this._map = new Map<K, V>();
-    }
-    this.next(map);
+    this.next(new Map(values));
   }
 
   /**
@@ -48,7 +39,7 @@ export class MapSubject<K, V> extends Subject<Map<K, V>> {
    *
    * @example
    * ```typescript
-   * const map = new MapSubject(new Map([['foo', 'bar']]));
+   * const map = new MapSubject([['foo', 'bar']]);
    * map.subscribe((map) => console.log(map)); // Map(1) { 'foo' => 'bar' }
    * map.next(new Map([['baz', 'qux']]));
    * map.subscribe((map) => console.log(map)); // Map(1) { 'baz' => 'qux' }
@@ -59,14 +50,11 @@ export class MapSubject<K, V> extends Subject<Map<K, V>> {
    * @param value the Map to emit
    */
   override next(value?: Map<K, V>): void {
-    if (!isNil(value)) {
-      assert(
-        isMap(value),
-        'The value passed to MapSubject.next() must be a Map instance.'
-      );
-      this._map = value;
+    if (isNil(value)) {
+      return super.next(new Map(this._map));
     }
-    super.next(new Map(this._map));
+    this._map = new Map(value);
+    return super.next(this._map);
   }
 
   /**
@@ -82,7 +70,7 @@ export class MapSubject<K, V> extends Subject<Map<K, V>> {
    *
    * @example
    * ```typescript
-   * const map = new MapSubject(new Map([['foo', 'bar']]));
+   * const map = new MapSubject([['foo', 'bar']]);
    * map.subscribe((map) => console.log(map)); // Map(1) { 'foo' => 'bar' }
    * ```
    *
@@ -110,7 +98,7 @@ export class MapSubject<K, V> extends Subject<Map<K, V>> {
    * @returns the MapSubject
    * @example
    * ```typescript
-   * const map = new MapSubject(new Map([['foo', 'bar']]));
+   * const map = new MapSubject([['foo', 'bar']]);
    * map.subscribe((map) => console.log(map)); // Map(1) { 'foo' => 'bar' }
    * map.set('baz', 'qux');
    * map.subscribe((map) => console.log(map));
@@ -133,7 +121,7 @@ export class MapSubject<K, V> extends Subject<Map<K, V>> {
    *
    * @example
    * ```typescript
-   * const map = new MapSubject(new Map([['foo', 'bar']]));
+   * const map = new MapSubject([['foo', 'bar']]);
    * map.subscribe((map) => console.log(map)); // Map(1) { 'foo' => 'bar' }
    * map.delete('foo');
    * map.subscribe((map) => console.log(map)); // Map(0) {}
@@ -156,7 +144,7 @@ export class MapSubject<K, V> extends Subject<Map<K, V>> {
    *
    * @example
    * ```typescript
-   * const map = new MapSubject(new Map([['foo', 'bar']]));
+   * const map = new MapSubject([['foo', 'bar']]);
    * map.subscribe((map) => console.log(map)); // Map(1) { 'foo' => 'bar' }
    * map.clear();
    * map.subscribe((map) => console.log(map)); // Map(0) {}
@@ -179,7 +167,7 @@ export class MapSubject<K, V> extends Subject<Map<K, V>> {
    *
    * @example
    * ```typescript
-   * const map = new MapSubject(new Map([['foo', 'bar']]));
+   * const map = new MapSubject([['foo', 'bar']]);
    * const entries = [...map];
    * console.log(entries); // [ ['foo', 'bar'] ]
    * ```
@@ -197,7 +185,7 @@ export class MapSubject<K, V> extends Subject<Map<K, V>> {
    *
    * @example
    * ```typescript
-   * const map = new MapSubject(new Map([['foo', 'bar']]));
+   * const map = new MapSubject([['foo', 'bar']]);
    * console.log(map.size); // 1
    * ```
    *
@@ -214,7 +202,7 @@ export class MapSubject<K, V> extends Subject<Map<K, V>> {
    *
    * @example
    * ```typescript
-   * const map = new MapSubject(new Map([['foo', 'bar']]));
+   * const map = new MapSubject([['foo', 'bar']]);
    * console.log(map.has('foo')); // true
    * console.log(map.has('baz')); // false
    *
@@ -231,7 +219,7 @@ export class MapSubject<K, V> extends Subject<Map<K, V>> {
    *
    * @example
    * ```typescript
-   * const map = new MapSubject(new Map([['foo', 'bar']]));
+   * const map = new MapSubject([['foo', 'bar']]);
    * console.log(map.get('foo')); // 'bar'
    * console.log(map.get('baz')); // undefined
    * ```
@@ -252,7 +240,7 @@ export class MapSubject<K, V> extends Subject<Map<K, V>> {
    *
    * @example
    * ```typescript
-   * const map = new MapSubject(new Map([['foo', 'bar']]));
+   * const map = new MapSubject([['foo', 'bar']]);
    * const entries = [...map.entries()];
    * console.log(entries); // [ ['foo', 'bar'] ]
    * ```
@@ -272,7 +260,7 @@ export class MapSubject<K, V> extends Subject<Map<K, V>> {
    *
    * @example
    * ```typescript
-   * const map = new MapSubject(new Map([['foo', 'bar']]));
+   * const map = new MapSubject([['foo', 'bar']]);
    * const keys = [...map.keys()];
    * console.log(keys); // [ 'foo' ]
    * ```
@@ -293,7 +281,7 @@ export class MapSubject<K, V> extends Subject<Map<K, V>> {
    *
    * @example
    * ```typescript
-   * const map = new MapSubject(new Map([['foo', 'bar']]));
+   * const map = new MapSubject([['foo', 'bar']]);
    * const values = [...map.values()];
    * console.log(values); // [ 'bar' ]
    * ```
