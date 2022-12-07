@@ -12,7 +12,6 @@ describe('SetSubject', () => {
 
   beforeEach(() => {
     testScheduler = new TestScheduler((actual, expected) => {
-      // console.log(JSON.stringify({ actual, expected }, null, 2));
       expect(actual).toStrictEqual(expected);
     });
   });
@@ -92,13 +91,6 @@ describe('SetSubject', () => {
       });
     });
 
-    describe('constructor', () => {
-      it('should accept a Set instance with values', () => {
-        const set = new SetSubject(new Set(['foo']));
-        expect(set.has('foo')).toEqual(true);
-      });
-    });
-
     describe('next', () => {
       it('should emit the value', () => {
         testScheduler.run(({ expectObservable }) => {
@@ -137,6 +129,14 @@ describe('SetSubject', () => {
         set.subscribe((value) => results.push(value));
         set.next();
         expect(results).toEqual([new Set(['foo']), new Set(['foo'])]);
+      });
+
+      it('should throw an error if the value is not a Set', () => {
+        const set = new SetSubject();
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        expect(() => set.next('foo' as any)).toThrowError(
+          'The value passed to SetSubject.next() must be a Set instance.'
+        );
       });
     });
 
@@ -207,6 +207,20 @@ describe('SetSubject', () => {
         set.clear();
         expect(results).toEqual([new Set(['foo']), new Set()]);
       });
+    });
+  });
+
+  describe('constructor', () => {
+    it('should accept a Set instance with values', () => {
+      const set = new SetSubject(new Set(['foo']));
+      expect(set.has('foo')).toEqual(true);
+    });
+
+    it('should throw an error if the value is not a Set', () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      expect(() => new SetSubject('foo' as any)).toThrowError(
+        'The value passed to SetSubject constructor must be a Set instance.'
+      );
     });
   });
 

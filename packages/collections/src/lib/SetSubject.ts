@@ -1,4 +1,4 @@
-import { isSet } from '@bearclaw/is';
+import { assert, isNil, isSet } from '@bearclaw/is';
 import { Observer, Subject, Subscription } from 'rxjs';
 
 /**
@@ -23,8 +23,16 @@ export class SetSubject<T> extends Subject<Set<T>> {
    */
   constructor(set?: Set<T>) {
     super();
-    this._set = set ?? new Set<T>();
-    this.next(this._set);
+    if (!isNil(set)) {
+      assert(
+        isSet(set),
+        'The value passed to SetSubject constructor must be a Set instance.'
+      );
+      this._set = set;
+    } else {
+      this._set = new Set<T>();
+    }
+    this.next(set);
   }
 
   /**
@@ -49,7 +57,11 @@ export class SetSubject<T> extends Subject<Set<T>> {
    * @param value the Set to emit
    */
   override next(value?: Set<T>): void {
-    if (isSet(value)) {
+    if (!isNil(value)) {
+      assert(
+        isSet(value),
+        'The value passed to SetSubject.next() must be a Set instance.'
+      );
       this._set = value;
     }
     super.next(new Set(this._set));
@@ -58,8 +70,7 @@ export class SetSubject<T> extends Subject<Set<T>> {
   /**
    * Subscribe to the SetSubject. This will emit the current Set value, and then
    * emit again whenever the Set changes. If you only want to subscribe to
-   * changes, use the `asObservable` method. If you want to get the current
-   * value, use the `value` getter.
+   * changes, use the `asObservable` method.
    *
    * Note that calling a mutation method on the emitted Set will not emit a new
    * value. For example, if you subscribe to the SetSubject, and then call
@@ -68,7 +79,7 @@ export class SetSubject<T> extends Subject<Set<T>> {
    * the SetSubject instead. This is to prevent infinite loops.
    *
    * @param observer the observer or a next function
-   * @returns a subscription
+   * @returns a Subscription
    */
   override subscribe(observer?: Partial<Observer<Set<T>>>): Subscription;
   override subscribe(next?: (value: Set<T>) => void): Subscription;
@@ -78,7 +89,7 @@ export class SetSubject<T> extends Subject<Set<T>> {
     const subscription = super.subscribe(
       observerOrNext as Partial<Observer<Set<T>>>
     );
-    !subscription.closed && this.next(this._set);
+    !subscription.closed && this.next();
     return subscription;
   }
 
@@ -96,10 +107,13 @@ export class SetSubject<T> extends Subject<Set<T>> {
    * ```
    *
    * @param value the value to add to the Set
+   *
+   * @see {@link https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Set/add}
+   * @see {@link https://rxjs.dev/api/index/class/Subject#next}
    */
   add(value: T): void {
     this._set.add(value);
-    this.next(this._set);
+    this.next();
   }
 
   /**
@@ -114,11 +128,14 @@ export class SetSubject<T> extends Subject<Set<T>> {
    * ```
    *
    * @param value the value to delete from the Set
+   *
+   * @see {@link https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Set/delete}
+   * @see {@link https://rxjs.dev/api/index/class/Subject#next}
    */
   delete(value: T): void {
     const deleted = this._set.delete(value);
     if (deleted) {
-      this.next(this._set);
+      this.next();
     }
   }
 
@@ -132,10 +149,13 @@ export class SetSubject<T> extends Subject<Set<T>> {
    * set.clear();
    * set.subscribe((set) => console.log(set)); // Set(0) {}
    * ```
+   *
+   * @see {@link https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Set/clear}
+   * @see {@link https://rxjs.dev/api/index/class/Subject#next}
    */
   clear(): void {
     this._set.clear();
-    this.next(this._set);
+    this.next();
   }
 
   // Read methods
@@ -154,7 +174,7 @@ export class SetSubject<T> extends Subject<Set<T>> {
    *
    * @returns an iterator for the Set
    */
-  [Symbol.iterator](): Iterator<T> {
+  [Symbol.iterator](): IterableIterator<T> {
     return this._set[Symbol.iterator]();
   }
 
