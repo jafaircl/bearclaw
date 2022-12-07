@@ -1,7 +1,8 @@
+import { map } from 'rxjs';
 import { TestScheduler } from 'rxjs/testing';
-import { observeHas } from './observeHas';
+import { values } from './values';
 
-describe('observeHas', () => {
+describe('values', () => {
   let testScheduler: TestScheduler;
 
   beforeEach(() => {
@@ -10,75 +11,102 @@ describe('observeHas', () => {
     });
   });
 
-  it('should emit true when the key is present', () => {
+  it('should emit the keys', () => {
     testScheduler.run(({ cold, expectObservable }) => {
       const source = cold('a', {
         a: new Set([1, 2, 3]),
       });
       const expected = 'a';
-      expectObservable(source.pipe(observeHas(2))).toBe(expected, {
-        a: true,
+      expectObservable(
+        source.pipe(
+          values(),
+          map((v) => [...v])
+        )
+      ).toBe(expected, {
+        a: [1, 2, 3],
       });
     });
   });
 
-  it('should emit false when the key is not present', () => {
+  it('should emit the keys when the set is cleared', () => {
     testScheduler.run(({ cold, expectObservable }) => {
-      const source = cold('a', {
+      const source = cold('a--b', {
         a: new Set([1, 2, 3]),
+        b: new Set(),
       });
-      const expected = 'a';
-      expectObservable(source.pipe(observeHas(4))).toBe(expected, {
-        a: false,
+      const expected = '   a--b';
+      expectObservable(
+        source.pipe(
+          values(),
+          map((v) => [...v])
+        )
+      ).toBe(expected, {
+        a: [1, 2, 3],
+        b: [],
       });
     });
   });
 
-  it('should emit true when the key is added', () => {
+  it('should emit the keys when the set is added to', () => {
     testScheduler.run(({ cold, expectObservable }) => {
       const source = cold('a--b', {
         a: new Set([1, 2, 3]),
         b: new Set([1, 2, 3, 4]),
       });
       const expected = '   a--b';
-      expectObservable(source.pipe(observeHas(4))).toBe(expected, {
-        a: false,
-        b: true,
+      expectObservable(
+        source.pipe(
+          values(),
+          map((v) => [...v])
+        )
+      ).toBe(expected, {
+        a: [1, 2, 3],
+        b: [1, 2, 3, 4],
       });
     });
   });
 
-  it('should emit false when the key is removed', () => {
+  it('should emit the keys when the set is removed from', () => {
     testScheduler.run(({ cold, expectObservable }) => {
       const source = cold('a--b', {
         a: new Set([1, 2, 3]),
         b: new Set([1, 2]),
       });
       const expected = '   a--b';
-      expectObservable(source.pipe(observeHas(3))).toBe(expected, {
-        a: true,
-        b: false,
+      expectObservable(
+        source.pipe(
+          values(),
+          map((v) => [...v])
+        )
+      ).toBe(expected, {
+        a: [1, 2, 3],
+        b: [1, 2],
       });
     });
   });
 
-  it('should work with a map as well', () => {
+  it('should work with a Map as well', () => {
     testScheduler.run(({ cold, expectObservable }) => {
       const source = cold('a--b', {
         a: new Map([
-          [1, 'foo'],
-          [2, 'bar'],
-          [3, 'baz'],
+          [1, 'a'],
+          [2, 'b'],
+          [3, 'c'],
         ]),
         b: new Map([
-          [1, 'foo'],
-          [2, 'bar'],
+          [1, 'a'],
+          [2, 'b'],
         ]),
       });
       const expected = '   a--b';
-      expectObservable(source.pipe(observeHas(3))).toBe(expected, {
-        a: true,
-        b: false,
+      expectObservable(
+        source.pipe(
+          values(),
+          map((v) => [...v])
+        )
+      ).toBe(expected, {
+        a: ['a', 'b', 'c'],
+        b: ['a', 'b'],
       });
     });
   });
@@ -86,72 +114,83 @@ describe('observeHas', () => {
   describe('observable functionality', () => {
     it('should not complete if the source never completes', () => {
       testScheduler.run(({ cold, expectObservable, expectSubscriptions }) => {
-        const e1 = cold<Set<number>>('-');
+        const e1 = cold<Set<unknown>>('-');
         const e1subs = '^';
         const expected = '-';
 
-        expectObservable(e1.pipe(observeHas(0))).toBe(expected);
+        expectObservable(e1.pipe(values())).toBe(expected);
         expectSubscriptions(e1.subscriptions).toBe(e1subs);
       });
     });
 
     it('should complete if the source is empty', () => {
       testScheduler.run(({ cold, expectObservable, expectSubscriptions }) => {
-        const e1 = cold<Set<number>>('|');
+        const e1 = cold<Set<unknown>>('|');
         const e1subs = '(^!)';
         const expected = '|';
 
-        expectObservable(e1.pipe(observeHas(0))).toBe(expected);
+        expectObservable(e1.pipe(values())).toBe(expected);
         expectSubscriptions(e1.subscriptions).toBe(e1subs);
       });
     });
 
     it('should complete if the source never emits', () => {
       testScheduler.run(({ hot, expectObservable, expectSubscriptions }) => {
-        const e1 = hot<Set<number>>('------|');
-        const e1subs = '             ^-----!';
-        const expected = '           ------|';
+        const e1 = hot<Set<unknown>>('------|');
+        const e1subs = '              ^-----!';
+        const expected = '            ------|';
 
-        expectObservable(e1.pipe(observeHas(0))).toBe(expected);
+        expectObservable(e1.pipe(values())).toBe(expected);
         expectSubscriptions(e1.subscriptions).toBe(e1subs);
       });
     });
 
     it('should raise an error if the source raises an error', () => {
       testScheduler.run(({ hot, expectObservable, expectSubscriptions }) => {
-        const e1 = hot<Set<number>>('--a-#', { a: new Set([1, 2, 3]) });
-        const e1subs = '             ^---!';
-        const expected = '           --a-#';
+        const e1 = hot<Set<unknown>>('--a-#', { a: new Set([1, 2, 3]) });
+        const e1subs = '              ^---!';
+        const expected = '            --a-#';
 
-        expectObservable(e1.pipe(observeHas(0))).toBe(expected, { a: false });
+        expectObservable(
+          e1.pipe(
+            values(),
+            map((v) => [...v])
+          )
+        ).toBe(expected, { a: [1, 2, 3] });
         expectSubscriptions(e1.subscriptions).toBe(e1subs);
       });
     });
 
     it('should raise an error if the source throws', () => {
       testScheduler.run(({ cold, expectObservable, expectSubscriptions }) => {
-        const e1 = cold<Set<number>>('#');
+        const e1 = cold<Set<unknown>>('#');
         const e1subs = '(^!)';
         const expected = '#';
 
-        expectObservable(e1.pipe(observeHas(0))).toBe(expected);
+        expectObservable(e1.pipe(values())).toBe(expected);
         expectSubscriptions(e1.subscriptions).toBe(e1subs);
       });
     });
 
     it('should allow unsubscribing early and explicitly', () => {
       testScheduler.run(({ hot, expectObservable, expectSubscriptions }) => {
-        const e1 = hot<Set<number>>('--a---b--|', {
+        const e1 = hot<Set<unknown>>('--a---b--|', {
           a: new Set([1, 2, 3]),
           b: new Set([1, 2, 3, 4]),
         });
-        const e1subs = '             ^---!-----';
-        const expected = '           --a--';
-        const unsub = '              ----!-----';
+        const e1subs = '              ^---!-----';
+        const expected = '            --a--';
+        const unsub = '               ----!-----';
 
-        const result = e1.pipe(observeHas(4));
+        const result = e1.pipe(
+          values(),
+          map((v) => [...v])
+        );
 
-        expectObservable(result, unsub).toBe(expected, { a: false, b: true });
+        expectObservable(result, unsub).toBe(expected, {
+          a: [1, 2, 3],
+          b: [1, 2, 3, 4],
+        });
         expectSubscriptions(e1.subscriptions).toBe(e1subs);
       });
     });

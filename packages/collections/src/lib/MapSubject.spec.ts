@@ -1,12 +1,7 @@
 import { map, Observable } from 'rxjs';
 import { TestScheduler } from 'rxjs/testing';
 import { MapSubject } from './MapSubject';
-import { observeEntries } from './observeEntries';
-import { observeGet } from './observeGet';
-import { observeHas } from './observeHas';
-import { observeKeys } from './observeKeys';
-import { observeSize } from './observeSize';
-import { observeValues } from './observeValues';
+import { entries, get, has, keys, size, values } from './operators';
 
 describe('MapSubject', () => {
   let testScheduler: TestScheduler;
@@ -258,72 +253,72 @@ describe('MapSubject', () => {
   });
 
   describe('usage with operators', () => {
-    it('should work with observeHas', () => {
+    it('should work with has', () => {
       testScheduler.run(({ expectObservable }) => {
         const map = new MapSubject(new Map([['foo', 'bar']]));
         const expected = '(a)';
         const values = { a: true };
-        expectObservable(map.pipe(observeHas('foo'))).toBe(expected, values);
+        expectObservable(map.pipe(has('foo'))).toBe(expected, values);
       });
     });
 
-    it('should work with observeGet', () => {
+    it('should work with get', () => {
       testScheduler.run(({ expectObservable }) => {
         const map = new MapSubject(new Map([['foo', 'bar']]));
         const expected = '(a)';
         const values = { a: 'bar' };
-        expectObservable(map.pipe(observeGet('foo'))).toBe(expected, values);
+        expectObservable(map.pipe(get('foo'))).toBe(expected, values);
       });
     });
 
-    it('should work with observeSize', () => {
+    it('should work with size', () => {
       testScheduler.run(({ expectObservable }) => {
         const map = new MapSubject(new Map([['foo', 'bar']]));
         const expected = '(a)';
         const values = { a: 1 };
-        expectObservable(map.pipe(observeSize())).toBe(expected, values);
+        expectObservable(map.pipe(size())).toBe(expected, values);
       });
     });
 
-    it('should work with observeEntries', () => {
+    it('should work with entries', () => {
       testScheduler.run(({ expectObservable }) => {
         const _map = new MapSubject(new Map([['foo', 'bar']]));
         const expected = '(a)';
         const values = { a: [['foo', 'bar']] };
         expectObservable(
           _map.pipe(
-            observeEntries(),
+            entries(),
             map((e) => [...e])
           )
         ).toBe(expected, values);
       });
     });
 
-    it('should work with observeKeys', () => {
+    it('should work with keys', () => {
       testScheduler.run(({ expectObservable }) => {
         const _map = new MapSubject(new Map([['foo', 'bar']]));
         const expected = '(a)';
         const values = { a: ['foo'] };
         expectObservable(
           _map.pipe(
-            observeKeys(),
+            keys(),
             map((k) => [...k])
           )
         ).toBe(expected, values);
       });
     });
 
-    it('should work with observeValues', () => {
+    it('should work with values', () => {
       testScheduler.run(({ expectObservable }) => {
         const _map = new MapSubject(new Map([['foo', 'bar']]));
         const expected = '(a)';
-        const values = { a: ['bar'] };
+        const _values = { a: ['bar'] };
         expectObservable(
           _map.pipe(
-            observeValues(),
+            values(),
             map((v) => [...v])
           )
-        ).toBe(expected, values);
+        ).toBe(expected, _values);
       });
     });
   });

@@ -1,7 +1,7 @@
 import { TestScheduler } from 'rxjs/testing';
-import { observeSize } from './observeSize';
+import { size } from './size';
 
-describe('observeSize', () => {
+describe('size', () => {
   let testScheduler: TestScheduler;
 
   beforeEach(() => {
@@ -16,7 +16,7 @@ describe('observeSize', () => {
         a: new Set([1, 2, 3]),
       });
       const expected = 'a';
-      expectObservable(source.pipe(observeSize())).toBe(expected, {
+      expectObservable(source.pipe(size())).toBe(expected, {
         a: 3,
       });
     });
@@ -29,7 +29,7 @@ describe('observeSize', () => {
         b: new Set(),
       });
       const expected = '   a--b';
-      expectObservable(source.pipe(observeSize())).toBe(expected, {
+      expectObservable(source.pipe(size())).toBe(expected, {
         a: 3,
         b: 0,
       });
@@ -43,7 +43,7 @@ describe('observeSize', () => {
         b: new Set([1, 2, 3, 4]),
       });
       const expected = '   a--b';
-      expectObservable(source.pipe(observeSize())).toBe(expected, {
+      expectObservable(source.pipe(size())).toBe(expected, {
         a: 3,
         b: 4,
       });
@@ -57,7 +57,7 @@ describe('observeSize', () => {
         b: new Set([1, 2]),
       });
       const expected = '   a--b';
-      expectObservable(source.pipe(observeSize())).toBe(expected, {
+      expectObservable(source.pipe(size())).toBe(expected, {
         a: 3,
         b: 2,
       });
@@ -74,7 +74,7 @@ describe('observeSize', () => {
         ]),
       });
       const expected = 'a';
-      expectObservable(source.pipe(observeSize())).toBe(expected, {
+      expectObservable(source.pipe(size())).toBe(expected, {
         a: 3,
       });
     });
@@ -87,7 +87,7 @@ describe('observeSize', () => {
         const e1subs = '^';
         const expected = '-';
 
-        expectObservable(e1.pipe(observeSize())).toBe(expected);
+        expectObservable(e1.pipe(size())).toBe(expected);
         expectSubscriptions(e1.subscriptions).toBe(e1subs);
       });
     });
@@ -98,7 +98,7 @@ describe('observeSize', () => {
         const e1subs = '(^!)';
         const expected = '|';
 
-        expectObservable(e1.pipe(observeSize())).toBe(expected);
+        expectObservable(e1.pipe(size())).toBe(expected);
         expectSubscriptions(e1.subscriptions).toBe(e1subs);
       });
     });
@@ -109,7 +109,7 @@ describe('observeSize', () => {
         const e1subs = '              ^-----!';
         const expected = '            ------|';
 
-        expectObservable(e1.pipe(observeSize())).toBe(expected);
+        expectObservable(e1.pipe(size())).toBe(expected);
         expectSubscriptions(e1.subscriptions).toBe(e1subs);
       });
     });
@@ -120,7 +120,7 @@ describe('observeSize', () => {
         const e1subs = '              ^---!';
         const expected = '            --a-#';
 
-        expectObservable(e1.pipe(observeSize())).toBe(expected, { a: 3 });
+        expectObservable(e1.pipe(size())).toBe(expected, { a: 3 });
         expectSubscriptions(e1.subscriptions).toBe(e1subs);
       });
     });
@@ -131,7 +131,7 @@ describe('observeSize', () => {
         const e1subs = '(^!)';
         const expected = '#';
 
-        expectObservable(e1.pipe(observeSize())).toBe(expected);
+        expectObservable(e1.pipe(size())).toBe(expected);
         expectSubscriptions(e1.subscriptions).toBe(e1subs);
       });
     });
@@ -146,7 +146,7 @@ describe('observeSize', () => {
         const expected = '            --a--';
         const unsub = '               ----!-----';
 
-        const result = e1.pipe(observeSize());
+        const result = e1.pipe(size());
 
         expectObservable(result, unsub).toBe(expected, { a: 3, b: 4 });
         expectSubscriptions(e1.subscriptions).toBe(e1subs);

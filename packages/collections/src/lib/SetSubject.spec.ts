@@ -1,10 +1,6 @@
 import { map, Observable } from 'rxjs';
 import { TestScheduler } from 'rxjs/testing';
-import { observeEntries } from './observeEntries';
-import { observeHas } from './observeHas';
-import { observeKeys } from './observeKeys';
-import { observeSize } from './observeSize';
-import { observeValues } from './observeValues';
+import { entries, has, keys, size, values } from './operators';
 import { SetSubject } from './SetSubject';
 
 describe('SetSubject', () => {
@@ -225,29 +221,29 @@ describe('SetSubject', () => {
   });
 
   describe('usage with operators', () => {
-    describe('observeHas', () => {
+    describe('has', () => {
       it('should emit the value', () => {
         testScheduler.run(({ expectObservable }) => {
           const set = new SetSubject(new Set(['foo']));
           const expected = '(a)';
           const values = { a: true };
-          expectObservable(set.pipe(observeHas('foo'))).toBe(expected, values);
+          expectObservable(set.pipe(has('foo'))).toBe(expected, values);
         });
       });
     });
 
-    describe('observeSize', () => {
+    describe('size', () => {
       it('should emit the value', () => {
         testScheduler.run(({ expectObservable }) => {
           const set = new SetSubject(new Set(['foo']));
           const expected = '(a)';
           const values = { a: 1 };
-          expectObservable(set.pipe(observeSize())).toBe(expected, values);
+          expectObservable(set.pipe(size())).toBe(expected, values);
         });
       });
     });
 
-    describe('observeEntries', () => {
+    describe('entries', () => {
       it('should emit the value', () => {
         testScheduler.run(({ expectObservable }) => {
           const set = new SetSubject(new Set(['foo']));
@@ -255,7 +251,7 @@ describe('SetSubject', () => {
           const values = { a: [['foo', 'foo']] };
           expectObservable(
             set.pipe(
-              observeEntries(),
+              entries(),
               map((e) => [...e])
             )
           ).toBe(expected, values);
@@ -263,7 +259,7 @@ describe('SetSubject', () => {
       });
     });
 
-    describe('observeKeys', () => {
+    describe('keys', () => {
       it('should emit the value', () => {
         testScheduler.run(({ expectObservable }) => {
           const set = new SetSubject(new Set(['foo']));
@@ -271,7 +267,7 @@ describe('SetSubject', () => {
           const values = { a: ['foo'] };
           expectObservable(
             set.pipe(
-              observeKeys(),
+              keys(),
               map((k) => [...k])
             )
           ).toBe(expected, values);
@@ -279,18 +275,18 @@ describe('SetSubject', () => {
       });
     });
 
-    describe('observeValues', () => {
+    describe('values', () => {
       it('should emit the value', () => {
         testScheduler.run(({ expectObservable }) => {
           const set = new SetSubject(new Set(['foo']));
           const expected = '(a)';
-          const values = { a: ['foo'] };
+          const _values = { a: ['foo'] };
           expectObservable(
             set.pipe(
-              observeValues(),
+              values(),
               map((v) => [...v])
             )
-          ).toBe(expected, values);
+          ).toBe(expected, _values);
         });
       });
     });

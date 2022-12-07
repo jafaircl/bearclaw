@@ -6,7 +6,7 @@ import { map } from 'rxjs';
  * @example
  * ```typescript
  * const source = of(new Set([1, 2, 3]));
- * source.pipe(observeKeys()).subscribe((keys) => {
+ * source.pipe(keys()).subscribe((keys) => {
  *  console.log([...keys])
  * });
  * // [1, 2, 3]
@@ -15,25 +15,25 @@ import { map } from 'rxjs';
  * @example
  * ```typescript
  * const set = new SetSubject();
- * set.pipe(observeKeys()).subscribe((keys) => console.log([...keys]));
+ * set.pipe(keys()).subscribe((keys) => console.log([...keys]));
  * // []
  * set.add(1);
- * set.pipe(observeKeys()).subscribe((keys) => console.log([...keys]));
+ * set.pipe(keys()).subscribe((keys) => console.log([...keys]));
  * // [1]
  * ```
  *
  * @example
  * ```typescript
  * const map = new MapSubject();
- * map.pipe(observeKeys()).subscribe((keys) => console.log([...keys]));
+ * map.pipe(keys()).subscribe((keys) => console.log([...keys]));
  * // []
  * map.set('key', 'value');
- * map.pipe(observeKeys()).subscribe((keys) => console.log([...keys]));
+ * map.pipe(keys()).subscribe((keys) => console.log([...keys]));
  * // ['key']
  * ```
  *
  * @returns an Observable of the keys of the set or map
  */
-export function observeKeys<K>() {
+export function keys<K>() {
   return map((hasKeys: { keys: () => IterableIterator<K> }) => hasKeys.keys());
 }

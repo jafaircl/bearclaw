@@ -6,7 +6,7 @@ import { map } from 'rxjs';
  * @example
  * ```typescript
  * const source = of(new Set([1, 2, 3]));
- * source.pipe(observeEntries()).subscribe((entries) => {
+ * source.pipe(entries()).subscribe((entries) => {
  *   console.log([...entries])
  * });
  * // [[1, 1], [2, 2], [3, 3]]
@@ -15,26 +15,26 @@ import { map } from 'rxjs';
  * @example
  * ```typescript
  * const set = new SetSubject();
- * set.pipe(observeEntries()).subscribe((entries) => console.log([...entries]));
+ * set.pipe(entries()).subscribe((entries) => console.log([...entries]));
  * // []
  * set.add(1);
- * set.pipe(observeEntries()).subscribe((entries) => console.log([...entries]));
+ * set.pipe(entries()).subscribe((entries) => console.log([...entries]));
  * // [[1, 1]]
  * ```
  *
  * @example
  * ```typescript
  * const map = new MapSubject();
- * map.pipe(observeEntries()).subscribe((entries) => console.log([...entries]));
+ * map.pipe(entries()).subscribe((entries) => console.log([...entries]));
  * // []
  * map.set('key', 'value');
- * map.pipe(observeEntries()).subscribe((entries) => console.log([...entries]));
+ * map.pipe(entries()).subscribe((entries) => console.log([...entries]));
  * // [['key', 'value']]
  * ```
  *
  * @returns an Observable of the entries of the set or map
  */
-export function observeEntries<K, V>() {
+export function entries<K, V>() {
   return map((hasEntries: { entries: () => IterableIterator<[K, V]> }) =>
     hasEntries.entries()
   );

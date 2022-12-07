@@ -1,7 +1,7 @@
 import { TestScheduler } from 'rxjs/testing';
-import { observeGet } from './observeGet';
+import { get } from './get';
 
-describe('observeGet', () => {
+describe('get', () => {
   let testScheduler: TestScheduler;
 
   beforeEach(() => {
@@ -20,7 +20,7 @@ describe('observeGet', () => {
         ]),
       });
       const expected = 'a';
-      expectObservable(source.pipe(observeGet(2))).toBe(expected, {
+      expectObservable(source.pipe(get(2))).toBe(expected, {
         a: 'b',
       });
     });
@@ -36,7 +36,7 @@ describe('observeGet', () => {
         ]),
       });
       const expected = 'a';
-      expectObservable(source.pipe(observeGet(4))).toBe(expected, {
+      expectObservable(source.pipe(get(4))).toBe(expected, {
         a: undefined,
       });
     });
@@ -58,7 +58,7 @@ describe('observeGet', () => {
         ]),
       });
       const expected = '   a--b';
-      expectObservable(source.pipe(observeGet(4))).toBe(expected, {
+      expectObservable(source.pipe(get(4))).toBe(expected, {
         a: undefined,
         b: 'd',
       });
@@ -79,7 +79,7 @@ describe('observeGet', () => {
         ]),
       });
       const expected = '   a--b';
-      expectObservable(source.pipe(observeGet(3))).toBe(expected, {
+      expectObservable(source.pipe(get(3))).toBe(expected, {
         a: 'c',
         b: undefined,
       });
@@ -93,7 +93,7 @@ describe('observeGet', () => {
         const e1subs = '^';
         const expected = '-';
 
-        expectObservable(e1.pipe(observeGet(0))).toBe(expected);
+        expectObservable(e1.pipe(get(0))).toBe(expected);
         expectSubscriptions(e1.subscriptions).toBe(e1subs);
       });
     });
@@ -104,7 +104,7 @@ describe('observeGet', () => {
         const e1subs = '(^!)';
         const expected = '|';
 
-        expectObservable(e1.pipe(observeGet(0))).toBe(expected);
+        expectObservable(e1.pipe(get(0))).toBe(expected);
         expectSubscriptions(e1.subscriptions).toBe(e1subs);
       });
     });
@@ -115,7 +115,7 @@ describe('observeGet', () => {
         const e1subs = '                     ^-----!';
         const expected = '                   ------|';
 
-        expectObservable(e1.pipe(observeGet(0))).toBe(expected);
+        expectObservable(e1.pipe(get(0))).toBe(expected);
         expectSubscriptions(e1.subscriptions).toBe(e1subs);
       });
     });
@@ -132,7 +132,7 @@ describe('observeGet', () => {
         const e1subs = '                     ^---!';
         const expected = '                   --a-#';
 
-        expectObservable(e1.pipe(observeGet(1))).toBe(expected, {
+        expectObservable(e1.pipe(get(1))).toBe(expected, {
           a: 'a',
         });
         expectSubscriptions(e1.subscriptions).toBe(e1subs);
@@ -145,7 +145,7 @@ describe('observeGet', () => {
         const e1subs = '(^!)';
         const expected = '#';
 
-        expectObservable(e1.pipe(observeGet(0))).toBe(expected);
+        expectObservable(e1.pipe(get(0))).toBe(expected);
         expectSubscriptions(e1.subscriptions).toBe(e1subs);
       });
     });
@@ -169,7 +169,7 @@ describe('observeGet', () => {
         const expected = '                   --a--';
         const unsub = '                      ----!-----';
 
-        const result = e1.pipe(observeGet(4));
+        const result = e1.pipe(get(4));
 
         expectObservable(result, unsub).toBe(expected, {
           a: undefined,
