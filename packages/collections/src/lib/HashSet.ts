@@ -3,7 +3,29 @@ import { defaultHash } from './defaultHash';
 import { HashFn } from './types';
 
 /**
- * A simple hash set implementation.
+ * A simple hash set implementation. The hashing function is used to generate
+ * a key for the value. If the hashing function returns the same value for two
+ * different values, the second value will overwrite the first. If the hashing
+ * function generates collisions for your use case, you can provide your own
+ * hashing function.
+ *
+ * The default hashing function will sort the value if it is an object, array,
+ * set or map. This will ensure that the same value will always generate the
+ * same hash. If this is not desired, you can provide your own hashing function.
+ *
+ * @example
+ * ```typescript
+ * const set = new HashSet();
+ * set.add({ a: 1, b: 2 });
+ * set.has({ b: 2, a: 1 }); // true
+ * ```
+ *
+ * @example
+ * ```typescript
+ * const set = new HashSet();
+ * set.add([1, 2, 3]);
+ * set.has([3, 2, 1]); // true
+ * ```
  */
 export class HashSet<T> implements Set<T> {
   private _map = new Map<Primitive, T>();

@@ -3,7 +3,29 @@ import { defaultHash } from './defaultHash';
 import { HashFn } from './types';
 
 /**
- * A simple hash map implementation.
+ * A simple hash map implementation. The hashing function is used to generate
+ * a key for the value. If the hashing function returns the same value for two
+ * different values, the second value will overwrite the first. If the hashing
+ * function generates collisions for your use case, you can provide your own
+ * hashing function.
+ *
+ * The default hashing function will sort the value if it is an object, array,
+ * set or map. This will ensure that the same value will always generate the
+ * same hash. If this is not desired, you can provide your own hashing function.
+ *
+ * @example
+ * ```typescript
+ * const map = new HashMap();
+ * map.set({ a: 1, b: 2 }, 'value');
+ * map.get({ b: 2, a: 1 }); // 'value'
+ * ```
+ *
+ * @example
+ * ```typescript
+ * const map = new HashMap();
+ * map.set([1, 2, 3], 'value');
+ * map.get([3, 2, 1]); // 'value'
+ * ```
  */
 export class HashMap<K, V> implements Map<K, V> {
   private _keyMap = new Map<Primitive, K>();

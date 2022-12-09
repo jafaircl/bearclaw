@@ -76,4 +76,98 @@ describe('defaultHash', () => {
     const hash2 = defaultHash(createLargeObject());
     expect(hash1).toEqual(hash2);
   });
+
+  it('should sort a nested object', () => {
+    const hash1 = defaultHash({ a: { b: 'c', d: 'e' }, f: 'g' });
+    const hash2 = defaultHash({ f: 'g', a: { d: 'e', b: 'c' } });
+    expect(hash1).toEqual(hash2);
+  });
+
+  it('should sort a nested array', () => {
+    const hash1 = defaultHash(['a', ['b', 'c'], 'd']);
+    const hash2 = defaultHash(['d', ['b', 'c'], 'a']);
+    expect(hash1).toEqual(hash2);
+  });
+
+  it('should sort an oject within a nested array', () => {
+    const hash1 = defaultHash(['a', { b: 'c', d: 'e' }, 'f']);
+    const hash2 = defaultHash(['f', { d: 'e', b: 'c' }, 'a']);
+    expect(hash1).toEqual(hash2);
+  });
+
+  it('should sort an array within a nested object', () => {
+    const hash1 = defaultHash({ a: ['b', 'c', 'd'], e: 'f' });
+    const hash2 = defaultHash({ e: 'f', a: ['d', 'c', 'b'] });
+    expect(hash1).toEqual(hash2);
+  });
+
+  it('should sort a set', () => {
+    const hash1 = defaultHash(new Set(['a', 'b', 'c']));
+    const hash2 = defaultHash(new Set(['c', 'b', 'a']));
+    expect(hash1).toEqual(hash2);
+  });
+
+  it('should sort a map', () => {
+    const hash1 = defaultHash(
+      new Map([
+        ['a', 'b'],
+        ['c', 'd'],
+      ])
+    );
+    const hash2 = defaultHash(
+      new Map([
+        ['c', 'd'],
+        ['a', 'b'],
+      ])
+    );
+    expect(hash1).toEqual(hash2);
+  });
+
+  it('should sort a nested set', () => {
+    const hash1 = defaultHash(new Set(['a', new Set(['b', 'c']), 'd']));
+    const hash2 = defaultHash(new Set(['d', new Set(['c', 'b']), 'a']));
+    expect(hash1).toEqual(hash2);
+  });
+
+  it('should sort a nested map', () => {
+    const hash1 = defaultHash(
+      new Map<string, string | Map<string, string>>([
+        ['a', 'b'],
+        [
+          'c',
+          new Map([
+            ['d', 'e'],
+            ['f', 'g'],
+          ]),
+        ],
+      ])
+    );
+    const hash2 = defaultHash(
+      new Map<string, string | Map<string, string>>([
+        [
+          'c',
+          new Map([
+            ['f', 'g'],
+            ['d', 'e'],
+          ]),
+        ],
+        ['a', 'b'],
+      ])
+    );
+    expect(hash1).toEqual(hash2);
+  });
+
+  it('should work with a function', () => {
+    // eslint-disable-next-line @typescript-eslint/no-empty-function
+    const hash1 = defaultHash(() => {});
+    // eslint-disable-next-line @typescript-eslint/no-empty-function
+    const hash2 = defaultHash(() => {});
+    expect(hash1).toEqual(hash2);
+  });
+
+  it('should work with a date', () => {
+    const hash1 = defaultHash(new Date(0));
+    const hash2 = defaultHash(new Date(0));
+    expect(hash1).toEqual(hash2);
+  });
 });
