@@ -19,7 +19,10 @@ describe('SetSubject', () => {
 
   it('constructor should accept a custom ctor that implements set', () => {
     class MyCustomSet extends Set {}
-    const set = new SetSubject(null, MyCustomSet);
+    function setFactory<T>(values: T[]) {
+      return new MyCustomSet(values);
+    }
+    const set = new SetSubject(null, setFactory);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expect((set as any)._set).toBeInstanceOf(MyCustomSet);
   });
@@ -133,7 +136,10 @@ describe('SetSubject', () => {
 
   it('next should retain the custom ctor', () => {
     class MyCustomSet extends Set {}
-    const set = new SetSubject(null, MyCustomSet);
+    function setFactory<T>(values: T[]) {
+      return new MyCustomSet(values);
+    }
+    const set = new SetSubject(null, setFactory);
     const results = [];
     set.subscribe((value) => results.push(value));
     set.next(new Set(['foo']));

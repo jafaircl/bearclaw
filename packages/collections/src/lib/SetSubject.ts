@@ -19,9 +19,19 @@ export interface SetLike<T> {
 }
 
 /**
- * A constructor for a Set-like class.
+ * A factory function for creating a Set-like class.
  */
-export type SetLikeCtor<T> = new (values?: readonly T[]) => SetLike<T>;
+export type SetLikeFactory<T> = (values?: readonly T[]) => SetLike<T>;
+
+/**
+ * Default Set factory function
+ *
+ * @param values the values to use as the initial value
+ * @returns a new Set
+ */
+function defaultSetFactory<T>(values?: readonly T[]): Set<T> {
+  return new Set(values);
+}
 
 /**
  * A Subject that emits a Set but also implements a Set-like interface. This is
@@ -38,8 +48,7 @@ export class SetSubject<T> extends Subject<SetLike<T>> {
    * Build a new SetSubject from an array of values
    *
    * @param values the values to use as the initial value
-   * @param setCtor the constructor to use for the Set. This is useful for
-   * cases where you want to use a custom Set implementation.
+   * @param setFactory the factory function to use to create the Set
    *
    * @example
    * ```typescript
@@ -49,19 +58,19 @@ export class SetSubject<T> extends Subject<SetLike<T>> {
    *
    * @example
    * ```typescript
-   * class MySet<T> extends Set<T> {
-   *   constructor(values?: readonly T[]) {
-   *     super(values);
-   *   }
+   * class MySet<T> implements SetLike<T> {}
+   *
+   * function mySetFactory<T>(values?: readonly T[]): SetLike<T> {
+   *  return new MySet(values);
    * }
    *
-   * const set = new SetSubject([1, 2, 3], MySet);
+   * const set = new SetSubject([1, 2, 3], mySetFactory);
    * set.subscribe((set) => console.log(set)); // MySet(3) { 1, 2, 3 }
    * ```
    */
-  constructor(values?: readonly T[], private setCtor: SetLikeCtor<T> = Set) {
+  constructor(values?: readonly T[], private setFactory = defaultSetFactory) {
     super();
-    this.next(new this.setCtor(values));
+    this.next(this.setFactory(values));
   }
 
   /**
@@ -87,9 +96,9 @@ export class SetSubject<T> extends Subject<SetLike<T>> {
    */
   override next(value?: SetLike<T>): void {
     if (isNil(value)) {
-      return super.next(new this.setCtor([...this._set]));
+      return super.next(this.setFactory([...this._set]));
     }
-    this._set = new this.setCtor([...value]);
+    this._set = this.setFactory([...value]);
     return super.next(this._set);
   }
 

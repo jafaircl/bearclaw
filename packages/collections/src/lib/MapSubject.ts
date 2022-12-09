@@ -20,11 +20,23 @@ export interface MapLike<K, V> {
 }
 
 /**
- * A constructor for a Map-like class.
+ * A factory function for creating a Map-like class.
  */
-export type MapLikeCtor<K, V> = new (
+export type MapLikeFactory<K, V> = (
   values?: readonly (readonly [K, V])[]
 ) => MapLike<K, V>;
+
+/**
+ * Default Map factory function
+ *
+ * @param values the values to use as the initial value
+ * @returns a new Map
+ */
+function defaultMapLikeFactory<K, V>(
+  values?: readonly (readonly [K, V])[]
+): Map<K, V> {
+  return new Map(values);
+}
 
 /**
  * A Subject that emits a Map but also implements a Map-like interface. This is
@@ -46,14 +58,28 @@ export class MapSubject<K, V> extends Subject<MapLike<K, V>> {
    * map.subscribe((map) => console.log(map)); // Map(1) { 'foo' => 'bar' }
    * ```
    *
-   * @param values the key-value pairs to use as the initial value
+   * @example
+   * ```typescript
+   * class MyMap<K, V> extends Map<K, V> {}
+   *
+   * function myMapFactory<K, V>
+   *   (values?: readonly (readonly [K, V])[]): MyMap<K, V> {
+   *  return new MyMap(values);
+   * }
+   *
+   * const map = new MapSubject([['foo', 'bar']], myMapFactory);
+   * map.subscribe((map) => console.log(map)); // MyMap(1) { 'foo' => 'bar' }
+   * ```
+   *
+   * @param entries the key-value pairs to use as the initial value
+   * @param mapFactory the factory function to use to create the Map
    */
   constructor(
     entries?: readonly (readonly [K, V])[],
-    private mapCtor: MapLikeCtor<K, V> = Map
+    private mapFactory: MapLikeFactory<K, V> = defaultMapLikeFactory
   ) {
     super();
-    this.next(new this.mapCtor(entries));
+    this.next(this.mapFactory(entries));
   }
 
   /**
@@ -79,9 +105,9 @@ export class MapSubject<K, V> extends Subject<MapLike<K, V>> {
    */
   override next(value?: MapLike<K, V>): void {
     if (isNil(value)) {
-      return super.next(new this.mapCtor([...this._map]));
+      return super.next(this.mapFactory([...this._map]));
     }
-    this._map = new this.mapCtor([...value]);
+    this._map = this.mapFactory([...value]);
     return super.next(this._map);
   }
 

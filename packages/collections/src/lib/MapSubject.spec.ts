@@ -18,8 +18,11 @@ describe('MapSubject', () => {
   });
 
   it('constructor should accept a custom ctor that implements map', () => {
-    class MyCustomMap extends Map {}
-    const map = new MapSubject(null, MyCustomMap);
+    class MyCustomMap<K, V> extends Map<K, V> {}
+    function factory<K, V>(values: readonly (readonly [K, V])[]) {
+      return new MyCustomMap(values);
+    }
+    const map = new MapSubject(null, factory);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expect((map as any)._map).toBeInstanceOf(MyCustomMap);
   });
@@ -182,7 +185,10 @@ describe('MapSubject', () => {
 
   it('next should retain a custom ctor', () => {
     class MyMap<K, V> extends Map<K, V> {}
-    const map = new MapSubject([], MyMap);
+    function factory<K, V>(values?: readonly (readonly [K, V])[]) {
+      return new MyMap(values);
+    }
+    const map = new MapSubject([], factory);
     const results = [];
     map.subscribe((value) => results.push(value));
     map.next(new Map([['foo', 'bar']]));
