@@ -79,7 +79,8 @@ export class MapSubject<K, V> extends Subject<MapLike<K, V>> {
     private mapFactory: MapLikeFactory<K, V> = defaultMapLikeFactory
   ) {
     super();
-    this.next(this.mapFactory(entries));
+    // Initialize the map
+    this._map = this.mapFactory(entries);
   }
 
   /**
@@ -103,7 +104,7 @@ export class MapSubject<K, V> extends Subject<MapLike<K, V>> {
    *
    * @param value the Map to emit
    */
-  override next(value?: MapLike<K, V>): void {
+  override next(value?: MapLike<K, V> | readonly (readonly [K, V])[]): void {
     if (isNil(value)) {
       return super.next(this.mapFactory([...this._map]));
     }

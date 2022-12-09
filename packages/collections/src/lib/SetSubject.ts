@@ -70,7 +70,7 @@ export class SetSubject<T> extends Subject<SetLike<T>> {
    */
   constructor(values?: readonly T[], private setFactory = defaultSetFactory) {
     super();
-    this.next(this.setFactory(values));
+    this._set = this.setFactory(values);
   }
 
   /**
