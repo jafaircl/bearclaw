@@ -1,20 +1,17 @@
 {
-  "extends": "nx/presets/npm.json",
-  "npmScope": "bearclaw",
-  "affected": {
-    "defaultBase": "main"
-  },
-  "cli": {
-    "defaultCollection": "@nrwl/workspace"
-  },
   "tasksRunnerOptions": {
     "default": {
       "runner": "nx/tasks-runners/default",
       "options": {
         "cacheableOperations": ["build", "lint", "test", "e2e"],
-        "parallel": 1
+        "parallel": 3
       }
     }
+  },
+  "extends": "nx/presets/npm.json",
+  "npmScope": "bearclaw",
+  "affected": {
+    "defaultBase": "main"
   },
   "$schema": "./node_modules/nx/schemas/nx-schema.json",
   "namedInputs": {
@@ -38,6 +35,11 @@
     },
     "lint": {
       "inputs": ["default", "{workspaceRoot}/.eslintrc.json"]
+    }
+  },
+  "pluginsConfig": {
+    "@nrwl/js": {
+      "analyzeSourceFiles": true
     }
   }
 }
