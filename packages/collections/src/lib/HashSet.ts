@@ -43,8 +43,7 @@ export class HashSet<T> implements Set<T> {
     }
     if (values) {
       for (const value of values) {
-        const key = this._hasherFn(value);
-        this._map.set(key, value);
+        this.add(value);
       }
     }
   }
