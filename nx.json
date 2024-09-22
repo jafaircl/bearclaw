@@ -1,21 +1,10 @@
 {
-  "extends": "nx/presets/npm.json",
-  "npmScope": "bearclaw",
-  "affected": {
-    "defaultBase": "main"
-  },
-  "cli": {
-    "defaultCollection": "@nrwl/workspace"
-  },
-  "tasksRunnerOptions": {
-    "default": {
-      "runner": "nx/tasks-runners/default",
-      "options": {
-        "cacheableOperations": ["build", "lint", "test", "e2e"],
-        "parallel": 1
-      }
+  "pluginsConfig": {
+    "@nrwl/js": {
+      "analyzeSourceFiles": true
     }
   },
+  "extends": "nx/presets/npm.json",
   "$schema": "./node_modules/nx/schemas/nx-schema.json",
   "namedInputs": {
     "default": ["{projectRoot}/**/*", "sharedGlobals"],
@@ -31,13 +20,22 @@
   "targetDefaults": {
     "build": {
       "dependsOn": ["^build"],
-      "inputs": ["production", "^production"]
+      "inputs": ["production", "^production"],
+      "cache": true
     },
     "test": {
-      "inputs": ["default", "^production", "{workspaceRoot}/jest.preset.js"]
+      "inputs": ["default", "^production", "{workspaceRoot}/jest.preset.js"],
+      "cache": true
     },
     "lint": {
-      "inputs": ["default", "{workspaceRoot}/.eslintrc.json"]
+      "inputs": ["default", "{workspaceRoot}/.eslintrc.json"],
+      "cache": true
+    },
+    "e2e": {
+      "cache": true
     }
-  }
+  },
+  "parallel": 3,
+  "useInferencePlugins": false,
+  "defaultBase": "main"
 }
