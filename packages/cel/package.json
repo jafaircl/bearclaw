@@ -1,0 +1,10 @@
+{
+  "name": "@bearclaw/cel",
+  "version": "0.0.1",
+  "dependencies": {
+    "@bearclaw/is": "*"
+  },
+  "main": "./index.js",
+  "module": "./index.mjs",
+  "typings": "./index.d.ts"
+}
