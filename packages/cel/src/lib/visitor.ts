@@ -34,7 +34,9 @@ import {
   ConditionalAndContext,
   ConditionalOrContext,
   ConstantLiteralContext,
+  CreateListContext,
   CreateMessageContext,
+  CreateStructContext,
   DoubleContext,
   ExprContext,
   ExprListContext,
@@ -44,6 +46,7 @@ import {
   IntContext,
   ListInitContext,
   LogicalNotContext,
+  MapInitializerListContext,
   MemberCallContext,
   MemberExprContext,
   NegateContext,
@@ -463,13 +466,62 @@ export class CELVisitor extends GeneratedCelVisitor<Expr> {
   //     // Implementation logic here
   //   };
 
-  //   override visitCreateList = (ctx: CreateListContext): Expr => {
-  //     // Implementation logic here
-  //   };
+  override visitCreateList = (ctx: CreateListContext): Expr => {
+    this._checkNotNil(ctx);
+    const listId = this.#id++;
+    let elements: Expr[] = [];
+    let optionalIndices: number[] = [];
+    if (!isNil(ctx._elems)) {
+      const listInit = this.visit(ctx._elems);
+      if (listInit.exprKind.case !== 'listExpr') {
+        return this._ensureErrorsExist(
+          create(StatusSchema, {
+            code: 1,
+            message: 'no list initializer',
+          })
+        );
+      }
+      elements = listInit.exprKind.value.elements;
+      optionalIndices = listInit.exprKind.value.optionalIndices;
+    }
+    return create(ExprSchema, {
+      id: listId,
+      exprKind: {
+        case: 'listExpr',
+        value: {
+          elements,
+          optionalIndices,
+        },
+      },
+    });
+  };
 
-  // override visitCreateStruct = (ctx: CreateStructContext): Expr => {
-  //     // Implementation logic here
-  // };
+  override visitCreateStruct = (ctx: CreateStructContext): Expr => {
+    this._checkNotNil(ctx);
+    const structId = this.#id++;
+    let entries: Expr_CreateStruct_Entry[] = [];
+    if (!isNil(ctx._entries)) {
+      const mapInit = this.visit(ctx._entries);
+      if (mapInit.exprKind.case !== 'structExpr') {
+        return this._ensureErrorsExist(
+          create(StatusSchema, {
+            code: 1,
+            message: 'no struct initializer',
+          })
+        );
+      }
+      entries = mapInit.exprKind.value.entries;
+    }
+    return create(ExprSchema, {
+      id: structId,
+      exprKind: {
+        case: 'structExpr',
+        value: {
+          entries,
+        },
+      },
+    });
+  };
 
   override visitCreateMessage = (ctx: CreateMessageContext): Expr => {
     this._checkNotNil(ctx);
@@ -637,9 +689,45 @@ export class CELVisitor extends GeneratedCelVisitor<Expr> {
   //     // Implementation logic here
   //   };
 
-  //   override visitMapInitializerList = (ctx: MapInitializerListContext): Expr => {
-  //     // Implementation logic here
-  //   };
+  override visitMapInitializerList = (ctx: MapInitializerListContext): Expr => {
+    this._checkNotNil(ctx);
+    const fields: Expr_CreateStruct_Entry[] = [];
+    for (let i = 0; i < ctx._cols.length; i++) {
+      if (i >= ctx._values.length || i >= ctx._cols.length) {
+        return this._ensureErrorsExist(
+          create(StatusSchema, {
+            code: 1,
+            message: 'no field initializer list',
+          })
+        );
+      }
+      const colId = this.#id++;
+      const optKey = ctx._keys[i];
+      const optionalKey = !isNil(optKey._opt);
+      const key = this.visit(optKey._e);
+      const value = this.visit(ctx._values[i]);
+      fields.push(
+        create(Expr_CreateStruct_EntrySchema, {
+          id: colId,
+          keyKind: {
+            case: 'mapKey',
+            value: key,
+          },
+          value,
+          optionalEntry: optionalKey,
+        })
+      );
+    }
+    return create(ExprSchema, {
+      id: this.#id++,
+      exprKind: {
+        case: 'structExpr',
+        value: {
+          entries: fields,
+        },
+      },
+    });
+  };
 
   //   override visitOptExpr = (ctx: OptExprContext): Expr => {
   //     // Implementation logic here

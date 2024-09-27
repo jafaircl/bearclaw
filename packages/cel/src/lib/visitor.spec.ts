@@ -1444,6 +1444,153 @@ const testCases: TestInfo[] = [
       },
     }),
   },
+  {
+    I: `{}`,
+    // P: `{}^#1:*expr.Expr_StructExpr#`,
+    P: create(ExprSchema, {
+      id: BigInt(1),
+      exprKind: {
+        case: 'structExpr',
+        value: {
+          messageName: '',
+          entries: [],
+        },
+      },
+    }),
+  },
+  {
+    I: `{a:b, c:d}`,
+    // P: `{
+    // 	a^#3:*expr.Expr_IdentExpr#:b^#4:*expr.Expr_IdentExpr#^#2:*expr.Expr_CreateStruct_Entry#,
+    // 	c^#6:*expr.Expr_IdentExpr#:d^#7:*expr.Expr_IdentExpr#^#5:*expr.Expr_CreateStruct_Entry#
+    // }^#1:*expr.Expr_StructExpr#`,
+    P: create(ExprSchema, {
+      id: BigInt(1),
+      exprKind: {
+        case: 'structExpr',
+        value: {
+          messageName: '',
+          entries: [
+            {
+              id: BigInt(2),
+              keyKind: {
+                case: 'mapKey',
+                value: {
+                  id: BigInt(3),
+                  exprKind: {
+                    case: 'identExpr',
+                    value: { name: 'a' },
+                  },
+                },
+              },
+              value: {
+                id: BigInt(4),
+                exprKind: {
+                  case: 'identExpr',
+                  value: { name: 'b' },
+                },
+              },
+            },
+            {
+              id: BigInt(5),
+              keyKind: {
+                case: 'mapKey',
+                value: {
+                  id: BigInt(6),
+                  exprKind: {
+                    case: 'identExpr',
+                    value: { name: 'c' },
+                  },
+                },
+              },
+              value: {
+                id: BigInt(7),
+                exprKind: {
+                  case: 'identExpr',
+                  value: { name: 'd' },
+                },
+              },
+            },
+          ],
+        },
+      },
+    }),
+  },
+  {
+    I: `[]`,
+    // P: `[]^#1:*expr.Expr_ListExpr#`,
+    P: create(ExprSchema, {
+      id: BigInt(1),
+      exprKind: {
+        case: 'listExpr',
+        value: {
+          elements: [],
+        },
+      },
+    }),
+  },
+  {
+    I: `[a]`,
+    // P: `[
+    // 	a^#2:*expr.Expr_IdentExpr#
+    // ]^#1:*expr.Expr_ListExpr#`,
+    P: create(ExprSchema, {
+      id: BigInt(1),
+      exprKind: {
+        case: 'listExpr',
+        value: {
+          elements: [
+            {
+              id: BigInt(2),
+              exprKind: {
+                case: 'identExpr',
+                value: { name: 'a' },
+              },
+            },
+          ],
+        },
+      },
+    }),
+  },
+  {
+    I: `[a, b, c]`,
+    // P: `[
+    // 	a^#2:*expr.Expr_IdentExpr#,
+    // 	b^#3:*expr.Expr_IdentExpr#,
+    // 	c^#4:*expr.Expr_IdentExpr#
+    // ]^#1:*expr.Expr_ListExpr#`,
+    P: create(ExprSchema, {
+      id: BigInt(1),
+      exprKind: {
+        case: 'listExpr',
+        value: {
+          elements: [
+            {
+              id: BigInt(2),
+              exprKind: {
+                case: 'identExpr',
+                value: { name: 'a' },
+              },
+            },
+            {
+              id: BigInt(3),
+              exprKind: {
+                case: 'identExpr',
+                value: { name: 'b' },
+              },
+            },
+            {
+              id: BigInt(4),
+              exprKind: {
+                case: 'identExpr',
+                value: { name: 'c' },
+              },
+            },
+          ],
+        },
+      },
+    }),
+  },
 ];
 
 describe('CELVisitor', () => {
