@@ -12,4 +12,9 @@ export class CELProgram {
     const parser = new CELVisitor(this.env);
     return this.ast.accept(parser);
   }
+
+  errors() {
+    const parser = new CELVisitor(this.env);
+    return parser.errors;
+  }
 }

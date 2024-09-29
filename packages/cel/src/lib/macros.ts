@@ -21,7 +21,14 @@ import {
   MAP_MACRO,
   NOT_STRICTLY_FALSE_OPERATOR,
 } from './operators';
-import { boolExpr, globalCall, identExpr, int64Expr, listExpr } from './utils';
+import {
+  IdHelper,
+  boolExpr,
+  globalCall,
+  identExpr,
+  int64Expr,
+  listExpr,
+} from './utils';
 
 export const STANDARD_MACROS = new Set([
   HAS_MACRO,
@@ -37,31 +44,37 @@ export function findMacro(name: string) {
   return STANDARD_MACROS.has(name) ? name : undefined;
 }
 
-export function expandMacro(op: string, target: Expr, args: Expr[]): Expr {
+export function expandMacro(
+  id: IdHelper,
+  op: string,
+  target: Expr,
+  args: Expr[]
+): Expr {
   switch (op) {
     case HAS_MACRO:
-      return expandHasMacro(target, args);
+      return expandHasMacro(id, args);
     case ALL_MACRO:
-      return expandAllMacro(target, args);
+      return expandAllMacro(id, target, args);
     case EXISTS_MACRO:
-      return expandExistsMacro(target, args);
+      return expandExistsMacro(id, target, args);
     case EXISTS_ONE_MACRO:
-      return expandExistsOneMacro(target, args);
+      return expandExistsOneMacro(id, target, args);
     case MAP_MACRO:
-      return expandMapMacro(target, args);
+      return expandMapMacro(id, target, args);
     case FILTER_MACRO:
-      return expandFilterMacro(target, args);
+      return expandFilterMacro(id, target, args);
     default:
       throw new Error(`Unknown macro: ${op}`);
   }
 }
 
-export function expandHasMacro(target: Expr, args: Expr[]): Expr {
+export function expandHasMacro(id: IdHelper, args: Expr[]): Expr {
   const arg = args[0];
   if (arg.exprKind.case !== 'selectExpr') {
     throw new Error('Invalid argument to has() macro');
   }
   return create(ExprSchema, {
+    id: id.nextId(),
     exprKind: {
       case: 'selectExpr',
       value: create(Expr_SelectSchema, {
@@ -73,24 +86,27 @@ export function expandHasMacro(target: Expr, args: Expr[]): Expr {
   });
 }
 
-export function expandAllMacro(target: Expr, args: Expr[]): Expr {
+export function expandAllMacro(id: IdHelper, target: Expr, args: Expr[]): Expr {
   const arg0 = args[0];
   if (arg0.exprKind.case !== 'identExpr') {
     throw new Error('Invalid argument to all() macro');
   }
   const arg1 = args[1];
-  const accuInit = boolExpr(true);
+  const accuInit = boolExpr(id, true);
   const condition = globalCall(
+    id,
     NOT_STRICTLY_FALSE_OPERATOR,
-    identExpr(ACCUMULATOR_VAR)
+    identExpr(id, ACCUMULATOR_VAR)
   );
   const step = globalCall(
+    id,
     LOGICAL_AND_OPERATOR,
-    identExpr(ACCUMULATOR_VAR),
+    identExpr(id, ACCUMULATOR_VAR),
     arg1
   );
-  const result = identExpr(ACCUMULATOR_VAR);
+  const result = identExpr(id, ACCUMULATOR_VAR);
   return fold(
+    id,
     arg0.exprKind.value.name,
     target,
     ACCUMULATOR_VAR,
@@ -101,24 +117,31 @@ export function expandAllMacro(target: Expr, args: Expr[]): Expr {
   );
 }
 
-export function expandExistsMacro(target: Expr, args: Expr[]): Expr {
+export function expandExistsMacro(
+  id: IdHelper,
+  target: Expr,
+  args: Expr[]
+): Expr {
   const arg0 = args[0];
   if (arg0.exprKind.case !== 'identExpr') {
-    throw new Error('Invalid argument to all() macro');
+    throw new Error('Invalid argument to exists() macro');
   }
   const arg1 = args[1];
-  const accuInit = boolExpr(false);
+  const accuInit = boolExpr(id, false);
   const condition = globalCall(
+    id,
     NOT_STRICTLY_FALSE_OPERATOR,
-    globalCall(LOGICAL_NOT_OPERATOR, identExpr(ACCUMULATOR_VAR))
+    globalCall(id, LOGICAL_NOT_OPERATOR, identExpr(id, ACCUMULATOR_VAR))
   );
   const step = globalCall(
+    id,
     LOGICAL_OR_OPERATOR,
-    identExpr(ACCUMULATOR_VAR),
+    identExpr(id, ACCUMULATOR_VAR),
     arg1
   );
-  const result = identExpr(ACCUMULATOR_VAR);
+  const result = identExpr(id, ACCUMULATOR_VAR);
   return fold(
+    id,
     arg0.exprKind.value.name,
     target,
     ACCUMULATOR_VAR,
@@ -129,28 +152,38 @@ export function expandExistsMacro(target: Expr, args: Expr[]): Expr {
   );
 }
 
-export function expandExistsOneMacro(target: Expr, args: Expr[]): Expr {
+export function expandExistsOneMacro(
+  id: IdHelper,
+  target: Expr,
+  args: Expr[]
+): Expr {
   const arg0 = args[0];
   if (arg0.exprKind.case !== 'identExpr') {
-    throw new Error('Invalid argument to all() macro');
+    throw new Error('Invalid argument to exists_one() macro');
   }
   const arg1 = args[1];
-  const zeroExpr = int64Expr(BigInt(0));
-  const oneExpr = int64Expr(BigInt(1));
-  const accuInit = zeroExpr;
-  const condition = boolExpr(true);
+  const accuInit = int64Expr(id, BigInt(0));
+  const condition = boolExpr(id, true);
   const step = globalCall(
+    id,
     CONDITIONAL_OPERATOR,
     arg1,
-    globalCall(ADD_OPERATOR, identExpr(ACCUMULATOR_VAR), oneExpr),
-    identExpr(ACCUMULATOR_VAR)
+    globalCall(
+      id,
+      ADD_OPERATOR,
+      identExpr(id, ACCUMULATOR_VAR),
+      int64Expr(id, BigInt(1))
+    ),
+    identExpr(id, ACCUMULATOR_VAR)
   );
   const result = globalCall(
+    id,
     EQUALS_OPERATOR,
-    identExpr(ACCUMULATOR_VAR),
-    oneExpr
+    identExpr(id, ACCUMULATOR_VAR),
+    int64Expr(id, BigInt(1))
   );
   return fold(
+    id,
     arg0.exprKind.value.name,
     target,
     ACCUMULATOR_VAR,
@@ -161,7 +194,7 @@ export function expandExistsOneMacro(target: Expr, args: Expr[]): Expr {
   );
 }
 
-export function expandMapMacro(target: Expr, args: Expr[]): Expr {
+export function expandMapMacro(id: IdHelper, target: Expr, args: Expr[]): Expr {
   const arg0 = args[0];
   if (arg0.exprKind.case !== 'identExpr') {
     throw new Error('Invalid argument to map() macro');
@@ -175,63 +208,74 @@ export function expandMapMacro(target: Expr, args: Expr[]): Expr {
     arg1 = args[1];
     arg2 = null as unknown as Expr;
   }
-  const accuInit = listExpr([]);
-  const condition = boolExpr(true);
+  const accuInit = listExpr(id, []);
+  const condition = boolExpr(id, true);
   let step = globalCall(
+    id,
     ADD_OPERATOR,
-    identExpr(ACCUMULATOR_VAR),
-    listExpr([arg1])
+    identExpr(id, ACCUMULATOR_VAR),
+    listExpr(id, [arg1])
   );
   if (!isNil(arg2)) {
     step = globalCall(
+      id,
       CONDITIONAL_OPERATOR,
       arg2,
       step,
-      identExpr(ACCUMULATOR_VAR)
+      identExpr(id, ACCUMULATOR_VAR)
     );
   }
   return fold(
+    id,
     arg0.exprKind.value.name,
     target,
     ACCUMULATOR_VAR,
     accuInit,
     condition,
     step,
-    identExpr(ACCUMULATOR_VAR)
+    identExpr(id, ACCUMULATOR_VAR)
   );
 }
 
-export function expandFilterMacro(target: Expr, args: Expr[]): Expr {
+export function expandFilterMacro(
+  id: IdHelper,
+  target: Expr,
+  args: Expr[]
+): Expr {
   const arg0 = args[0];
   if (arg0.exprKind.case !== 'identExpr') {
     throw new Error('Invalid argument to filter() macro');
   }
   const arg1 = args[1];
-  const accuInit = listExpr([]);
-  const condition = boolExpr(true);
+  const accuInit = listExpr(id, []);
+  const condition = boolExpr(id, true);
   let step = globalCall(
+    id,
     ADD_OPERATOR,
-    identExpr(ACCUMULATOR_VAR),
-    listExpr([arg0])
+    identExpr(id, ACCUMULATOR_VAR),
+    listExpr(id, [arg0])
   );
   step = globalCall(
+    id,
     CONDITIONAL_OPERATOR,
     arg1,
     step,
-    identExpr(ACCUMULATOR_VAR)
+    identExpr(id, ACCUMULATOR_VAR)
   );
   return fold(
+    id,
     arg0.exprKind.value.name,
     target,
     ACCUMULATOR_VAR,
     accuInit,
     condition,
     step,
-    identExpr(ACCUMULATOR_VAR)
+    identExpr(id, ACCUMULATOR_VAR)
   );
 }
 
 function fold(
+  id: IdHelper,
   iterVar: string,
   iterRange: Expr,
   accuVar: string,
@@ -241,6 +285,7 @@ function fold(
   result: Expr
 ): Expr {
   return create(ExprSchema, {
+    id: id.nextId(),
     exprKind: {
       case: 'comprehensionExpr',
       value: {

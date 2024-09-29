@@ -30,14 +30,18 @@ export class CELEnvironment {
   }
 
   compile(input: string, check = false): StartContext {
-    const chars = new CharStream(input);
-    const lexer = new CELLexer(chars);
-    const tokens = new CommonTokenStream(lexer);
-    const parser = new CELParser(tokens);
+    const parser = this._getParser(input);
     const tree = parser.start();
     if (tree.exception) throw tree.exception;
     if (check) this.check(tree);
     return tree;
+  }
+
+  astAsString(input: string) {
+    const parser = this._getParser(input);
+    const tree = parser.start();
+    if (tree.exception) throw tree.exception;
+    return tree.toStringTree(parser.ruleNames, parser);
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -65,5 +69,12 @@ export class CELEnvironment {
     for (const descriptor of registry) {
       this.addDescriptor(descriptor);
     }
+  }
+
+  private _getParser(input: string) {
+    const chars = new CharStream(input);
+    const lexer = new CELLexer(chars);
+    const tokens = new CommonTokenStream(lexer);
+    return new CELParser(tokens);
   }
 }

@@ -8,6 +8,7 @@ import {
   Expr_CreateStruct,
   Expr_CreateStruct_Entry,
   Expr_CreateStruct_EntrySchema,
+  SourceInfoSchema,
 } from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb.js';
 import {
   Status,
@@ -73,9 +74,10 @@ import {
   OPT_SELECT_OPERATOR,
   getOperatorFromText,
 } from './operators';
+import { IdHelper } from './utils';
 
 export class CELVisitor extends GeneratedCelVisitor<Expr> {
-  #id = BigInt(1);
+  #id = new IdHelper();
   #ERROR = create(ConstantSchema, {
     constantKind: {
       case: 'stringValue',
@@ -134,7 +136,7 @@ export class CELVisitor extends GeneratedCelVisitor<Expr> {
     }
     // If the expression is a ternary expression
     const condition = this.visit(ctx._e); // Visit the condition part
-    const id = this.#id++;
+    const id = this.#id.nextId();
     const trueExpr = this.visit(ctx._e1); // Visit the true part
     const falseExpr = this.visit(ctx._e2); // Visit the false part
     // Handle the ternary expression, e.g., return condition ? trueExpr : falseExpr;
@@ -170,7 +172,7 @@ export class CELVisitor extends GeneratedCelVisitor<Expr> {
         return this._reportError(ctx, "unexpected character, wanted '||'");
       }
       const term = this.visit(ctx._e1[i]);
-      logicManager.addTerm(this.#id++, term);
+      logicManager.addTerm(this.#id.nextId(), term);
     }
     return logicManager.toExpr();
   };
@@ -195,7 +197,7 @@ export class CELVisitor extends GeneratedCelVisitor<Expr> {
         return this._reportError(ctx, "unexpected character, wanted '^^'");
       }
       const term = this.visit(ctx._e1[i]);
-      logicManager.addTerm(this.#id++, term);
+      logicManager.addTerm(this.#id.nextId(), term);
     }
     return logicManager.toExpr();
   };
@@ -222,7 +224,7 @@ export class CELVisitor extends GeneratedCelVisitor<Expr> {
       return this._reportError(ctx, 'operator not found');
     }
     const left = this.visit(ctx.relation(0));
-    const id = this.#id++;
+    const id = this.#id.nextId();
     const right = this.visit(ctx.relation(1));
     return create(ExprSchema, {
       id,
@@ -258,7 +260,7 @@ export class CELVisitor extends GeneratedCelVisitor<Expr> {
       return this._reportError(ctx, 'operator not found');
     }
     const left = this.visit(ctx.calc(0));
-    const id = this.#id++;
+    const id = this.#id.nextId();
     const right = this.visit(ctx.calc(1));
     return create(ExprSchema, {
       id,
@@ -298,7 +300,7 @@ export class CELVisitor extends GeneratedCelVisitor<Expr> {
     if (!isNil(ctx._ops) && ctx._ops.length % 2 === 0) {
       return this.visit(ctx.member());
     }
-    const id = this.#id++;
+    const id = this.#id.nextId();
     const member = this.visit(ctx.member());
     return create(ExprSchema, {
       id,
@@ -327,7 +329,7 @@ export class CELVisitor extends GeneratedCelVisitor<Expr> {
       return expr;
     }
     return create(ExprSchema, {
-      id: this.#id++,
+      id: this.#id.nextId(),
       exprKind: {
         case: 'callExpr',
         value: {
@@ -338,9 +340,17 @@ export class CELVisitor extends GeneratedCelVisitor<Expr> {
     });
   };
 
-  //   override visitMemberCall = (ctx: MemberCallContext): Expr => {
-  //     // Implementation logic here
-  //   };
+  override visitMemberCall = (ctx: MemberCallContext): Expr => {
+    this._checkNotNil(ctx);
+    const operand = this.visit(ctx.member());
+    if (isNil(ctx._id)) {
+      return create(ExprSchema, {
+        id: this.#id.nextId(),
+      });
+    }
+    const id = ctx._id.text;
+    return this._receiverCallOrMacro(ctx, id, operand);
+  };
 
   override visitSelect = (ctx: SelectContext): Expr => {
     this._checkNotNil(ctx);
@@ -355,9 +365,10 @@ export class CELVisitor extends GeneratedCelVisitor<Expr> {
       );
     }
     const id = ctx._id.text;
+    const opId = this.#id.nextId();
     if (!isNil(ctx._opt)) {
       const literalString = create(ExprSchema, {
-        id: this.#id++,
+        id: opId,
         exprKind: {
           case: 'constExpr',
           value: {
@@ -369,7 +380,7 @@ export class CELVisitor extends GeneratedCelVisitor<Expr> {
         },
       });
       return create(ExprSchema, {
-        id: this.#id++,
+        id: opId,
         exprKind: {
           case: 'callExpr',
           value: {
@@ -380,7 +391,7 @@ export class CELVisitor extends GeneratedCelVisitor<Expr> {
       });
     }
     return create(ExprSchema, {
-      id: this.#id++,
+      id: opId,
       exprKind: {
         case: 'selectExpr',
         value: {
@@ -415,7 +426,7 @@ export class CELVisitor extends GeneratedCelVisitor<Expr> {
       );
     }
     const target = this.visit(ctx.member());
-    const id = this.#id++;
+    const id = this.#id.nextId();
     const index = this.visit(ctx._index);
     let operatorIndex = INDEX_OPERATOR;
     if (!isNil(ctx._op) && ctx._op.text === '?') {
@@ -450,7 +461,7 @@ export class CELVisitor extends GeneratedCelVisitor<Expr> {
     }
     if (isNil(ctx._op)) {
       return create(ExprSchema, {
-        id: this.#id++,
+        id: this.#id.nextId(),
         exprKind: {
           case: 'identExpr',
           value: {
@@ -468,7 +479,7 @@ export class CELVisitor extends GeneratedCelVisitor<Expr> {
 
   override visitCreateList = (ctx: CreateListContext): Expr => {
     this._checkNotNil(ctx);
-    const listId = this.#id++;
+    const listId = this.#id.nextId();
     let elements: Expr[] = [];
     let optionalIndices: number[] = [];
     if (!isNil(ctx._elems)) {
@@ -498,7 +509,7 @@ export class CELVisitor extends GeneratedCelVisitor<Expr> {
 
   override visitCreateStruct = (ctx: CreateStructContext): Expr => {
     this._checkNotNil(ctx);
-    const structId = this.#id++;
+    const structId = this.#id.nextId();
     let entries: Expr_CreateStruct_Entry[] = [];
     if (!isNil(ctx._entries)) {
       const mapInit = this.visit(ctx._entries);
@@ -535,7 +546,7 @@ export class CELVisitor extends GeneratedCelVisitor<Expr> {
     if (!isNil(ctx._leadingDot)) {
       messageName = `.${messageName}`;
     }
-    const id = this.#id++;
+    const id = this.#id.nextId();
     let entries: Expr_CreateStruct_Entry[] = [];
     if (!isNil(ctx._entries)) {
       const initializer = this.visit(ctx._entries);
@@ -575,7 +586,7 @@ export class CELVisitor extends GeneratedCelVisitor<Expr> {
       );
     }
     return create(ExprSchema, {
-      id: this.#id++,
+      id: this.#id.nextId(),
       exprKind: {
         case: 'constExpr',
         value: expr.exprKind.value,
@@ -586,7 +597,7 @@ export class CELVisitor extends GeneratedCelVisitor<Expr> {
   override visitExprList = (ctx: ExprListContext): Expr => {
     this._checkNotNil(ctx);
     return create(ExprSchema, {
-      id: this.#id++,
+      id: this.#id.nextId(),
       exprKind: {
         case: 'listExpr',
         value: {
@@ -605,7 +616,7 @@ export class CELVisitor extends GeneratedCelVisitor<Expr> {
       const ex = this.visit(elements[i]._e);
       if (isNil(ex)) {
         return create(ExprSchema, {
-          id: this.#id++,
+          id: this.#id.nextId(),
           exprKind: {
             case: 'listExpr',
             value: {
@@ -625,7 +636,7 @@ export class CELVisitor extends GeneratedCelVisitor<Expr> {
       }
     }
     return create(ExprSchema, {
-      id: this.#id++,
+      id: this.#id.nextId(),
       exprKind: {
         case: 'listExpr',
         value: {
@@ -651,7 +662,7 @@ export class CELVisitor extends GeneratedCelVisitor<Expr> {
         );
       }
       const field = ctx._fields[i];
-      const exprId = this.#id++;
+      const exprId = this.#id.nextId();
       const optionalEntry = !isNil(field._opt);
       const id = field.IDENTIFIER();
       if (isNil(id)) {
@@ -675,7 +686,7 @@ export class CELVisitor extends GeneratedCelVisitor<Expr> {
       );
     }
     return create(ExprSchema, {
-      id: this.#id++,
+      id: this.#id.nextId(),
       exprKind: {
         case: 'structExpr',
         value: {
@@ -701,7 +712,7 @@ export class CELVisitor extends GeneratedCelVisitor<Expr> {
           })
         );
       }
-      const colId = this.#id++;
+      const colId = this.#id.nextId();
       const optKey = ctx._keys[i];
       const optionalKey = !isNil(optKey._opt);
       const key = this.visit(optKey._e);
@@ -719,7 +730,7 @@ export class CELVisitor extends GeneratedCelVisitor<Expr> {
       );
     }
     return create(ExprSchema, {
-      id: this.#id++,
+      id: this.#id.nextId(),
       exprKind: {
         case: 'structExpr',
         value: {
@@ -738,7 +749,7 @@ export class CELVisitor extends GeneratedCelVisitor<Expr> {
     const constant = parseIntConstant(ctx.getText());
     // TODO: parse error handling
     return create(ExprSchema, {
-      id: this.#id++,
+      id: this.#id.nextId(),
       exprKind: {
         case: 'constExpr',
         value: constant,
@@ -751,7 +762,7 @@ export class CELVisitor extends GeneratedCelVisitor<Expr> {
     const constant = parseUintConstant(ctx.getText());
     // TODO: parse error handling
     return create(ExprSchema, {
-      id: this.#id++,
+      id: this.#id.nextId(),
       exprKind: {
         case: 'constExpr',
         value: constant,
@@ -764,7 +775,7 @@ export class CELVisitor extends GeneratedCelVisitor<Expr> {
     const constant = parseDoubleConstant(ctx.getText());
     // TODO: parse error handling
     return create(ExprSchema, {
-      id: this.#id++,
+      id: this.#id.nextId(),
       exprKind: {
         case: 'constExpr',
         value: constant,
@@ -777,7 +788,7 @@ export class CELVisitor extends GeneratedCelVisitor<Expr> {
     const constant = parseStringConstant(ctx.getText());
     // TODO: parse error handling
     return create(ExprSchema, {
-      id: this.#id++,
+      id: this.#id.nextId(),
       exprKind: {
         case: 'constExpr',
         value: constant,
@@ -790,7 +801,7 @@ export class CELVisitor extends GeneratedCelVisitor<Expr> {
     const constant = parseBytesConstant(ctx.getText());
     // TODO: parse error handling
     return create(ExprSchema, {
-      id: this.#id++,
+      id: this.#id.nextId(),
       exprKind: {
         case: 'constExpr',
         value: constant,
@@ -802,7 +813,7 @@ export class CELVisitor extends GeneratedCelVisitor<Expr> {
     this._checkNotNil(ctx);
     assert(ctx.getText() === 'true', new ParseException('true expected', 0));
     return create(ExprSchema, {
-      id: this.#id++,
+      id: this.#id.nextId(),
       exprKind: {
         case: 'constExpr',
         value: {
@@ -819,7 +830,7 @@ export class CELVisitor extends GeneratedCelVisitor<Expr> {
     this._checkNotNil(ctx);
     assert(ctx.getText() === 'false', new ParseException('false expected', 0));
     return create(ExprSchema, {
-      id: this.#id++,
+      id: this.#id.nextId(),
       exprKind: {
         case: 'constExpr',
         value: {
@@ -836,7 +847,7 @@ export class CELVisitor extends GeneratedCelVisitor<Expr> {
     this._checkNotNil(ctx);
     assert(ctx.getText() === 'null', new ParseException('null expected', 0));
     return create(ExprSchema, {
-      id: this.#id++,
+      id: this.#id.nextId(),
       exprKind: {
         case: 'constExpr',
         value: {
@@ -865,7 +876,7 @@ export class CELVisitor extends GeneratedCelVisitor<Expr> {
   private _ensureErrorsExist(status: Status) {
     this.errors.errors.push(status);
     return create(ExprSchema, {
-      id: this.#id++,
+      id: this.#id.nextId(),
       exprKind: {
         case: 'constExpr',
         value: this.#ERROR,
@@ -880,8 +891,15 @@ export class CELVisitor extends GeneratedCelVisitor<Expr> {
         message,
         details: [
           anyPack(
+            SourceInfoSchema,
+            create(SourceInfoSchema, {
+              location: `${context.start.line}:${context.start.column}`,
+              // TODO: more info
+            })
+          ),
+          anyPack(
             StringValueSchema,
-            fromJson(StringValueSchema, JSON.stringify(context, null, 2))
+            fromJson(StringValueSchema, this.env.astAsString(context.getText()))
           ),
         ],
       })
@@ -968,33 +986,25 @@ export class CELVisitor extends GeneratedCelVisitor<Expr> {
     isReceiverStyle?: boolean
   ) {
     const macro = findMacro(id);
-    const _arguments =
-      args != null
-        ? this.visitExprList(args)
-        : create(ExprSchema, {
-            id: this.#id++,
-            exprKind: {
-              case: 'listExpr',
-              value: {
-                elements: [],
-              },
-            },
-          });
-    const _args =
-      _arguments.exprKind.case === 'listExpr'
-        ? _arguments.exprKind.value.elements
-        : [];
     if (macro) {
-      return expandMacro(macro, member as Expr, _args);
+      const argList = this.visitExprList(args);
+      if (argList.exprKind.case !== 'listExpr') {
+        return this._reportError(args, 'unexpected argument list');
+      }
+      return expandMacro(
+        this.#id,
+        macro,
+        member as Expr,
+        argList.exprKind.value.elements
+      );
     }
-
     return create(ExprSchema, {
-      id: this.#id++,
+      id: this.#id.nextId(),
       exprKind: {
         case: 'callExpr',
         value: {
           function: id,
-          args: _args,
+          args: this.visitSlice(args?.expr_list() ?? []),
           target: member,
         },
       },
