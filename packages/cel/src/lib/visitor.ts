@@ -324,9 +324,8 @@ export class CELVisitor extends GeneratedCelVisitor<Expr> {
         })
       );
     }
-    const expr = this.visit(ctx.member());
     if (isNil(ctx._ops) || ctx._ops.length % 2 === 0) {
-      return expr;
+      return this.visit(ctx.member());
     }
     return create(ExprSchema, {
       id: this.#id.nextId(),
@@ -334,7 +333,7 @@ export class CELVisitor extends GeneratedCelVisitor<Expr> {
         case: 'callExpr',
         value: {
           function: NEGATE_OPERATOR,
-          args: [expr],
+          args: [this.visit(ctx.member())],
         },
       },
     });

@@ -30,6 +30,7 @@ interface TestInfo {
 
 // See: https://github.com/google/cel-go/blob/master/parser/parser_test.go
 const testCases: TestInfo[] = [
+  // Tests from Go parser
   {
     I: `"A"`,
     // P: `"A"^#1:*expr.Constant_StringValue#`,
@@ -2578,6 +2579,750 @@ const testCases: TestInfo[] = [
       },
     }),
   },
+
+  // Tests from C++ parser
+  {
+    I: 'x * 2',
+    // P: `_*_(
+    // 	x^#1:*expr.Expr_IdentExpr#,
+    // 	2^#3:*expr.Constant_Int64Value#
+    // )^#2:*expr.Expr_CallExpr#`,
+    P: create(ExprSchema, {
+      id: BigInt(2),
+      exprKind: {
+        case: 'callExpr',
+        value: {
+          function: '_*_',
+          args: [
+            {
+              id: BigInt(1),
+              exprKind: {
+                case: 'identExpr',
+                value: { name: 'x' },
+              },
+            },
+            {
+              id: BigInt(3),
+              exprKind: {
+                case: 'constExpr',
+                value: {
+                  constantKind: {
+                    case: 'int64Value',
+                    value: BigInt(2),
+                  },
+                },
+              },
+            },
+          ],
+        },
+      },
+    }),
+  },
+  {
+    I: 'x * 2u',
+    // P: `_*_(
+    // 	x^#1:*expr.Expr_IdentExpr#,
+    // 	2u^#3:*expr.Constant_Uint64Value#
+    // )^#2:*expr.Expr_CallExpr#`,
+    P: create(ExprSchema, {
+      id: BigInt(2),
+      exprKind: {
+        case: 'callExpr',
+        value: {
+          function: '_*_',
+          args: [
+            {
+              id: BigInt(1),
+              exprKind: {
+                case: 'identExpr',
+                value: { name: 'x' },
+              },
+            },
+            {
+              id: BigInt(3),
+              exprKind: {
+                case: 'constExpr',
+                value: {
+                  constantKind: {
+                    case: 'uint64Value',
+                    value: BigInt(2),
+                  },
+                },
+              },
+            },
+          ],
+        },
+      },
+    }),
+  },
+  {
+    I: 'x * 2.0',
+    // P: `_*_(
+    // 	x^#1:*expr.Expr_IdentExpr#,
+    // 	2^#3:*expr.Constant_DoubleValue#
+    // )^#2:*expr.Expr_CallExpr#`,
+    P: create(ExprSchema, {
+      id: BigInt(2),
+      exprKind: {
+        case: 'callExpr',
+        value: {
+          function: '_*_',
+          args: [
+            {
+              id: BigInt(1),
+              exprKind: {
+                case: 'identExpr',
+                value: { name: 'x' },
+              },
+            },
+            {
+              id: BigInt(3),
+              exprKind: {
+                case: 'constExpr',
+                value: {
+                  constantKind: {
+                    case: 'doubleValue',
+                    value: 2.0,
+                  },
+                },
+              },
+            },
+          ],
+        },
+      },
+    }),
+  },
+  {
+    I: `"\u2764"`,
+    // P: "\"\u2764\"^#1:*expr.Constant_StringValue#",
+    P: create(ExprSchema, {
+      id: BigInt(1),
+      exprKind: {
+        case: 'constExpr',
+        value: {
+          constantKind: {
+            case: 'stringValue',
+            value: '❤',
+          },
+        },
+      },
+    }),
+  },
+  {
+    I: '"\u2764"',
+    // P: "\"\u2764\"^#1:*expr.Constant_StringValue#",
+    P: create(ExprSchema, {
+      id: BigInt(1),
+      exprKind: {
+        case: 'constExpr',
+        value: {
+          constantKind: {
+            case: 'stringValue',
+            value: '❤',
+          },
+        },
+      },
+    }),
+  },
+  {
+    I: `! false`,
+    // P: `!_(
+    // 	false^#2:*expr.Constant_BoolValue#
+    // )^#1:*expr.Expr_CallExpr#`,
+    P: create(ExprSchema, {
+      id: BigInt(1),
+      exprKind: {
+        case: 'callExpr',
+        value: {
+          function: '!_',
+          args: [
+            {
+              id: BigInt(2),
+              exprKind: {
+                case: 'constExpr',
+                value: {
+                  constantKind: {
+                    case: 'boolValue',
+                    value: false,
+                  },
+                },
+              },
+            },
+          ],
+        },
+      },
+    }),
+  },
+  {
+    I: `-a`,
+    // P: `-_(
+    // 	a^#2:*expr.Expr_IdentExpr#
+    // )^#1:*expr.Expr_CallExpr#`,
+    P: create(ExprSchema, {
+      id: BigInt(1),
+      exprKind: {
+        case: 'callExpr',
+        value: {
+          function: '-_',
+          args: [
+            {
+              id: BigInt(2),
+              exprKind: {
+                case: 'identExpr',
+                value: { name: 'a' },
+              },
+            },
+          ],
+        },
+      },
+    }),
+  },
+  {
+    I: `a.b(5)`,
+    // P: `a^#1:*expr.Expr_IdentExpr#.b(
+    // 	5^#3:*expr.Constant_Int64Value#
+    // )^#2:*expr.Expr_CallExpr#`,
+    P: create(ExprSchema, {
+      id: BigInt(2),
+      exprKind: {
+        case: 'callExpr',
+        value: {
+          function: 'b',
+          target: {
+            id: BigInt(1),
+            exprKind: {
+              case: 'identExpr',
+              value: { name: 'a' },
+            },
+          },
+          args: [
+            {
+              id: BigInt(3),
+              exprKind: {
+                case: 'constExpr',
+                value: {
+                  constantKind: {
+                    case: 'int64Value',
+                    value: BigInt(5),
+                  },
+                },
+              },
+            },
+          ],
+        },
+      },
+    }),
+  },
+  {
+    I: `a[3]`,
+    // P: `_[_](
+    // 	a^#1:*expr.Expr_IdentExpr#,
+    // 	3^#3:*expr.Constant_Int64Value#
+    // )^#2:*expr.Expr_CallExpr#`,
+    P: create(ExprSchema, {
+      id: BigInt(2),
+      exprKind: {
+        case: 'callExpr',
+        value: {
+          function: '_[_]',
+          args: [
+            {
+              id: BigInt(1),
+              exprKind: {
+                case: 'identExpr',
+                value: { name: 'a' },
+              },
+            },
+            {
+              id: BigInt(3),
+              exprKind: {
+                case: 'constExpr',
+                value: {
+                  constantKind: {
+                    case: 'int64Value',
+                    value: BigInt(3),
+                  },
+                },
+              },
+            },
+          ],
+        },
+      },
+    }),
+  },
+  {
+    I: `SomeMessage{foo: 5, bar: "xyz"}`,
+    // P: `SomeMessage{
+    // 	foo:5^#3:*expr.Constant_Int64Value#^#2:*expr.Expr_CreateStruct_Entry#,
+    // 	bar:"xyz"^#5:*expr.Constant_StringValue#^#4:*expr.Expr_CreateStruct_Entry#
+    // }^#1:*expr.Expr_StructExpr#`,
+    P: create(ExprSchema, {
+      id: BigInt(1),
+      exprKind: {
+        case: 'structExpr',
+        value: {
+          messageName: 'SomeMessage',
+          entries: [
+            {
+              id: BigInt(2),
+              keyKind: {
+                case: 'fieldKey',
+                value: 'foo',
+              },
+              value: {
+                id: BigInt(3),
+                exprKind: {
+                  case: 'constExpr',
+                  value: {
+                    constantKind: {
+                      case: 'int64Value',
+                      value: BigInt(5),
+                    },
+                  },
+                },
+              },
+            },
+            {
+              id: BigInt(4),
+              keyKind: {
+                case: 'fieldKey',
+                value: 'bar',
+              },
+              value: {
+                id: BigInt(5),
+                exprKind: {
+                  case: 'constExpr',
+                  value: {
+                    constantKind: {
+                      case: 'stringValue',
+                      value: 'xyz',
+                    },
+                  },
+                },
+              },
+            },
+          ],
+        },
+      },
+    }),
+  },
+  {
+    I: `[3, 4, 5]`,
+    // P: `[
+    // 	3^#2:*expr.Constant_Int64Value#,
+    // 	4^#3:*expr.Constant_Int64Value#,
+    // 	5^#4:*expr.Constant_Int64Value#
+    // ]^#1:*expr.Expr_ListExpr#`,
+    P: create(ExprSchema, {
+      id: BigInt(1),
+      exprKind: {
+        case: 'listExpr',
+        value: {
+          elements: [
+            {
+              id: BigInt(2),
+              exprKind: {
+                case: 'constExpr',
+                value: {
+                  constantKind: {
+                    case: 'int64Value',
+                    value: BigInt(3),
+                  },
+                },
+              },
+            },
+            {
+              id: BigInt(3),
+              exprKind: {
+                case: 'constExpr',
+                value: {
+                  constantKind: {
+                    case: 'int64Value',
+                    value: BigInt(4),
+                  },
+                },
+              },
+            },
+            {
+              id: BigInt(4),
+              exprKind: {
+                case: 'constExpr',
+                value: {
+                  constantKind: {
+                    case: 'int64Value',
+                    value: BigInt(5),
+                  },
+                },
+              },
+            },
+          ],
+        },
+      },
+    }),
+  },
+  {
+    I: `[3, 4, 5,]`,
+    // P: `[
+    // 	3^#2:*expr.Constant_Int64Value#,
+    // 	4^#3:*expr.Constant_Int64Value#,
+    // 	5^#4:*expr.Constant_Int64Value#
+    // ]^#1:*expr.Expr_ListExpr#`,
+    P: create(ExprSchema, {
+      id: BigInt(1),
+      exprKind: {
+        case: 'listExpr',
+        value: {
+          elements: [
+            {
+              id: BigInt(2),
+              exprKind: {
+                case: 'constExpr',
+                value: {
+                  constantKind: {
+                    case: 'int64Value',
+                    value: BigInt(3),
+                  },
+                },
+              },
+            },
+            {
+              id: BigInt(3),
+              exprKind: {
+                case: 'constExpr',
+                value: {
+                  constantKind: {
+                    case: 'int64Value',
+                    value: BigInt(4),
+                  },
+                },
+              },
+            },
+            {
+              id: BigInt(4),
+              exprKind: {
+                case: 'constExpr',
+                value: {
+                  constantKind: {
+                    case: 'int64Value',
+                    value: BigInt(5),
+                  },
+                },
+              },
+            },
+          ],
+        },
+      },
+    }),
+  },
+  {
+    I: `{foo: 5, bar: "xyz"}`,
+    // P: `{
+    // 	foo^#3:*expr.Expr_IdentExpr#:5^#4:*expr.Constant_Int64Value#^#2:*expr.Expr_CreateStruct_Entry#,
+    // 	bar^#6:*expr.Expr_IdentExpr#:"xyz"^#7:*expr.Constant_StringValue#^#5:*expr.Expr_CreateStruct_Entry#
+    // }^#1:*expr.Expr_StructExpr#`,
+    P: create(ExprSchema, {
+      id: BigInt(1),
+      exprKind: {
+        case: 'structExpr',
+        value: {
+          entries: [
+            {
+              id: BigInt(2),
+              keyKind: {
+                case: 'mapKey',
+                value: {
+                  id: BigInt(3),
+                  exprKind: {
+                    case: 'identExpr',
+                    value: { name: 'foo' },
+                  },
+                },
+              },
+              value: {
+                id: BigInt(4),
+                exprKind: {
+                  case: 'constExpr',
+                  value: {
+                    constantKind: {
+                      case: 'int64Value',
+                      value: BigInt(5),
+                    },
+                  },
+                },
+              },
+            },
+            {
+              id: BigInt(5),
+              keyKind: {
+                case: 'mapKey',
+                value: {
+                  id: BigInt(6),
+                  exprKind: {
+                    case: 'identExpr',
+                    value: { name: 'bar' },
+                  },
+                },
+              },
+              value: {
+                id: BigInt(7),
+                exprKind: {
+                  case: 'constExpr',
+                  value: {
+                    constantKind: {
+                      case: 'stringValue',
+                      value: 'xyz',
+                    },
+                  },
+                },
+              },
+            },
+          ],
+        },
+      },
+    }),
+  },
+  {
+    I: `{foo: 5, bar: "xyz", }`,
+    // P: `{
+    // 	foo^#3:*expr.Expr_IdentExpr#:5^#4:*expr.Constant_Int64Value#^#2:*expr.Expr_CreateStruct_Entry#,
+    // 	bar^#6:*expr.Expr_IdentExpr#:"xyz"^#7:*expr.Constant_StringValue#^#5:*expr.Expr_CreateStruct_Entry#
+    // }^#1:*expr.Expr_StructExpr#`,
+    P: create(ExprSchema, {
+      id: BigInt(1),
+      exprKind: {
+        case: 'structExpr',
+        value: {
+          entries: [
+            {
+              id: BigInt(2),
+              keyKind: {
+                case: 'mapKey',
+                value: {
+                  id: BigInt(3),
+                  exprKind: {
+                    case: 'identExpr',
+                    value: { name: 'foo' },
+                  },
+                },
+              },
+              value: {
+                id: BigInt(4),
+                exprKind: {
+                  case: 'constExpr',
+                  value: {
+                    constantKind: {
+                      case: 'int64Value',
+                      value: BigInt(5),
+                    },
+                  },
+                },
+              },
+            },
+            {
+              id: BigInt(5),
+              keyKind: {
+                case: 'mapKey',
+                value: {
+                  id: BigInt(6),
+                  exprKind: {
+                    case: 'identExpr',
+                    value: { name: 'bar' },
+                  },
+                },
+              },
+              value: {
+                id: BigInt(7),
+                exprKind: {
+                  case: 'constExpr',
+                  value: {
+                    constantKind: {
+                      case: 'stringValue',
+                      value: 'xyz',
+                    },
+                  },
+                },
+              },
+            },
+          ],
+        },
+      },
+    }),
+  },
+  {
+    I: `a > 5 && a < 10`,
+    // P: `_&&_(
+    // 	_>_(
+    // 	  a^#1:*expr.Expr_IdentExpr#,
+    // 	  5^#3:*expr.Constant_Int64Value#
+    // 	)^#2:*expr.Expr_CallExpr#,
+    // 	_<_(
+    // 	  a^#4:*expr.Expr_IdentExpr#,
+    // 	  10^#6:*expr.Constant_Int64Value#
+    // 	)^#5:*expr.Expr_CallExpr#
+    // )^#7:*expr.Expr_CallExpr#`,
+    P: create(ExprSchema, {
+      id: BigInt(7),
+      exprKind: {
+        case: 'callExpr',
+        value: {
+          function: '_&&_',
+          args: [
+            {
+              id: BigInt(2),
+              exprKind: {
+                case: 'callExpr',
+                value: {
+                  function: '_>_',
+                  args: [
+                    {
+                      id: BigInt(1),
+                      exprKind: {
+                        case: 'identExpr',
+                        value: { name: 'a' },
+                      },
+                    },
+                    {
+                      id: BigInt(3),
+                      exprKind: {
+                        case: 'constExpr',
+                        value: {
+                          constantKind: {
+                            case: 'int64Value',
+                            value: BigInt(5),
+                          },
+                        },
+                      },
+                    },
+                  ],
+                },
+              },
+            },
+            {
+              id: BigInt(5),
+              exprKind: {
+                case: 'callExpr',
+                value: {
+                  function: '_<_',
+                  args: [
+                    {
+                      id: BigInt(4),
+                      exprKind: {
+                        case: 'identExpr',
+                        value: { name: 'a' },
+                      },
+                    },
+                    {
+                      id: BigInt(6),
+                      exprKind: {
+                        case: 'constExpr',
+                        value: {
+                          constantKind: {
+                            case: 'int64Value',
+                            value: BigInt(10),
+                          },
+                        },
+                      },
+                    },
+                  ],
+                },
+              },
+            },
+          ],
+        },
+      },
+    }),
+  },
+  {
+    I: `a < 5 || a > 10`,
+    // P: `_||_(
+    // 	_<_(
+    // 	  a^#1:*expr.Expr_IdentExpr#,
+    // 	  5^#3:*expr.Constant_Int64Value#
+    // 	)^#2:*expr.Expr_CallExpr#,
+    // 	_>_(
+    // 	  a^#4:*expr.Expr_IdentExpr#,
+    // 	  10^#6:*expr.Constant_Int64Value#
+    // 	)^#5:*expr.Expr_CallExpr#
+    // )^#7:*expr.Expr_CallExpr#`,
+    P: create(ExprSchema, {
+      id: BigInt(7),
+      exprKind: {
+        case: 'callExpr',
+        value: {
+          function: '_||_',
+          args: [
+            {
+              id: BigInt(2),
+              exprKind: {
+                case: 'callExpr',
+                value: {
+                  function: '_<_',
+                  args: [
+                    {
+                      id: BigInt(1),
+                      exprKind: {
+                        case: 'identExpr',
+                        value: { name: 'a' },
+                      },
+                    },
+                    {
+                      id: BigInt(3),
+                      exprKind: {
+                        case: 'constExpr',
+                        value: {
+                          constantKind: {
+                            case: 'int64Value',
+                            value: BigInt(5),
+                          },
+                        },
+                      },
+                    },
+                  ],
+                },
+              },
+            },
+            {
+              id: BigInt(5),
+              exprKind: {
+                case: 'callExpr',
+                value: {
+                  function: '_>_',
+                  args: [
+                    {
+                      id: BigInt(4),
+                      exprKind: {
+                        case: 'identExpr',
+                        value: { name: 'a' },
+                      },
+                    },
+                    {
+                      id: BigInt(6),
+                      exprKind: {
+                        case: 'constExpr',
+                        value: {
+                          constantKind: {
+                            case: 'int64Value',
+                            value: BigInt(10),
+                          },
+                        },
+                      },
+                    },
+                  ],
+                },
+              },
+            },
+          ],
+        },
+      },
+    }),
+  },
+  // TODO: Error tests
+  // {
+  // 	I: `{`,
+  // 	E: `ERROR: <input>:1:2: Syntax error: mismatched input '<EOF>' expecting {'[', '{', '}', '(', '.', ',', '-', '!', '?', 'true', 'false', 'null', NUM_FLOAT, NUM_INT, NUM_UINT, STRING, BYTES, IDENTIFIER}
+  // 	 | {
+  // 	 | .^`,
+  // },
 ];
 
 describe('CELVisitor', () => {
