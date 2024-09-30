@@ -3323,6 +3323,906 @@ const testCases: TestInfo[] = [
   // 	 | {
   // 	 | .^`,
   // },
+
+  // Tests from Java parser
+  {
+    I: `[] + [1,2,3,] + [4]`,
+    // P: `_+_(
+    // 	_+_(
+    // 		[]^#1:*expr.Expr_ListExpr#,
+    // 		[
+    // 			1^#4:*expr.Constant_Int64Value#,
+    // 			2^#5:*expr.Constant_Int64Value#,
+    // 			3^#6:*expr.Constant_Int64Value#
+    // 		]^#3:*expr.Expr_ListExpr#
+    // 	)^#2:*expr.Expr_CallExpr#,
+    // 	[
+    // 		4^#9:*expr.Constant_Int64Value#
+    // 	]^#8:*expr.Expr_ListExpr#
+    // )^#7:*expr.Expr_CallExpr#`,
+    P: create(ExprSchema, {
+      id: BigInt(7),
+      exprKind: {
+        case: 'callExpr',
+        value: {
+          function: '_+_',
+          args: [
+            {
+              id: BigInt(2),
+              exprKind: {
+                case: 'callExpr',
+                value: {
+                  function: '_+_',
+                  args: [
+                    {
+                      id: BigInt(1),
+                      exprKind: {
+                        case: 'listExpr',
+                        value: {
+                          elements: [],
+                        },
+                      },
+                    },
+                    {
+                      id: BigInt(3),
+                      exprKind: {
+                        case: 'listExpr',
+                        value: {
+                          elements: [
+                            {
+                              id: BigInt(4),
+                              exprKind: {
+                                case: 'constExpr',
+                                value: {
+                                  constantKind: {
+                                    case: 'int64Value',
+                                    value: BigInt(1),
+                                  },
+                                },
+                              },
+                            },
+                            {
+                              id: BigInt(5),
+                              exprKind: {
+                                case: 'constExpr',
+                                value: {
+                                  constantKind: {
+                                    case: 'int64Value',
+                                    value: BigInt(2),
+                                  },
+                                },
+                              },
+                            },
+                            {
+                              id: BigInt(6),
+                              exprKind: {
+                                case: 'constExpr',
+                                value: {
+                                  constantKind: {
+                                    case: 'int64Value',
+                                    value: BigInt(3),
+                                  },
+                                },
+                              },
+                            },
+                          ],
+                        },
+                      },
+                    },
+                  ],
+                },
+              },
+            },
+            {
+              id: BigInt(8),
+              exprKind: {
+                case: 'listExpr',
+                value: {
+                  elements: [
+                    {
+                      id: BigInt(9),
+                      exprKind: {
+                        case: 'constExpr',
+                        value: {
+                          constantKind: {
+                            case: 'int64Value',
+                            value: BigInt(4),
+                          },
+                        },
+                      },
+                    },
+                  ],
+                },
+              },
+            },
+          ],
+        },
+      },
+    }),
+  },
+  {
+    I: `{1:2u, 2:3u}`,
+    // P: `{
+    // 	1^#3:*expr.Constant_Int64Value#:2u^#4:*expr.Constant_Uint64Value#^#2:*expr.Expr_CreateStruct_Entry#,
+    // 	2^#6:*expr.Constant_Int64Value#:3u^#7:*expr.Constant_Uint64Value#^#5:*expr.Expr_CreateStruct_Entry#
+    // }^#1:*expr.Expr_StructExpr#`,
+    P: create(ExprSchema, {
+      id: BigInt(1),
+      exprKind: {
+        case: 'structExpr',
+        value: {
+          entries: [
+            {
+              id: BigInt(2),
+              keyKind: {
+                case: 'mapKey',
+                value: {
+                  id: BigInt(3),
+                  exprKind: {
+                    case: 'constExpr',
+                    value: {
+                      constantKind: {
+                        case: 'int64Value',
+                        value: BigInt(1),
+                      },
+                    },
+                  },
+                },
+              },
+              value: {
+                id: BigInt(4),
+                exprKind: {
+                  case: 'constExpr',
+                  value: {
+                    constantKind: {
+                      case: 'uint64Value',
+                      value: BigInt(2),
+                    },
+                  },
+                },
+              },
+            },
+            {
+              id: BigInt(5),
+              keyKind: {
+                case: 'mapKey',
+                value: {
+                  id: BigInt(6),
+                  exprKind: {
+                    case: 'constExpr',
+                    value: {
+                      constantKind: {
+                        case: 'int64Value',
+                        value: BigInt(2),
+                      },
+                    },
+                  },
+                },
+              },
+              value: {
+                id: BigInt(7),
+                exprKind: {
+                  case: 'constExpr',
+                  value: {
+                    constantKind: {
+                      case: 'uint64Value',
+                      value: BigInt(3),
+                    },
+                  },
+                },
+              },
+            },
+          ],
+        },
+      },
+    }),
+  },
+  // TODO: TestAllTypes
+  // {
+  // 	I: `TestAllTypes{single_int32: 1, single_int64: 2}`,
+  // 	P: `TestAllTypes{
+  // 		single_int32:1^#3:*expr.Constant_Int64Value#^#2:*expr.Expr_CreateStruct_Entry#,
+  // 		single_int64:2^#5:*expr.Constant_Int64Value#^#4:*expr.Expr_CreateStruct_Entry#
+  // 	}^#1:*expr.Expr_StructExpr#`,
+  // },
+  // {
+  // 	I: `TestAllTypes(){}`,
+  // 	E: `ERROR: <input>:1:15: Syntax error: mismatched input '{' expecting <EOF>
+  // 	| TestAllTypes(){}
+  // 	| ..............^`,
+  // },
+  // {
+  // 	I: `TestAllTypes{}()`,
+  // 	E: `ERROR: <input>:1:15: Syntax error: mismatched input '(' expecting <EOF>
+  // 	| TestAllTypes{}()
+  // 	| ..............^`,
+  // },
+  {
+    I: `size(x) == x.size()`,
+    // P: `_==_(
+    // 	size(
+    // 		x^#2:*expr.Expr_IdentExpr#
+    // 	)^#1:*expr.Expr_CallExpr#,
+    // 	x^#4:*expr.Expr_IdentExpr#.size()^#5:*expr.Expr_CallExpr#
+    // )^#3:*expr.Expr_CallExpr#`,
+    P: create(ExprSchema, {
+      id: BigInt(3),
+      exprKind: {
+        case: 'callExpr',
+        value: {
+          function: '_==_',
+          args: [
+            {
+              id: BigInt(1),
+              exprKind: {
+                case: 'callExpr',
+                value: {
+                  function: 'size',
+                  args: [
+                    {
+                      id: BigInt(2),
+                      exprKind: {
+                        case: 'identExpr',
+                        value: { name: 'x' },
+                      },
+                    },
+                  ],
+                },
+              },
+            },
+            {
+              id: BigInt(5),
+              exprKind: {
+                case: 'callExpr',
+                value: {
+                  function: 'size',
+                  target: {
+                    id: BigInt(4),
+                    exprKind: {
+                      case: 'identExpr',
+                      value: { name: 'x' },
+                    },
+                  },
+                  args: [],
+                },
+              },
+            },
+          ],
+        },
+      },
+    }),
+  },
+  // TODO: errors
+  //   {
+  // 		I: `1 + $`,
+  // 		E: `ERROR: <input>:1:5: Syntax error: token recognition error at: '$'
+  // 		| 1 + $
+  // 		| ....^
+  // 		ERROR: <input>:1:6: Syntax error: mismatched input '<EOF>' expecting {'[', '{', '(', '.', '-', '!', 'true', 'false', 'null', NUM_FLOAT, NUM_INT, NUM_UINT, STRING, BYTES, IDENTIFIER}
+  // 		| 1 + $
+  // 		| .....^`,
+  // 	},
+  // 	{
+  // 		I: `1 + 2
+  // 3 +`,
+  // 		E: `ERROR: <input>:2:1: Syntax error: mismatched input '3' expecting <EOF>
+  // 		| 3 +
+  // 		| ^`,
+  // 	},
+  {
+    I: `"\""`,
+    // P: `"\""^#1:*expr.Constant_StringValue#`,
+    P: create(ExprSchema, {
+      id: BigInt(1),
+      exprKind: {
+        case: 'constExpr',
+        value: {
+          constantKind: {
+            case: 'stringValue',
+            value: '',
+          },
+        },
+      },
+    }),
+  },
+  {
+    I: `[1,3,4][0]`,
+    // P: `_[_](
+    // 	[
+    // 		1^#2:*expr.Constant_Int64Value#,
+    // 		3^#3:*expr.Constant_Int64Value#,
+    // 		4^#4:*expr.Constant_Int64Value#
+    // 	]^#1:*expr.Expr_ListExpr#,
+    // 	0^#6:*expr.Constant_Int64Value#
+    // )^#5:*expr.Expr_CallExpr#`,
+    P: create(ExprSchema, {
+      id: BigInt(5),
+      exprKind: {
+        case: 'callExpr',
+        value: {
+          function: '_[_]',
+          args: [
+            {
+              id: BigInt(1),
+              exprKind: {
+                case: 'listExpr',
+                value: {
+                  elements: [
+                    {
+                      id: BigInt(2),
+                      exprKind: {
+                        case: 'constExpr',
+                        value: {
+                          constantKind: {
+                            case: 'int64Value',
+                            value: BigInt(1),
+                          },
+                        },
+                      },
+                    },
+                    {
+                      id: BigInt(3),
+                      exprKind: {
+                        case: 'constExpr',
+                        value: {
+                          constantKind: {
+                            case: 'int64Value',
+                            value: BigInt(3),
+                          },
+                        },
+                      },
+                    },
+                    {
+                      id: BigInt(4),
+                      exprKind: {
+                        case: 'constExpr',
+                        value: {
+                          constantKind: {
+                            case: 'int64Value',
+                            value: BigInt(4),
+                          },
+                        },
+                      },
+                    },
+                  ],
+                },
+              },
+            },
+            {
+              id: BigInt(6),
+              exprKind: {
+                case: 'constExpr',
+                value: {
+                  constantKind: {
+                    case: 'int64Value',
+                    value: BigInt(0),
+                  },
+                },
+              },
+            },
+          ],
+        },
+      },
+    }),
+  },
+  // TODO: errors
+  // {
+  // 	I: `1.all(2, 3)`,
+  // 	E: `ERROR: <input>:1:7: argument must be a simple name
+  // 	| 1.all(2, 3)
+  // 	| ......^`,
+  // },
+  {
+    I: `x["a"].single_int32 == 23`,
+    // P: `_==_(
+    // 	_[_](
+    // 		x^#1:*expr.Expr_IdentExpr#,
+    // 		"a"^#3:*expr.Constant_StringValue#
+    // 	)^#2:*expr.Expr_CallExpr#.single_int32^#4:*expr.Expr_SelectExpr#,
+    // 	23^#6:*expr.Constant_Int64Value#
+    // )^#5:*expr.Expr_CallExpr#`,
+    P: create(ExprSchema, {
+      id: BigInt(5),
+      exprKind: {
+        case: 'callExpr',
+        value: {
+          function: '_==_',
+          args: [
+            {
+              id: BigInt(4),
+              exprKind: {
+                case: 'selectExpr',
+                value: {
+                  operand: {
+                    id: BigInt(2),
+                    exprKind: {
+                      case: 'callExpr',
+                      value: {
+                        function: '_[_]',
+                        args: [
+                          {
+                            id: BigInt(1),
+                            exprKind: {
+                              case: 'identExpr',
+                              value: { name: 'x' },
+                            },
+                          },
+                          {
+                            id: BigInt(3),
+                            exprKind: {
+                              case: 'constExpr',
+                              value: {
+                                constantKind: {
+                                  case: 'stringValue',
+                                  value: 'a',
+                                },
+                              },
+                            },
+                          },
+                        ],
+                      },
+                    },
+                  },
+                  field: 'single_int32',
+                },
+              },
+            },
+            {
+              id: BigInt(6),
+              exprKind: {
+                case: 'constExpr',
+                value: {
+                  constantKind: {
+                    case: 'int64Value',
+                    value: BigInt(23),
+                  },
+                },
+              },
+            },
+          ],
+        },
+      },
+    }),
+  },
+  {
+    I: `x.single_nested_message != null`,
+    // P: `_!=_(
+    // 	x^#1:*expr.Expr_IdentExpr#.single_nested_message^#2:*expr.Expr_SelectExpr#,
+    // 	null^#4:*expr.Constant_NullValue#
+    // )^#3:*expr.Expr_CallExpr#`,
+    P: create(ExprSchema, {
+      id: BigInt(3),
+      exprKind: {
+        case: 'callExpr',
+        value: {
+          function: '_!=_',
+          args: [
+            {
+              id: BigInt(2),
+              exprKind: {
+                case: 'selectExpr',
+                value: {
+                  operand: {
+                    id: BigInt(1),
+                    exprKind: {
+                      case: 'identExpr',
+                      value: { name: 'x' },
+                    },
+                  },
+                  field: 'single_nested_message',
+                },
+              },
+            },
+            {
+              id: BigInt(4),
+              exprKind: {
+                case: 'constExpr',
+                value: {
+                  constantKind: {
+                    case: 'nullValue',
+                    value: NullValue.NULL_VALUE,
+                  },
+                },
+              },
+            },
+          ],
+        },
+      },
+    }),
+  },
+  {
+    I: `false && !true || false ? 2 : 3`,
+    // P: `_?_:_(
+    // 	_||_(
+    // 		_&&_(
+    // 			false^#1:*expr.Constant_BoolValue#,
+    // 			!_(
+    // 				true^#3:*expr.Constant_BoolValue#
+    // 			)^#2:*expr.Expr_CallExpr#
+    // 		)^#4:*expr.Expr_CallExpr#,
+    // 		false^#5:*expr.Constant_BoolValue#
+    // 	)^#6:*expr.Expr_CallExpr#,
+    // 	2^#8:*expr.Constant_Int64Value#,
+    // 	3^#9:*expr.Constant_Int64Value#
+    // )^#7:*expr.Expr_CallExpr#`,
+    P: create(ExprSchema, {
+      id: BigInt(7),
+      exprKind: {
+        case: 'callExpr',
+        value: {
+          function: '_?_:_',
+          args: [
+            {
+              id: BigInt(6),
+              exprKind: {
+                case: 'callExpr',
+                value: {
+                  function: '_||_',
+                  args: [
+                    {
+                      id: BigInt(4),
+                      exprKind: {
+                        case: 'callExpr',
+                        value: {
+                          function: '_&&_',
+                          args: [
+                            {
+                              id: BigInt(1),
+                              exprKind: {
+                                case: 'constExpr',
+                                value: {
+                                  constantKind: {
+                                    case: 'boolValue',
+                                    value: false,
+                                  },
+                                },
+                              },
+                            },
+                            {
+                              id: BigInt(2),
+                              exprKind: {
+                                case: 'callExpr',
+                                value: {
+                                  function: '!_',
+                                  args: [
+                                    {
+                                      id: BigInt(3),
+                                      exprKind: {
+                                        case: 'constExpr',
+                                        value: {
+                                          constantKind: {
+                                            case: 'boolValue',
+                                            value: true,
+                                          },
+                                        },
+                                      },
+                                    },
+                                  ],
+                                },
+                              },
+                            },
+                          ],
+                        },
+                      },
+                    },
+                    {
+                      id: BigInt(5),
+                      exprKind: {
+                        case: 'constExpr',
+                        value: {
+                          constantKind: {
+                            case: 'boolValue',
+                            value: false,
+                          },
+                        },
+                      },
+                    },
+                  ],
+                },
+              },
+            },
+            {
+              id: BigInt(8),
+              exprKind: {
+                case: 'constExpr',
+                value: {
+                  constantKind: {
+                    case: 'int64Value',
+                    value: BigInt(2),
+                  },
+                },
+              },
+            },
+            {
+              id: BigInt(9),
+              exprKind: {
+                case: 'constExpr',
+                value: {
+                  constantKind: {
+                    case: 'int64Value',
+                    value: BigInt(3),
+                  },
+                },
+              },
+            },
+          ],
+        },
+      },
+    }),
+  },
+  {
+    I: `b"abc" + B"def"`,
+    // P: `_+_(
+    // 	b"abc"^#1:*expr.Constant_BytesValue#,
+    // 	b"def"^#3:*expr.Constant_BytesValue#
+    // )^#2:*expr.Expr_CallExpr#`,
+    P: create(ExprSchema, {
+      id: BigInt(2),
+      exprKind: {
+        case: 'callExpr',
+        value: {
+          function: '_+_',
+          args: [
+            {
+              id: BigInt(1),
+              exprKind: {
+                case: 'constExpr',
+                value: {
+                  constantKind: {
+                    case: 'bytesValue',
+                    value: new TextEncoder().encode('abc'),
+                  },
+                },
+              },
+            },
+            {
+              id: BigInt(3),
+              exprKind: {
+                case: 'constExpr',
+                value: {
+                  constantKind: {
+                    case: 'bytesValue',
+                    value: new TextEncoder().encode('def'),
+                  },
+                },
+              },
+            },
+          ],
+        },
+      },
+    }),
+  },
+  {
+    I: `1 + 2 * 3 - 1 / 2 == 6 % 1`,
+    // P: `_==_(
+    // 	_-_(
+    // 		_+_(
+    // 			1^#1:*expr.Constant_Int64Value#,
+    // 			_*_(
+    // 				2^#3:*expr.Constant_Int64Value#,
+    // 				3^#5:*expr.Constant_Int64Value#
+    // 			)^#4:*expr.Expr_CallExpr#
+    // 		)^#2:*expr.Expr_CallExpr#,
+    // 		_/_(
+    // 			1^#7:*expr.Constant_Int64Value#,
+    // 			2^#9:*expr.Constant_Int64Value#
+    // 		)^#8:*expr.Expr_CallExpr#
+    // 	)^#6:*expr.Expr_CallExpr#,
+    // 	_%_(
+    // 		6^#11:*expr.Constant_Int64Value#,
+    // 		1^#13:*expr.Constant_Int64Value#
+    // 	)^#12:*expr.Expr_CallExpr#
+    // )^#10:*expr.Expr_CallExpr#`,
+    P: create(ExprSchema, {
+      id: BigInt(10),
+      exprKind: {
+        case: 'callExpr',
+        value: {
+          function: '_==_',
+          args: [
+            {
+              id: BigInt(6),
+              exprKind: {
+                case: 'callExpr',
+                value: {
+                  function: '_-_',
+                  args: [
+                    {
+                      id: BigInt(2),
+                      exprKind: {
+                        case: 'callExpr',
+                        value: {
+                          function: '_+_',
+                          args: [
+                            {
+                              id: BigInt(1),
+                              exprKind: {
+                                case: 'constExpr',
+                                value: {
+                                  constantKind: {
+                                    case: 'int64Value',
+                                    value: BigInt(1),
+                                  },
+                                },
+                              },
+                            },
+                            {
+                              id: BigInt(4),
+                              exprKind: {
+                                case: 'callExpr',
+                                value: {
+                                  function: '_*_',
+                                  args: [
+                                    {
+                                      id: BigInt(3),
+                                      exprKind: {
+                                        case: 'constExpr',
+                                        value: {
+                                          constantKind: {
+                                            case: 'int64Value',
+                                            value: BigInt(2),
+                                          },
+                                        },
+                                      },
+                                    },
+                                    {
+                                      id: BigInt(5),
+                                      exprKind: {
+                                        case: 'constExpr',
+                                        value: {
+                                          constantKind: {
+                                            case: 'int64Value',
+                                            value: BigInt(3),
+                                          },
+                                        },
+                                      },
+                                    },
+                                  ],
+                                },
+                              },
+                            },
+                          ],
+                        },
+                      },
+                    },
+                    {
+                      id: BigInt(8),
+                      exprKind: {
+                        case: 'callExpr',
+                        value: {
+                          function: '_/_',
+                          args: [
+                            {
+                              id: BigInt(7),
+                              exprKind: {
+                                case: 'constExpr',
+                                value: {
+                                  constantKind: {
+                                    case: 'int64Value',
+                                    value: BigInt(1),
+                                  },
+                                },
+                              },
+                            },
+                            {
+                              id: BigInt(9),
+                              exprKind: {
+                                case: 'constExpr',
+                                value: {
+                                  constantKind: {
+                                    case: 'int64Value',
+                                    value: BigInt(2),
+                                  },
+                                },
+                              },
+                            },
+                          ],
+                        },
+                      },
+                    },
+                  ],
+                },
+              },
+            },
+            {
+              id: BigInt(12),
+              exprKind: {
+                case: 'callExpr',
+                value: {
+                  function: '_%_',
+                  args: [
+                    {
+                      id: BigInt(11),
+                      exprKind: {
+                        case: 'constExpr',
+                        value: {
+                          constantKind: {
+                            case: 'int64Value',
+                            value: BigInt(6),
+                          },
+                        },
+                      },
+                    },
+                    {
+                      id: BigInt(13),
+                      exprKind: {
+                        case: 'constExpr',
+                        value: {
+                          constantKind: {
+                            case: 'int64Value',
+                            value: BigInt(1),
+                          },
+                        },
+                      },
+                    },
+                  ],
+                },
+              },
+            },
+          ],
+        },
+      },
+    }),
+  },
+  // TODO: errors
+  // {
+  // 	I: `1 + +`,
+  // 	E: `ERROR: <input>:1:5: Syntax error: mismatched input '+' expecting {'[', '{', '(', '.', '-', '!', 'true', 'false', 'null', NUM_FLOAT, NUM_INT, NUM_UINT, STRING, BYTES, IDENTIFIER}
+  // 	| 1 + +
+  // 	| ....^
+  // 	ERROR: <input>:1:6: Syntax error: mismatched input '<EOF>' expecting {'[', '{', '(', '.', '-', '!', 'true', 'false', 'null', NUM_FLOAT, NUM_INT, NUM_UINT, STRING, BYTES, IDENTIFIER}
+  // 	| 1 + +
+  // 	| .....^`,
+  // },
+  {
+    I: `"abc" + "def"`,
+    // P: `_+_(
+    // 	"abc"^#1:*expr.Constant_StringValue#,
+    // 	"def"^#3:*expr.Constant_StringValue#
+    // )^#2:*expr.Expr_CallExpr#`,
+    P: create(ExprSchema, {
+      id: BigInt(2),
+      exprKind: {
+        case: 'callExpr',
+        value: {
+          function: '_+_',
+          args: [
+            {
+              id: BigInt(1),
+              exprKind: {
+                case: 'constExpr',
+                value: {
+                  constantKind: {
+                    case: 'stringValue',
+                    value: 'abc',
+                  },
+                },
+              },
+            },
+            {
+              id: BigInt(3),
+              exprKind: {
+                case: 'constExpr',
+                value: {
+                  constantKind: {
+                    case: 'stringValue',
+                    value: 'def',
+                  },
+                },
+              },
+            },
+          ],
+        },
+      },
+    }),
+  },
+  // TODO: errors
+  // {
+  // 	I: `{"a": 1}."a"`,
+  // 	E: `ERROR: <input>:1:10: Syntax error: no viable alternative at input '."a"'
+  // 	| {"a": 1}."a"
+  // 	| .........^`,
+  // },
 ];
 
 describe('CELVisitor', () => {

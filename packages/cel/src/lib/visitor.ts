@@ -123,33 +123,18 @@ export class CELVisitor extends GeneratedCelVisitor<Expr> {
         })
       );
     }
-    if (!ctx._op) {
-      return this.visit(ctx._e);
+    const result = this.visit(ctx._e);
+    if (isNil(ctx._op)) {
+      return result;
     }
-    if (isNil(ctx._e1) || isNil(ctx._e2)) {
-      return this._ensureErrorsExist(
-        create(StatusSchema, {
-          code: 1,
-          message: 'no conditional context',
-        })
-      );
-    }
-    // If the expression is a ternary expression
-    const condition = this.visit(ctx._e); // Visit the condition part
-    const id = this.#id.nextId();
-    const trueExpr = this.visit(ctx._e1); // Visit the true part
-    const falseExpr = this.visit(ctx._e2); // Visit the false part
-    // Handle the ternary expression, e.g., return condition ? trueExpr : falseExpr;
-    return create(ExprSchema, {
-      id,
-      exprKind: {
-        case: 'callExpr',
-        value: {
-          function: CONDITIONAL_OPERATOR,
-          args: [condition, trueExpr, falseExpr],
-        },
-      },
-    });
+    const opId = this.#id.nextId();
+    const ifTrue = this.visit(ctx._e1);
+    const ifFalse = this.visit(ctx._e2);
+    return this._globalCallOrMacro(opId, CONDITIONAL_OPERATOR, [
+      result,
+      ifTrue,
+      ifFalse,
+    ]);
   };
 
   override visitConditionalOr = (ctx: ConditionalOrContext): Expr => {
@@ -226,52 +211,23 @@ export class CELVisitor extends GeneratedCelVisitor<Expr> {
     const left = this.visit(ctx.relation(0));
     const id = this.#id.nextId();
     const right = this.visit(ctx.relation(1));
-    return create(ExprSchema, {
-      id,
-      exprKind: {
-        case: 'callExpr',
-        value: {
-          function: operator,
-          args: [left, right],
-        },
-      },
-    });
+    return this._globalCallOrMacro(id, operator, [left, right]);
   };
 
   override visitCalc = (ctx: CalcContext): Expr => {
     this._checkNotNil(ctx);
-    if (!isNil(ctx.unary())) {
-      return this.visit(ctx.unary());
+    let opText = '';
+    if (!isNil(ctx._op)) {
+      opText = ctx._op.text;
     }
-    if (
-      isNil(ctx.calc_list()) ||
-      ctx.calc_list().length === 0 ||
-      isNil(ctx._op)
-    ) {
-      return this._ensureErrorsExist(
-        create(StatusSchema, {
-          code: 1,
-          message: 'no calc context',
-        })
-      );
-    }
-    const operator = getOperatorFromText(ctx._op.text);
+    const operator = getOperatorFromText(opText);
     if (isNil(operator)) {
       return this._reportError(ctx, 'operator not found');
     }
-    const left = this.visit(ctx.calc(0));
-    const id = this.#id.nextId();
-    const right = this.visit(ctx.calc(1));
-    return create(ExprSchema, {
-      id,
-      exprKind: {
-        case: 'callExpr',
-        value: {
-          function: operator,
-          args: [left, right],
-        },
-      },
-    });
+    const lhs = this.visit(ctx.calc(0));
+    const opId = this.#id.nextId();
+    const rhs = this.visit(ctx.calc(1));
+    return this._globalCallOrMacro(opId, operator, [lhs, rhs]);
   };
 
   override visitMemberExpr = (ctx: MemberExprContext): Expr => {
@@ -301,17 +257,8 @@ export class CELVisitor extends GeneratedCelVisitor<Expr> {
       return this.visit(ctx.member());
     }
     const id = this.#id.nextId();
-    const member = this.visit(ctx.member());
-    return create(ExprSchema, {
-      id,
-      exprKind: {
-        case: 'callExpr',
-        value: {
-          function: LOGICAL_NOT_OPERATOR,
-          args: [member],
-        },
-      },
-    });
+    const target = this.visit(ctx.member());
+    return this._globalCallOrMacro(id, LOGICAL_NOT_OPERATOR, [target]);
   };
 
   override visitNegate = (ctx: NegateContext): Expr => {
@@ -327,16 +274,9 @@ export class CELVisitor extends GeneratedCelVisitor<Expr> {
     if (isNil(ctx._ops) || ctx._ops.length % 2 === 0) {
       return this.visit(ctx.member());
     }
-    return create(ExprSchema, {
-      id: this.#id.nextId(),
-      exprKind: {
-        case: 'callExpr',
-        value: {
-          function: NEGATE_OPERATOR,
-          args: [this.visit(ctx.member())],
-        },
-      },
-    });
+    const opId = this.#id.nextId();
+    const target = this.visit(ctx.member());
+    return this._globalCallOrMacro(opId, NEGATE_OPERATOR, [target]);
   };
 
   override visitMemberCall = (ctx: MemberCallContext): Expr => {
@@ -352,57 +292,46 @@ export class CELVisitor extends GeneratedCelVisitor<Expr> {
       args = this.visitSlice(ctx._args.expr_list());
     }
     return this._receiverCallOrMacro(opId, id, operand, args);
-    // this._checkNotNil(ctx);
-    // const operand = this.visit(ctx.member());
-    // if (isNil(ctx._id)) {
-    //   return create(ExprSchema, {
-    //     id: this.#id.nextId(),
-    //   });
-    // }
-    // const id = ctx._id.text;
-    // return this._receiverCallOrMacro(ctx, id, operand);
   };
 
   override visitSelect = (ctx: SelectContext): Expr => {
     this._checkNotNil(ctx);
     const operand = this.visit(ctx.member());
-    // Handle the error case where no valid identifier is specified.
     if (isNil(ctx._id) || isNil(ctx._op)) {
-      return this._ensureErrorsExist(
-        create(StatusSchema, {
-          code: 1,
-          message: 'no valid identifier specified',
-        })
-      );
+      return this._reportError(ctx, 'no valid identifier specified');
     }
     const id = ctx._id.text;
-    const opId = this.#id.nextId();
     if (!isNil(ctx._opt)) {
-      const literalString = create(ExprSchema, {
-        id: opId,
-        exprKind: {
-          case: 'constExpr',
-          value: {
-            constantKind: {
-              case: 'stringValue',
-              value: id,
-            },
-          },
-        },
-      });
+      if (!this.options?.enableOptionalSyntax) {
+        return this._reportError(ctx, "unsupported syntax '.?'");
+      }
       return create(ExprSchema, {
-        id: opId,
+        id: this.#id.nextId(),
         exprKind: {
           case: 'callExpr',
           value: {
             function: OPT_SELECT_OPERATOR,
-            args: [operand, literalString],
+            args: [
+              operand,
+              create(ExprSchema, {
+                id: this.#id.nextId(),
+                exprKind: {
+                  case: 'constExpr',
+                  value: {
+                    constantKind: {
+                      case: 'stringValue',
+                      value: id,
+                    },
+                  },
+                },
+              }),
+            ],
           },
         },
       });
     }
     return create(ExprSchema, {
-      id: opId,
+      id: this.#id.nextId(),
       exprKind: {
         case: 'selectExpr',
         value: {
@@ -428,34 +357,20 @@ export class CELVisitor extends GeneratedCelVisitor<Expr> {
 
   override visitIndex = (ctx: IndexContext): Expr => {
     this._checkNotNil(ctx);
-    if (isNil(ctx.member()) || isNil(ctx._index)) {
-      return this._ensureErrorsExist(
-        create(StatusSchema, {
-          code: 1,
-          message: 'no index context',
-        })
-      );
-    }
     const target = this.visit(ctx.member());
-    const id = this.#id.nextId();
+    if (isNil(ctx._op)) {
+      return this._reportError(ctx, 'no valid identifier is specified');
+    }
+    const opId = this.#id.nextId();
     const index = this.visit(ctx._index);
-    let operatorIndex = INDEX_OPERATOR;
-    if (!isNil(ctx._op) && ctx._op.text === '?') {
+    let operator = INDEX_OPERATOR;
+    if (!isNil(ctx._opt)) {
       if (!this.options?.enableOptionalSyntax) {
         return this._reportError(ctx, "unsupported syntax '[?'");
       }
-      operatorIndex = OPT_INDEX_OPERATOR;
+      operator = OPT_INDEX_OPERATOR;
     }
-    return create(ExprSchema, {
-      id,
-      exprKind: {
-        case: 'callExpr',
-        value: {
-          function: operatorIndex,
-          args: [target, index],
-        },
-      },
-    });
+    return this._globalCallOrMacro(opId, operator, [target, index]);
   };
 
   override visitIdentOrGlobalCall = (ctx: IdentOrGlobalCallContext): Expr => {
@@ -503,12 +418,8 @@ export class CELVisitor extends GeneratedCelVisitor<Expr> {
     if (!isNil(ctx._elems)) {
       const listInit = this.visit(ctx._elems);
       if (listInit.exprKind.case !== 'listExpr') {
-        return this._ensureErrorsExist(
-          create(StatusSchema, {
-            code: 1,
-            message: 'no list initializer',
-          })
-        );
+        // This should never happen, but just in case.
+        return this._reportError(ctx, 'no list initializer');
       }
       elements = listInit.exprKind.value.elements;
       optionalIndices = listInit.exprKind.value.optionalIndices;
@@ -634,7 +545,6 @@ export class CELVisitor extends GeneratedCelVisitor<Expr> {
       const ex = this.visit(elements[i]._e);
       if (isNil(ex)) {
         return create(ExprSchema, {
-          id: this.#id.nextId(),
           exprKind: {
             case: 'listExpr',
             value: {
@@ -654,7 +564,6 @@ export class CELVisitor extends GeneratedCelVisitor<Expr> {
       }
     }
     return create(ExprSchema, {
-      id: this.#id.nextId(),
       exprKind: {
         case: 'listExpr',
         value: {
