@@ -16,7 +16,7 @@ import {
 } from '@buf/googleapis_googleapis.bufbuild_es/google/rpc/status_pb.js';
 import { create, fromJson } from '@bufbuild/protobuf';
 import { NullValue, StringValueSchema, anyPack } from '@bufbuild/protobuf/wkt';
-import { ParseTree, ParserRuleContext, Token } from 'antlr4';
+import { ParseTree, ParserRuleContext } from 'antlr4';
 import {
   RESERVED_IDS,
   parseBytesConstant,
@@ -341,14 +341,26 @@ export class CELVisitor extends GeneratedCelVisitor<Expr> {
 
   override visitMemberCall = (ctx: MemberCallContext): Expr => {
     this._checkNotNil(ctx);
-    const operand = this.visit(ctx.member());
     if (isNil(ctx._id)) {
-      return create(ExprSchema, {
-        id: this.#id.nextId(),
-      });
+      return this._reportError(ctx, 'no valid identifier specified');
     }
+    const operand = this.visit(ctx.member());
     const id = ctx._id.text;
-    return this._receiverCallOrMacro(ctx, id, operand);
+    const opId = this.#id.nextId();
+    let args: Expr[] = [];
+    if (!isNil(ctx._args?.expr_list)) {
+      args = this.visitSlice(ctx._args.expr_list());
+    }
+    return this._receiverCallOrMacro(opId, id, operand, args);
+    // this._checkNotNil(ctx);
+    // const operand = this.visit(ctx.member());
+    // if (isNil(ctx._id)) {
+    //   return create(ExprSchema, {
+    //     id: this.#id.nextId(),
+    //   });
+    // }
+    // const id = ctx._id.text;
+    // return this._receiverCallOrMacro(ctx, id, operand);
   };
 
   override visitSelect = (ctx: SelectContext): Expr => {
@@ -448,28 +460,35 @@ export class CELVisitor extends GeneratedCelVisitor<Expr> {
 
   override visitIdentOrGlobalCall = (ctx: IdentOrGlobalCallContext): Expr => {
     this._checkNotNil(ctx);
-    if (isNil(ctx._id)) {
-      return this._reportError(ctx, 'no identifier context');
+    let identName = '';
+    if (!isNil(ctx._leadingDot)) {
+      identName = '.';
     }
-    let id = ctx._id.text;
+    if (isNil(ctx._id)) {
+      return this._reportError(ctx, 'no valid identifier specified');
+    }
+    const id = ctx._id.text;
     if (RESERVED_IDS.has(id)) {
       return this._reportError(ctx, `reserved identifier: ${id}`);
     }
-    if (!isNil(ctx._leadingDot)) {
-      id = `.${id}`;
+    identName += id;
+    if (!isNil(ctx._op)) {
+      const opId = this.#id.nextId();
+      let args: Expr[] = [];
+      if (!isNil(ctx._args)) {
+        args = this.visitSlice(ctx._args.expr_list());
+      }
+      return this._globalCallOrMacro(opId, identName, args);
     }
-    if (isNil(ctx._op)) {
-      return create(ExprSchema, {
-        id: this.#id.nextId(),
-        exprKind: {
-          case: 'identExpr',
-          value: {
-            name: id,
-          },
+    return create(ExprSchema, {
+      id: this.#id.nextId(),
+      exprKind: {
+        case: 'identExpr',
+        value: {
+          name: identName,
         },
-      });
-    }
-    return this._globalCallOrMacro(ctx, id);
+      },
+    });
   };
 
   //   override visitNested = (ctx: NestedContext): Expr => {
@@ -964,49 +983,66 @@ export class CELVisitor extends GeneratedCelVisitor<Expr> {
     return tree;
   }
 
-  private _receiverCallOrMacro(
-    ctx: MemberCallContext,
-    id: string,
-    member: Expr
-  ) {
-    return this._macroOrCall(ctx._args, ctx._open, id, member, true);
-  }
-
-  private _globalCallOrMacro(ctx: IdentOrGlobalCallContext, id: string) {
-    return this._macroOrCall(ctx._args, ctx._op, id, undefined, false);
-  }
-
-  private _macroOrCall(
-    args: ExprListContext,
-    open: Token,
-    id: string,
-    member?: Expr,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    isReceiverStyle?: boolean
-  ) {
-    const macro = findMacro(id);
-    if (macro) {
-      const argList = this.visitExprList(args);
-      if (argList.exprKind.case !== 'listExpr') {
-        return this._reportError(args, 'unexpected argument list');
-      }
-      return expandMacro(
-        this.#id,
-        macro,
-        member as Expr,
-        argList.exprKind.value.elements
-      );
+  private _globalCallOrMacro(exprId: bigint, fn: string, args: Expr[]) {
+    const macro = this._expandMacro(exprId, fn, null, args);
+    if (!isNil(macro)) {
+      return macro;
     }
     return create(ExprSchema, {
-      id: this.#id.nextId(),
+      id: exprId,
       exprKind: {
         case: 'callExpr',
         value: {
-          function: id,
-          args: this.visitSlice(args?.expr_list() ?? []),
-          target: member,
+          function: fn,
+          args,
         },
       },
     });
+  }
+
+  private _receiverCallOrMacro(
+    exprId: bigint,
+    fn: string,
+    target: Expr,
+    args: Expr[]
+  ) {
+    const macro = this._expandMacro(exprId, fn, target, args);
+    if (!isNil(macro)) {
+      return macro;
+    }
+    return create(ExprSchema, {
+      id: exprId,
+      exprKind: {
+        case: 'callExpr',
+        value: {
+          function: fn,
+          args,
+          target,
+        },
+      },
+    });
+  }
+
+  private _expandMacro(
+    exprId: bigint,
+    fn: string,
+    target: Expr | null,
+    args: Expr[]
+  ) {
+    const macro = findMacro(fn);
+    if (isNil(macro)) {
+      return null;
+    }
+    try {
+      const expanded = expandMacro(this.#id, macro, target, args);
+      return expanded;
+    } catch (e) {
+      return this._ensureErrorsExist(
+        create(StatusSchema, {
+          code: 1,
+          message: (e as Error).message,
+        })
+      );
+    }
   }
 }

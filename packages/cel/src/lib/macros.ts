@@ -47,22 +47,22 @@ export function findMacro(name: string) {
 export function expandMacro(
   id: IdHelper,
   op: string,
-  target: Expr,
+  target: Expr | null,
   args: Expr[]
 ): Expr {
   switch (op) {
     case HAS_MACRO:
       return expandHasMacro(id, args);
     case ALL_MACRO:
-      return expandAllMacro(id, target, args);
+      return expandAllMacro(id, target!, args);
     case EXISTS_MACRO:
-      return expandExistsMacro(id, target, args);
+      return expandExistsMacro(id, target!, args);
     case EXISTS_ONE_MACRO:
-      return expandExistsOneMacro(id, target, args);
+      return expandExistsOneMacro(id, target!, args);
     case MAP_MACRO:
-      return expandMapMacro(id, target, args);
+      return expandMapMacro(id, target!, args);
     case FILTER_MACRO:
-      return expandFilterMacro(id, target, args);
+      return expandFilterMacro(id, target!, args);
     default:
       throw new Error(`Unknown macro: ${op}`);
   }
@@ -106,9 +106,9 @@ export function expandAllMacro(id: IdHelper, target: Expr, args: Expr[]): Expr {
   );
   const result = identExpr(id, ACCUMULATOR_VAR);
   return fold(
-    id,
-    arg0.exprKind.value.name,
+    id.nextId(),
     target,
+    arg0.exprKind.value.name,
     ACCUMULATOR_VAR,
     accuInit,
     condition,
@@ -141,9 +141,9 @@ export function expandExistsMacro(
   );
   const result = identExpr(id, ACCUMULATOR_VAR);
   return fold(
-    id,
-    arg0.exprKind.value.name,
+    id.nextId(),
     target,
+    arg0.exprKind.value.name,
     ACCUMULATOR_VAR,
     accuInit,
     condition,
@@ -183,9 +183,9 @@ export function expandExistsOneMacro(
     int64Expr(id, BigInt(1))
   );
   return fold(
-    id,
-    arg0.exprKind.value.name,
+    id.nextId(),
     target,
+    arg0.exprKind.value.name,
     ACCUMULATOR_VAR,
     accuInit,
     condition,
@@ -195,45 +195,45 @@ export function expandExistsOneMacro(
 }
 
 export function expandMapMacro(id: IdHelper, target: Expr, args: Expr[]): Expr {
-  const arg0 = args[0];
-  if (arg0.exprKind.case !== 'identExpr') {
-    throw new Error('Invalid argument to map() macro');
+  const v = extractIdent(args[0]);
+  if (isNil(v)) {
+    throw new Error('argument is not an identifier');
   }
-  let arg1: Expr;
-  let arg2: Expr;
+  let fn: Expr | null = null;
+  let filter: Expr | null = null;
   if (args.length === 3) {
-    arg2 = args[1];
-    arg1 = args[2];
+    filter = args[1];
+    fn = args[2];
   } else {
-    arg1 = args[1];
-    arg2 = null as unknown as Expr;
+    fn = args[1];
   }
-  const accuInit = listExpr(id, []);
+  const init = listExpr(id, []);
   const condition = boolExpr(id, true);
   let step = globalCall(
     id,
     ADD_OPERATOR,
     identExpr(id, ACCUMULATOR_VAR),
-    listExpr(id, [arg1])
+    listExpr(id, [fn])
   );
-  if (!isNil(arg2)) {
+  if (!isNil(filter)) {
     step = globalCall(
       id,
       CONDITIONAL_OPERATOR,
-      arg2,
+      filter,
       step,
       identExpr(id, ACCUMULATOR_VAR)
     );
   }
+  const result = identExpr(id, ACCUMULATOR_VAR);
   return fold(
-    id,
-    arg0.exprKind.value.name,
+    id.nextId(),
     target,
+    v,
     ACCUMULATOR_VAR,
-    accuInit,
+    init,
     condition,
     step,
-    identExpr(id, ACCUMULATOR_VAR)
+    result
   );
 }
 
@@ -242,42 +242,43 @@ export function expandFilterMacro(
   target: Expr,
   args: Expr[]
 ): Expr {
-  const arg0 = args[0];
-  if (arg0.exprKind.case !== 'identExpr') {
-    throw new Error('Invalid argument to filter() macro');
+  const v = extractIdent(args[0]);
+  if (isNil(v)) {
+    throw new Error('argument is not an identifier');
   }
-  const arg1 = args[1];
-  const accuInit = listExpr(id, []);
+  const filter = args[1];
+  const listInit = listExpr(id, []);
   const condition = boolExpr(id, true);
   let step = globalCall(
     id,
     ADD_OPERATOR,
     identExpr(id, ACCUMULATOR_VAR),
-    listExpr(id, [arg0])
+    listExpr(id, [args[0]])
   );
   step = globalCall(
     id,
     CONDITIONAL_OPERATOR,
-    arg1,
+    filter,
     step,
     identExpr(id, ACCUMULATOR_VAR)
   );
+  const result = identExpr(id, ACCUMULATOR_VAR);
   return fold(
-    id,
-    arg0.exprKind.value.name,
+    id.nextId(),
     target,
+    v,
     ACCUMULATOR_VAR,
-    accuInit,
+    listInit,
     condition,
     step,
-    identExpr(id, ACCUMULATOR_VAR)
+    result
   );
 }
 
 function fold(
-  id: IdHelper,
-  iterVar: string,
+  exprId: bigint,
   iterRange: Expr,
+  iterVar: string,
   accuVar: string,
   accuInit: Expr,
   condition: Expr,
@@ -285,7 +286,7 @@ function fold(
   result: Expr
 ): Expr {
   return create(ExprSchema, {
-    id: id.nextId(),
+    id: exprId,
     exprKind: {
       case: 'comprehensionExpr',
       value: {
@@ -299,4 +300,11 @@ function fold(
       },
     },
   });
+}
+
+function extractIdent(expr: Expr): string | null {
+  if (expr.exprKind.case !== 'identExpr') {
+    return null;
+  }
+  return expr.exprKind.value.name;
 }
