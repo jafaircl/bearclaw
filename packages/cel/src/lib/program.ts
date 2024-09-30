@@ -1,6 +1,6 @@
 import { CELEnvironment } from './environment';
 import { StartContext } from './gen/CELParser';
-import { CELVisitor } from './visitor';
+import { CELParser } from './parser';
 
 export class CELProgram {
   constructor(
@@ -9,12 +9,12 @@ export class CELProgram {
   ) {}
 
   parse() {
-    const parser = new CELVisitor(this.env);
+    const parser = new CELParser(this.env);
     return this.ast.accept(parser);
   }
 
   errors() {
-    const parser = new CELVisitor(this.env);
+    const parser = new CELParser(this.env);
     return parser.errors;
   }
 }

@@ -1,3 +1,4 @@
+/* eslint-disable no-useless-escape */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import {
   Expr,
@@ -3517,14 +3518,63 @@ const testCases: TestInfo[] = [
       },
     }),
   },
-  // TODO: TestAllTypes
-  // {
-  // 	I: `TestAllTypes{single_int32: 1, single_int64: 2}`,
-  // 	P: `TestAllTypes{
-  // 		single_int32:1^#3:*expr.Constant_Int64Value#^#2:*expr.Expr_CreateStruct_Entry#,
-  // 		single_int64:2^#5:*expr.Constant_Int64Value#^#4:*expr.Expr_CreateStruct_Entry#
-  // 	}^#1:*expr.Expr_StructExpr#`,
-  // },
+  {
+    I: `TestAllTypes{single_int32: 1, single_int64: 2}`,
+    // P: `TestAllTypes{
+    // 	single_int32:1^#3:*expr.Constant_Int64Value#^#2:*expr.Expr_CreateStruct_Entry#,
+    // 	single_int64:2^#5:*expr.Constant_Int64Value#^#4:*expr.Expr_CreateStruct_Entry#
+    // }^#1:*expr.Expr_StructExpr#`,
+    P: create(ExprSchema, {
+      id: BigInt(1),
+      exprKind: {
+        case: 'structExpr',
+        value: {
+          messageName: 'TestAllTypes',
+          entries: [
+            {
+              id: BigInt(2),
+              keyKind: {
+                case: 'fieldKey',
+                value: 'single_int32',
+              },
+              value: {
+                id: BigInt(3),
+                exprKind: {
+                  case: 'constExpr',
+                  value: {
+                    constantKind: {
+                      case: 'int64Value',
+                      value: BigInt(1),
+                    },
+                  },
+                },
+              },
+            },
+            {
+              id: BigInt(4),
+              keyKind: {
+                case: 'fieldKey',
+                value: 'single_int64',
+              },
+              value: {
+                id: BigInt(5),
+                exprKind: {
+                  case: 'constExpr',
+                  value: {
+                    constantKind: {
+                      case: 'int64Value',
+                      value: BigInt(2),
+                    },
+                  },
+                },
+              },
+            },
+          ],
+        },
+      },
+    }),
+  },
+  // TODO: errors
   // {
   // 	I: `TestAllTypes(){}`,
   // 	E: `ERROR: <input>:1:15: Syntax error: mismatched input '{' expecting <EOF>

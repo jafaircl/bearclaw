@@ -76,7 +76,7 @@ import {
 } from './operators';
 import { IdHelper } from './utils';
 
-export class CELVisitor extends GeneratedCelVisitor<Expr> {
+export class CELParser extends GeneratedCelVisitor<Expr> {
   #id = new IdHelper();
   #ERROR = create(ConstantSchema, {
     constantKind: {
