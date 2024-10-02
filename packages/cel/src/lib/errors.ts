@@ -56,10 +56,31 @@ export class Errors {
     this.errors.errors.push(err);
   }
 
+  public reportInternalError(message: string) {
+    this.reportError(-1, -1, message);
+  }
+
+  public reportSyntaxError(line: number, column: number, message: string) {
+    this.reportError(line, column, `Syntax error: ${message}`);
+  }
+
   public toDisplayString() {
-    return this.errors.errors
-      .map((err) => this._errorToDisplayString(err))
-      .join('\n ');
+    let hasRecursionError = false;
+    const errors = [];
+    for (const error of this.errors.errors) {
+      const str = this._errorToDisplayString(error);
+      // Deduplicate recursion errors.
+      if (str.includes('expression recursion limit exceeded')) {
+        if (!hasRecursionError) {
+          hasRecursionError = true;
+          errors.push(str);
+        }
+      } else {
+        errors.push(str);
+      }
+    }
+
+    return errors.join('\n ');
   }
 
   private _errorToDisplayString(err: Status) {
@@ -74,6 +95,9 @@ export class Errors {
     const result = `ERROR: ${this.sourceDescription}:${line}:${column + 1}: ${
       err.message
     }`;
+    if (line < 0 || column < 0) {
+      return result;
+    }
     const sourceLine = '\n | ' + this.source.split('\n')[line - 1];
     let indLine = '\n | ';
     for (let i = 0; i < column; i++) {
@@ -97,12 +121,7 @@ export class LexerErrorListener extends ErrorListener<number> {
     msg: string,
     e: RecognitionException | undefined
   ): void {
-    this.errors.reportErrorAtId(
-      BigInt(offendingSymbol ?? 0),
-      line,
-      charPositionInLine,
-      `Syntax error: ${msg}`
-    );
+    this.errors.reportSyntaxError(line, charPositionInLine, msg);
   }
 }
 
@@ -119,11 +138,10 @@ export class ParserErrorListener extends ErrorListener<Token> {
     msg: string,
     e: RecognitionException | undefined
   ): void {
-    this.errors.reportErrorAtId(
-      BigInt(offendingSymbol?.tokenIndex ?? 0),
-      line,
-      charPositionInLine,
-      `Syntax error: ${msg}`
-    );
+    if (msg.startsWith('expression recursion limit exceeded')) {
+      this.errors.reportInternalError(msg);
+    } else {
+      this.errors.reportSyntaxError(line, charPositionInLine, msg);
+    }
   }
 }

@@ -1,9 +1,7 @@
 import { Expr } from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb';
 /* eslint-disable no-useless-escape */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import {
-  ExprSchema
-} from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb.js';
+import { ExprSchema } from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb.js';
 import { create } from '@bufbuild/protobuf';
 import { NullValue } from '@bufbuild/protobuf/wkt';
 import { CELParser } from './parser';
@@ -4655,15 +4653,14 @@ const testCases: TestInfo[] = [
   // 	| a ? b ((?))
   // 	| ...........^`,
   // },
-  // TODO: recusion errors
-  // {
-  // 	I: `[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[
-  // 		[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[['too many']]]]]]]]]]]]]]]]]]]]]]]]]]]]
-  // 		]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]`,
-  // 	E: "ERROR: <input>:-1:0: expression recursion limit exceeded: 32",
-  // },
-  // {
-  // 	I: `-[-1--1--1--1---1--1--1--0--1--1--1--1--0--2--1--1--0--1--1--1--1--0--1--1--1
+  {
+    I: `[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[
+  		[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[['too many']]]]]]]]]]]]]]]]]]]]]]]]]]]]
+  		]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]`,
+    E: 'ERROR: <input>:-1:0: expression recursion limit exceeded: 32',
+  },
+  // { // TODO: the error order is wrong
+  //   I: `-[-1--1--1--1---1--1--1--0--1--1--1--1--0--2--1--1--0--1--1--1--1--0--1--1--1
   // 	--3-[-1--1--1--1---1--1--1--0--1--1--1--1--0--3--1--1--0--1--1--1--1--0--1--1--1
   // 	--3-[-1--1--1--1---1--1--1--0-/1--1--1--1--0--2--1--1--0--1--1--1--1--0--1--1--1
   // 	--3-[-1--1--1--1---1--1--1--0--1--1--1--1--0--2--1--1--0--1--1--1--1--0--1--1--1
@@ -4697,7 +4694,7 @@ const testCases: TestInfo[] = [
   // 	--1---1--1--1--0--1--1--1--1--0--2--1--1--0--1--1--1--1--0--1--1--1--3-[-1--1--1
   // 	--1---1--1--1--0--1--1--1--1--0--2--1--1--0--1--1--1--1--0--1--1--1--3-[-1--1--1
   // 	--1---1--1--1--0--1--1--1--1--0--3--1--1--0--1`,
-  // 	E: `ERROR: <input>:-1:0: expression recursion limit exceeded: 32
+  //   E: `ERROR: <input>:-1:0: expression recursion limit exceeded: 32
   //       ERROR: <input>:3:33: Syntax error: extraneous input '/' expecting {'[', '{', '(', '.', '-', '!', 'true', 'false', 'null', NUM_FLOAT, NUM_INT, NUM_UINT, STRING, BYTES, IDENTIFIER}
   //       |   --3-[-1--1--1--1---1--1--1--0-/1--1--1--1--0--2--1--1--0--1--1--1--1--0--1--1--1
   //       | ................................^
@@ -4718,7 +4715,7 @@ describe('CELVisitor', () => {
   for (const testCase of testCases) {
     it(`should parse ${testCase.I}`, () => {
       // Arrange
-      const parser = new CELParser(testCase.I);
+      const parser = new CELParser(testCase.I, { maxRecursionDepth: 32 });
 
       // Act
       const expr = parser.parse();

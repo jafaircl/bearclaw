@@ -13,7 +13,9 @@ import {
   CharStream,
   CommonTokenStream,
   ParseTree,
+  ParseTreeListener,
   ParserRuleContext,
+  Token,
 } from 'antlr4';
 import {
   RESERVED_IDS,
@@ -79,16 +81,21 @@ import { IdHelper } from './utils';
 export class CELParser extends GeneratedCelVisitor<Expr> {
   #id = new IdHelper();
   readonly #errors!: Errors;
+  readonly #maxRecursionDepth: number = 100;
 
   constructor(
     public readonly source: string,
     private readonly options?: {
       enableOptionalSyntax?: boolean;
       retainRepeatedUnaryOperators?: boolean;
+      maxRecursionDepth?: number;
     }
   ) {
     super();
     this.#errors = new Errors(source);
+    if (this.options?.maxRecursionDepth) {
+      this.#maxRecursionDepth = this.options.maxRecursionDepth;
+    }
   }
 
   public get errors() {
@@ -99,14 +106,13 @@ export class CELParser extends GeneratedCelVisitor<Expr> {
     const chars = new CharStream(this.source);
     const lexer = new CELLexer(chars);
     lexer.removeErrorListeners();
-    const lexerErrorListener = new LexerErrorListener(this.#errors);
-    lexer.addErrorListener(lexerErrorListener);
+    lexer.addErrorListener(new LexerErrorListener(this.#errors));
 
     const tokens = new CommonTokenStream(lexer);
     const parser = new GenCELParser(tokens);
     parser.removeErrorListeners();
-    const parserErrorListener = new ParserErrorListener(this.#errors);
-    parser.addErrorListener(parserErrorListener);
+    parser.addErrorListener(new ParserErrorListener(this.#errors));
+    parser.addParseListener(new RecursionListener(this.#maxRecursionDepth));
 
     return this.visit(parser.start());
   }
@@ -816,5 +822,57 @@ export class CELParser extends GeneratedCelVisitor<Expr> {
       message
     );
     return error;
+  }
+}
+
+class RecursionListener extends ParseTreeListener {
+  #ruleTypeDepth: Map<number, number> = new Map();
+  #hasNotified = false;
+
+  constructor(private readonly maxDepth: number) {
+    super();
+  }
+
+  override enterEveryRule(ctx: ParserRuleContext): void {
+    if (isNil(ctx)) {
+      return;
+    }
+    const ruleIndex = (ctx as unknown as { ruleIndex: number }).ruleIndex;
+    if (isNil(ruleIndex)) {
+      return;
+    }
+    let depth = this.#ruleTypeDepth.get(ruleIndex);
+    if (isNil(depth)) {
+      this.#ruleTypeDepth.set(ruleIndex, 0);
+      depth = 0;
+    } else {
+      depth++;
+    }
+    this.#ruleTypeDepth.set(ruleIndex, depth);
+    if (depth > this.maxDepth && !this.#hasNotified) {
+      const fakeToken = new Token();
+      fakeToken.line = -1;
+      fakeToken.column = -1;
+      ctx.parser?.notifyErrorListeners(
+        `expression recursion limit exceeded: ${this.maxDepth}`,
+        fakeToken,
+        undefined
+      );
+    }
+  }
+
+  override exitEveryRule(ctx: ParserRuleContext): void {
+    if (isNil(ctx)) {
+      return;
+    }
+    const ruleIndex = (ctx as unknown as { ruleIndex: number }).ruleIndex;
+    if (isNil(ruleIndex)) {
+      return;
+    }
+    let depth = this.#ruleTypeDepth.get(ruleIndex);
+    if (!isNil(depth)) {
+      depth--;
+      this.#ruleTypeDepth.set(ruleIndex, depth);
+    }
   }
 }
