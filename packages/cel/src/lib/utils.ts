@@ -52,9 +52,9 @@ export function boolConstant(value: boolean) {
   });
 }
 
-export function boolExpr(id: IdHelper, value: boolean) {
+export function boolExpr(id: bigint, value: boolean) {
   return create(ExprSchema, {
-    id: id.nextId(),
+    id,
     exprKind: {
       case: 'constExpr',
       value: boolConstant(value),
@@ -80,9 +80,9 @@ export function int64Constant(value: bigint) {
   });
 }
 
-export function int64Expr(id: IdHelper, value: bigint) {
+export function int64Expr(id: bigint, value: bigint) {
   return create(ExprSchema, {
-    id: id.nextId(),
+    id,
     exprKind: {
       case: 'constExpr',
       value: int64Constant(value),
@@ -108,9 +108,9 @@ export function uint64Constant(value: bigint) {
   });
 }
 
-export function uint64Expr(id: IdHelper, value: bigint) {
+export function uint64Expr(id: bigint, value: bigint) {
   return create(ExprSchema, {
-    id: id.nextId(),
+    id,
     exprKind: {
       case: 'constExpr',
       value: uint64Constant(value),
@@ -136,9 +136,9 @@ export function doubleConstant(value: number) {
   });
 }
 
-export function doubleExpr(id: IdHelper, value: number) {
+export function doubleExpr(id: bigint, value: number) {
   return create(ExprSchema, {
-    id: id.nextId(),
+    id,
     exprKind: {
       case: 'constExpr',
       value: doubleConstant(value),
@@ -164,9 +164,9 @@ export function stringConstant(value: string) {
   });
 }
 
-export function stringExpr(id: IdHelper, value: string) {
+export function stringExpr(id: bigint, value: string) {
   return create(ExprSchema, {
-    id: id.nextId(),
+    id,
     exprKind: {
       case: 'constExpr',
       value: stringConstant(value),
@@ -192,9 +192,9 @@ export function bytesConstant(value: Uint8Array) {
   });
 }
 
-export function bytesExpr(id: IdHelper, value: Uint8Array) {
+export function bytesExpr(id: bigint, value: Uint8Array) {
   return create(ExprSchema, {
-    id: id.nextId(),
+    id,
     exprKind: {
       case: 'constExpr',
       value: bytesConstant(value),
@@ -233,9 +233,9 @@ export const NULL_VALUE = create(ValueSchema, {
   },
 });
 
-export function identExpr(id: IdHelper, name: string) {
+export function identExpr(id: bigint, name: string) {
   return create(ExprSchema, {
-    id: id.nextId(),
+    id,
     exprKind: {
       case: 'identExpr',
       value: create(Expr_IdentSchema, {
@@ -245,13 +245,9 @@ export function identExpr(id: IdHelper, name: string) {
   });
 }
 
-export function globalCall(
-  id: IdHelper,
-  functionName: string,
-  ...args: Expr[]
-) {
+export function globalCall(id: bigint, functionName: string, ...args: Expr[]) {
   return create(ExprSchema, {
-    id: id.nextId(),
+    id,
     exprKind: {
       case: 'callExpr',
       value: {
@@ -262,9 +258,9 @@ export function globalCall(
   });
 }
 
-export function listExpr(id: IdHelper, exprs: Expr[]) {
+export function listExpr(id: bigint, exprs: Expr[]) {
   return create(ExprSchema, {
-    id: id.nextId(),
+    id,
     exprKind: {
       case: 'listExpr',
       value: {
@@ -286,16 +282,4 @@ export function unquote(str: string) {
     str = str.substr(0, str.length - 1);
   }
   return str;
-}
-
-export class IdHelper {
-  #id = BigInt(1);
-
-  public currentId() {
-    return this.#id;
-  }
-
-  public nextId() {
-    return this.#id++;
-  }
 }
