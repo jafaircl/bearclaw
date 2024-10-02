@@ -8,9 +8,7 @@ import {
   Registry,
   createMutableRegistry,
 } from '@bufbuild/protobuf';
-import { CharStream, CommonTokenStream } from 'antlr4';
-import CELLexer from './gen/CELLexer';
-import CELParser, { StartContext } from './gen/CELParser';
+import { CELParser } from './parser';
 
 export interface CELEnvironmentOptions {
   container?: string;
@@ -29,24 +27,8 @@ export class CELEnvironment {
     this.declarations = options?.declarations ?? [];
   }
 
-  compile(input: string, check = false): StartContext {
-    const parser = this._getParser(input);
-    const tree = parser.start();
-    if (tree.exception) throw tree.exception;
-    if (check) this.check(tree);
-    return tree;
-  }
-
-  astAsString(input: string) {
-    const parser = this._getParser(input);
-    const tree = parser.start();
-    if (tree.exception) throw tree.exception;
-    return tree.toStringTree(parser.ruleNames, parser);
-  }
-
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  check(ast: StartContext) {
-    // TODO: implement
+  compile(input: string): CELParser {
+    return new CELParser(input);
   }
 
   addDeclaration(decl: Decl) {
@@ -69,12 +51,5 @@ export class CELEnvironment {
     for (const descriptor of registry) {
       this.addDescriptor(descriptor);
     }
-  }
-
-  private _getParser(input: string) {
-    const chars = new CharStream(input);
-    const lexer = new CELLexer(chars);
-    const tokens = new CommonTokenStream(lexer);
-    return new CELParser(tokens);
   }
 }

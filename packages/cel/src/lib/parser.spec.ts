@@ -1,13 +1,12 @@
+import { Expr } from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb';
 /* eslint-disable no-useless-escape */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import {
-  Expr,
-  ExprSchema,
+  ExprSchema
 } from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb.js';
-import { create, toJsonString } from '@bufbuild/protobuf';
+import { create } from '@bufbuild/protobuf';
 import { NullValue } from '@bufbuild/protobuf/wkt';
-import { CELEnvironment } from './environment';
-import { CELProgram } from './program';
+import { CELParser } from './parser';
 
 interface TestInfo {
   // I contains the input expression to be parsed.
@@ -1775,15 +1774,15 @@ const testCases: TestInfo[] = [
   // 	| *@a | b
   // 	| ......^`,
   // },
-  // {
-  // 	I: `a | b`,
-  // 	E: `ERROR: <input>:1:3: Syntax error: token recognition error at: '| '
-  // 	| a | b
-  // 	| ..^
-  // 	ERROR: <input>:1:5: Syntax error: extraneous input 'b' expecting <EOF>
-  // 	| a | b
-  // 	| ....^`,
-  // },
+  {
+    I: `a | b`,
+    E: `ERROR: <input>:1:3: Syntax error: token recognition error at: '| '
+  	| a | b
+  	| ..^
+  	ERROR: <input>:1:5: Syntax error: extraneous input 'b' expecting <EOF>
+  	| a | b
+  	| ....^`,
+  },
   // Macro tests
   {
     I: `has(m.f)`,
@@ -3574,19 +3573,18 @@ const testCases: TestInfo[] = [
       },
     }),
   },
-  // TODO: errors
-  // {
-  // 	I: `TestAllTypes(){}`,
-  // 	E: `ERROR: <input>:1:15: Syntax error: mismatched input '{' expecting <EOF>
-  // 	| TestAllTypes(){}
-  // 	| ..............^`,
-  // },
-  // {
-  // 	I: `TestAllTypes{}()`,
-  // 	E: `ERROR: <input>:1:15: Syntax error: mismatched input '(' expecting <EOF>
-  // 	| TestAllTypes{}()
-  // 	| ..............^`,
-  // },
+  {
+    I: `TestAllTypes(){}`,
+    E: `ERROR: <input>:1:15: Syntax error: mismatched input '{' expecting <EOF>
+  	| TestAllTypes(){}
+  	| ..............^`,
+  },
+  {
+    I: `TestAllTypes{}()`,
+    E: `ERROR: <input>:1:15: Syntax error: mismatched input '(' expecting <EOF>
+  	| TestAllTypes{}()
+  	| ..............^`,
+  },
   {
     I: `size(x) == x.size()`,
     // P: `_==_(
@@ -3652,15 +3650,15 @@ const testCases: TestInfo[] = [
   // 		| 1 + $
   // 		| .....^`,
   // 	},
-  // 	{
-  // 		I: `1 + 2
-  // 3 +`,
-  // 		E: `ERROR: <input>:2:1: Syntax error: mismatched input '3' expecting <EOF>
-  // 		| 3 +
-  // 		| ^`,
-  // 	},
   {
-    I: `"\""`,
+    I: `1 + 2
+3 +`,
+    E: `ERROR: <input>:2:1: Syntax error: mismatched input '3' expecting <EOF>
+  		| 3 +
+  		| ^`,
+  },
+  {
+    I: `"\\""`, // TODO: revisit this test
     // P: `"\""^#1:*expr.Constant_StringValue#`,
     P: create(ExprSchema, {
       id: BigInt(1),
@@ -3669,7 +3667,7 @@ const testCases: TestInfo[] = [
         value: {
           constantKind: {
             case: 'stringValue',
-            value: '',
+            value: '"',
           },
         },
       },
@@ -4266,54 +4264,478 @@ const testCases: TestInfo[] = [
       },
     }),
   },
-  // TODO: errors
-  // {
-  // 	I: `{"a": 1}."a"`,
-  // 	E: `ERROR: <input>:1:10: Syntax error: no viable alternative at input '."a"'
-  // 	| {"a": 1}."a"
-  // 	| .........^`,
+  {
+    I: `{"a": 1}."a"`,
+    E: `ERROR: <input>:1:10: Syntax error: no viable alternative at input '."a"'
+    | {"a": 1}."a"
+    | .........^`,
+  },
+  // { // TODO: this comes up with the wrong value
+  //   I: `"\xC3\XBF"`,
+  //   // P: `"Ã¿"^#1:*expr.Constant_StringValue#`,
+  //   P: create(ExprSchema, {
+  //     id: BigInt(1),
+  //     exprKind: {
+  //       case: 'constExpr',
+  //       value: {
+  //         constantKind: {
+  //           case: 'stringValue',
+  //           value: 'Ã¿',
+  //         },
+  //       },
+  //     },
+  //   }),
   // },
+  // JS throws an error "octal escape sequences are not allowed in strict mode"
+  // {
+  // 	I: `"\303\277"`,
+  // 	P: `"Ã¿"^#1:*expr.Constant_StringValue#`,
+  // },
+  {
+    I: `"hi\u263A \u263Athere"`,
+    // P: `"hi☺ ☺there"^#1:*expr.Constant_StringValue#`,
+    P: create(ExprSchema, {
+      id: BigInt(1),
+      exprKind: {
+        case: 'constExpr',
+        value: {
+          constantKind: {
+            case: 'stringValue',
+            value: 'hi☺ ☺there',
+          },
+        },
+      },
+    }),
+  },
+  // {
+  //   I: `"\U000003A8\?"`, // TODO: it parses this wrong
+  //   // P: `"Ψ?"^#1:*expr.Constant_StringValue#`,
+  //   P: create(ExprSchema, {
+  //     id: BigInt(1),
+  //     exprKind: {
+  //       case: 'constExpr',
+  //       value: {
+  //         constantKind: {
+  //           case: 'stringValue',
+  //           value: 'Ψ?',
+  //         },
+  //       },
+  //     },
+  //   }),
+  // },
+  // {
+  //   I: `"\a\b\f\n\r\t\v'\"\\\? Legal escapes"`, // TODO: it struggles with this too
+  //   // P: `"\a\b\f\n\r\t\v'\"\\? Legal escapes"^#1:*expr.Constant_StringValue#`,
+  //   P: create(ExprSchema, {
+  //     id: BigInt(1),
+  //     exprKind: {
+  //       case: 'constExpr',
+  //       value: {
+  //         constantKind: {
+  //           case: 'stringValue',
+  //           value: `a\b\f\n\r\t\v\'"\\? Legal escapes`,
+  //         },
+  //       },
+  //     },
+  //   }),
+  // },
+  // {
+  // 	I: `"\xFh"`, // TODO: JS won't run this
+  // 	E: `ERROR: <input>:1:1: Syntax error: token recognition error at: '"\xFh'
+  // 	| "\xFh"
+  // 	| ^
+  // 	ERROR: <input>:1:6: Syntax error: token recognition error at: '"'
+  // 	| "\xFh"
+  // 	| .....^
+  // 	ERROR: <input>:1:7: Syntax error: mismatched input '<EOF>' expecting {'[', '{', '(', '.', '-', '!', 'true', 'false', 'null', NUM_FLOAT, NUM_INT, NUM_UINT, STRING, BYTES, IDENTIFIER}
+  // 	| "\xFh"
+  // 	| ......^`,
+  // },
+  // { // TODO: it throws an error but the message is wonky because of the escapes
+  //   I: `"\a\b\f\n\r\t\v\'\"\\\? Illegal escape \>"`,
+  //   E: `ERROR: <input>:1:1: Syntax error: token recognition error at: '"\a\b\f\n\r\t\v\'\"\\\? Illegal escape \>'
+  // 	| "\a\b\f\n\r\t\v\'\"\\\? Illegal escape \>"
+  // 	| ^
+  // 	ERROR: <input>:1:42: Syntax error: token recognition error at: '"'
+  // 	| "\a\b\f\n\r\t\v\'\"\\\? Illegal escape \>"
+  // 	| .........................................^
+  // 	ERROR: <input>:1:43: Syntax error: mismatched input '<EOF>' expecting {'[', '{', '(', '.', '-', '!', 'true', 'false', 'null', NUM_FLOAT, NUM_INT, NUM_UINT, STRING, BYTES, IDENTIFIER}
+  // 	| "\a\b\f\n\r\t\v\'\"\\\? Illegal escape \>"
+  // 	| ..........................................^`,
+  // },
+  {
+    I: `"😁" in ["😁", "😑", "😦"]`,
+    // P: `@in(
+    // 	"😁"^#1:*expr.Constant_StringValue#,
+    // 	[
+    // 		"😁"^#4:*expr.Constant_StringValue#,
+    // 		"😑"^#5:*expr.Constant_StringValue#,
+    // 		"😦"^#6:*expr.Constant_StringValue#
+    // 	]^#3:*expr.Expr_ListExpr#
+    // )^#2:*expr.Expr_CallExpr#`,
+    P: create(ExprSchema, {
+      id: BigInt(2),
+      exprKind: {
+        case: 'callExpr',
+        value: {
+          function: '@in',
+          args: [
+            {
+              id: BigInt(1),
+              exprKind: {
+                case: 'constExpr',
+                value: {
+                  constantKind: {
+                    case: 'stringValue',
+                    value: '😁',
+                  },
+                },
+              },
+            },
+            {
+              id: BigInt(3),
+              exprKind: {
+                case: 'listExpr',
+                value: {
+                  elements: [
+                    {
+                      id: BigInt(4),
+                      exprKind: {
+                        case: 'constExpr',
+                        value: {
+                          constantKind: {
+                            case: 'stringValue',
+                            value: '😁',
+                          },
+                        },
+                      },
+                    },
+                    {
+                      id: BigInt(5),
+                      exprKind: {
+                        case: 'constExpr',
+                        value: {
+                          constantKind: {
+                            case: 'stringValue',
+                            value: '😑',
+                          },
+                        },
+                      },
+                    },
+                    {
+                      id: BigInt(6),
+                      exprKind: {
+                        case: 'constExpr',
+                        value: {
+                          constantKind: {
+                            case: 'stringValue',
+                            value: '😦',
+                          },
+                        },
+                      },
+                    },
+                  ],
+                },
+              },
+            },
+          ],
+        },
+      },
+    }),
+  },
+  // { // TODO: the error message points at the wrong characters
+  //   I: `      '😁' in ['😁', '😑', '😦']
+  // && in.😁`,
+  //   E: `ERROR: <input>:2:7: Syntax error: extraneous input 'in' expecting {'[', '{', '(', '.', '-', '!', 'true', 'false', 'null', NUM_FLOAT, NUM_INT, NUM_UINT, STRING, BYTES, IDENTIFIER}
+  // 	|    && in.😁
+  // 	| ......^
+  //     ERROR: <input>:2:10: Syntax error: token recognition error at: '😁'
+  // 	|    && in.😁
+  // 	| .........＾
+  // 	ERROR: <input>:2:11: Syntax error: no viable alternative at input '.'
+  // 	|    && in.😁
+  // 	| .........．^`,
+  // },
+  {
+    I: 'as',
+    E: `ERROR: <input>:1:1: reserved identifier: as
+		| as
+		| ^`,
+  },
+  {
+    I: 'break',
+    E: `ERROR: <input>:1:1: reserved identifier: break
+		| break
+		| ^`,
+  },
+  {
+    I: 'const',
+    E: `ERROR: <input>:1:1: reserved identifier: const
+		| const
+		| ^`,
+  },
+  {
+    I: 'continue',
+    E: `ERROR: <input>:1:1: reserved identifier: continue
+		| continue
+		| ^`,
+  },
+  {
+    I: 'else',
+    E: `ERROR: <input>:1:1: reserved identifier: else
+		| else
+		| ^`,
+  },
+  {
+    I: 'for',
+    E: `ERROR: <input>:1:1: reserved identifier: for
+		| for
+		| ^`,
+  },
+  {
+    I: 'function',
+    E: `ERROR: <input>:1:1: reserved identifier: function
+		| function
+		| ^`,
+  },
+  {
+    I: 'if',
+    E: `ERROR: <input>:1:1: reserved identifier: if
+		| if
+		| ^`,
+  },
+  {
+    I: 'import',
+    E: `ERROR: <input>:1:1: reserved identifier: import
+		| import
+		| ^`,
+  },
+  {
+    I: 'in',
+    E: `ERROR: <input>:1:1: Syntax error: mismatched input 'in' expecting {'[', '{', '(', '.', '-', '!', 'true', 'false', 'null', NUM_FLOAT, NUM_INT, NUM_UINT, STRING, BYTES, IDENTIFIER}
+		| in
+		| ^
+        ERROR: <input>:1:3: Syntax error: mismatched input '<EOF>' expecting {'[', '{', '(', '.', '-', '!', 'true', 'false', 'null', NUM_FLOAT, NUM_INT, NUM_UINT, STRING, BYTES, IDENTIFIER}
+		| in
+		| ..^`,
+  },
+  {
+    I: 'let',
+    E: `ERROR: <input>:1:1: reserved identifier: let
+		| let
+		| ^`,
+  },
+  {
+    I: 'loop',
+    E: `ERROR: <input>:1:1: reserved identifier: loop
+		| loop
+		| ^`,
+  },
+  {
+    I: 'package',
+    E: `ERROR: <input>:1:1: reserved identifier: package
+		| package
+		| ^`,
+  },
+  {
+    I: 'namespace',
+    E: `ERROR: <input>:1:1: reserved identifier: namespace
+		| namespace
+		| ^`,
+  },
+  {
+    I: 'return',
+    E: `ERROR: <input>:1:1: reserved identifier: return
+		| return
+		| ^`,
+  },
+  {
+    I: 'var',
+    E: `ERROR: <input>:1:1: reserved identifier: var
+		| var
+		| ^`,
+  },
+  {
+    I: 'void',
+    E: `ERROR: <input>:1:1: reserved identifier: void
+		| void
+		| ^`,
+  },
+  {
+    I: 'while',
+    E: `ERROR: <input>:1:1: reserved identifier: while
+		| while
+		| ^`,
+  },
+  // { // TODO: the errors in the message are in the wrong order
+  //   I: '[1, 2, 3].map(var, var * var)',
+  //   E: `ERROR: <input>:1:15: reserved identifier: var
+  // 	| [1, 2, 3].map(var, var * var)
+  // 	| ..............^
+  // 	ERROR: <input>:1:15: argument is not an identifier
+  // 	| [1, 2, 3].map(var, var * var)
+  // 	| ..............^
+  // 	ERROR: <input>:1:20: reserved identifier: var
+  // 	| [1, 2, 3].map(var, var * var)
+  // 	| ...................^
+  // 	ERROR: <input>:1:26: reserved identifier: var
+  // 	| [1, 2, 3].map(var, var * var)
+  // 	| .........................^`,
+  // },
+  {
+    I: 'func{{a}}',
+    E: `ERROR: <input>:1:6: Syntax error: extraneous input '{' expecting {'}', ',', '?', IDENTIFIER}
+		| func{{a}}
+		| .....^
+	    ERROR: <input>:1:8: Syntax error: mismatched input '}' expecting ':'
+		| func{{a}}
+		| .......^
+	    ERROR: <input>:1:9: Syntax error: extraneous input '}' expecting <EOF>
+		| func{{a}}
+		| ........^`,
+  },
+  {
+    I: 'msg{:a}',
+    E: `ERROR: <input>:1:5: Syntax error: extraneous input ':' expecting {'}', ',', '?', IDENTIFIER}
+		| msg{:a}
+		| ....^
+	    ERROR: <input>:1:7: Syntax error: mismatched input '}' expecting ':'
+		| msg{:a}
+		| ......^`,
+  },
+  {
+    I: '{a}',
+    E: `ERROR: <input>:1:3: Syntax error: mismatched input '}' expecting ':'
+		| {a}
+		| ..^`,
+  },
+  {
+    I: '{:a}',
+    E: `ERROR: <input>:1:2: Syntax error: extraneous input ':' expecting {'[', '{', '}', '(', '.', ',', '-', '!', '?', 'true', 'false', 'null', NUM_FLOAT, NUM_INT, NUM_UINT, STRING, BYTES, IDENTIFIER}
+		| {:a}
+		| .^
+	    ERROR: <input>:1:4: Syntax error: mismatched input '}' expecting ':'
+		| {:a}
+		| ...^`,
+  },
+  {
+    I: 'ind[a{b}]',
+    E: `ERROR: <input>:1:8: Syntax error: mismatched input '}' expecting ':'
+		| ind[a{b}]
+		| .......^`,
+  },
+  // TODO: something is weird with these ones:
+  // {
+  //   I: `--`,
+  //   E: `ERROR: <input>:1:3: Syntax error: no viable alternative at input '-'
+  // 	| --
+  // 	| ..^
+  //     ERROR: <input>:1:3: Syntax error: mismatched input '<EOF>' expecting {'[', '{', '(', '.', '-', '!', 'true', 'false', 'null', NUM_FLOAT, NUM_INT, NUM_UINT, STRING, BYTES, IDENTIFIER}
+  // 	| --
+  // 	| ..^`,
+  // },
+  // {
+  //   I: `?`,
+  //   E: `ERROR: <input>:1:1: Syntax error: mismatched input '?' expecting {'[', '{', '(', '.', '-', '!', 'true', 'false', 'null', NUM_FLOAT, NUM_INT, NUM_UINT, STRING, BYTES, IDENTIFIER}
+  // 	| ?
+  // 	| ^
+  //     ERROR: <input>:1:2: Syntax error: mismatched input '<EOF>' expecting {'[', '{', '(', '.', '-', '!', 'true', 'false', 'null', NUM_FLOAT, NUM_INT, NUM_UINT, STRING, BYTES, IDENTIFIER}
+  // 	| ?
+  // 	| .^`,
+  // },
+  // {
+  //   I: `a ? b ((?))`,
+  //   E: `ERROR: <input>:1:9: Syntax error: mismatched input '?' expecting {'[', '{', '(', '.', '-', '!', 'true', 'false', 'null', NUM_FLOAT, NUM_INT, NUM_UINT, STRING, BYTES, IDENTIFIER}
+  // 	| a ? b ((?))
+  // 	| ........^
+  //     ERROR: <input>:1:10: Syntax error: mismatched input ')' expecting {'[', '{', '(', '.', '-', '!', 'true', 'false', 'null', NUM_FLOAT, NUM_INT, NUM_UINT, STRING, BYTES, IDENTIFIER}
+  // 	| a ? b ((?))
+  // 	| .........^
+  //     ERROR: <input>:1:12: Syntax error: error recovery attempt limit exceeded: 4
+  // 	| a ? b ((?))
+  // 	| ...........^`,
+  // },
+  // TODO: recusion errors
+  // {
+  // 	I: `[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[
+  // 		[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[['too many']]]]]]]]]]]]]]]]]]]]]]]]]]]]
+  // 		]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]`,
+  // 	E: "ERROR: <input>:-1:0: expression recursion limit exceeded: 32",
+  // },
+  // {
+  // 	I: `-[-1--1--1--1---1--1--1--0--1--1--1--1--0--2--1--1--0--1--1--1--1--0--1--1--1
+  // 	--3-[-1--1--1--1---1--1--1--0--1--1--1--1--0--3--1--1--0--1--1--1--1--0--1--1--1
+  // 	--3-[-1--1--1--1---1--1--1--0-/1--1--1--1--0--2--1--1--0--1--1--1--1--0--1--1--1
+  // 	--3-[-1--1--1--1---1--1--1--0--1--1--1--1--0--2--1--1--0--1--1--1--1--0--1--1--1
+  // 	--3-[-1--1--1--1---1--1--1--0--1--1--1--1--0--2--1--1--0--1--1--1--1--0--1--1--1
+  // 	--3-[-1--1--1--1---1--1--1--0--1--1--1--1--0--2--1--1--0--1--1--1--1--0--1--1--1
+  // 	--3-[-1--1--1--1---1--1--1--0--1--1--1--1--0--3--1--1--0--1--1--1--1--0--1--1--1
+  // 	--3-[-1--1--1--1---1--1--1--0-/1--1--1--1--0--2--1--1--0--1--1--1--1--0--1--1--1
+  // 	--3-[-1--1--1--1---1-1--1--1--1--0--2--1--1--0--1--1--1--1--0--1--1--1--3-[-1--1
+  // 	--1--1---1--1--1--0--1--1--1--1--0--2--1--1--0--1--1--1--1--0--1--1--1--3-[-1--1
+  // 	--1--1---1--1-À1--0--1--1--1--1--0--2--1--1--0--1--1--1--1--0--1--1--1--3-[-1--1
+  // 	--1--1---1--1--1--0--1--1--1--1--0--2--1--1--0--1--1--1--1--0--1--1--1--3-[-1--1
+  // 	--1--1---1--1--1--0--1--1--1--1--0--3--1--1--0--1--1--1--1--0--1--1--1--3-[-1--1
+  // 	--1--1---1--1--1--0-/1--1--1--1--0--2--1--1--0--1--1--1--1--0--1--1--1--3-[-1--1
+  // 	--1--1---1--1--1--0--1--1--1--1--0--2--1--1--0--1--1--1--1--0--1--1--1--3-[-1--1
+  // 	--1--1---1--1--1--0--1--1--1--1--0--2--1--1--0--1--1--1--1--0--1--1--1--3-[-1--1
+  // 	--1--1---1--1--1--0--1--1--1--1--0--2--1--1--0--1--1--1--1--0--1--1--1--3-[-1--1
+  // 	--1--1---1--1--1--0--1--1--1--1--0--3--1--1--0--1--1--1
+  // 	--1--0--1--1--1--3-[-1--1--1--1---1--1--1--0-/1--1--1--1--0--2--1--1--0--1--1--1
+  // 	--1--0--1--1--1--3-[-1--1--1--1---1--1--1--0--1--1--1--1--0--2--1--1--0--1--1--1
+  // 	--1--0--1--1--1--3-[-1--1--1--1---1--1--1--0--1--1--1--1--0--2--1--1--0--1--1--1
+  // 	--1--0--1--1--1--3-[-1--1--1--1---1--1--1--0--1--1--1--1--0--2--1--1--0--1--1--1
+  // 	--1--0--1--1--1--3-[-1--1--1--1---1--1--1--0--1--1--1--1--0--3--1--1--0--1--1--1
+  // 	--1--0--1--1--1--3-[-1--1--1--1---1--1--1--0-/1--1--1--1--0--2--1--1--0--1--1--1
+  // 	--1--0--1--1--1--3-[-1--1--1--1---1--1--1--0--1--1--1--1--0--1--1--1--3-[-1--1--1
+  // 	--1---1--1--1--0--1--1--1--1--0--2--1--1--0--1--1--1--1--0--1--1--1--3-[-1--1--1
+  // 	--1---1--1--1--0--1--1--1--1--0--2--1--1--0--1--1--1--1--0--1--1--1--3-[-1--1--1
+  // 	--1---1--1--1--0--1--1--1--1--0--2--1--1--0--1--1--1--1--0--1--1--1--3-[-1--1--1
+  // 	--1---1--1--1--0--1--1--1--1--0--3--1--1--0--1--1--1--1--0--1--1--1--3-[-1--1--1
+  // 	--1---1--1--1--0-/1--1--1--1--0--2--1--1--0--1--1--1--1--0--1--1--1--3-[-1--1--1
+  // 	--1---1--1--1--0--1--1--1--1--0--2--1--1--0--1--1--1--1--0--1--1--1--3-[-1--1--1
+  // 	--1---1--1--1--0--1--1--1--1--0--2--1--1--0--1--1--1--1--0--1--1--1--3-[-1--1--1
+  // 	--1---1--1--1--0--1--1--1--1--0--2--1--1--0--1--1--1--1--0--1--1--1--3-[-1--1--1
+  // 	--1---1--1--1--0--1--1--1--1--0--3--1--1--0--1`,
+  // 	E: `ERROR: <input>:-1:0: expression recursion limit exceeded: 32
+  //       ERROR: <input>:3:33: Syntax error: extraneous input '/' expecting {'[', '{', '(', '.', '-', '!', 'true', 'false', 'null', NUM_FLOAT, NUM_INT, NUM_UINT, STRING, BYTES, IDENTIFIER}
+  //       |   --3-[-1--1--1--1---1--1--1--0-/1--1--1--1--0--2--1--1--0--1--1--1--1--0--1--1--1
+  //       | ................................^
+  //       ERROR: <input>:8:33: Syntax error: extraneous input '/' expecting {'[', '{', '(', '.', '-', '!', 'true', 'false', 'null', NUM_FLOAT, NUM_INT, NUM_UINT, STRING, BYTES, IDENTIFIER}
+  //       |   --3-[-1--1--1--1---1--1--1--0-/1--1--1--1--0--2--1--1--0--1--1--1--1--0--1--1--1
+  //       | ................................^
+  //       ERROR: <input>:11:17: Syntax error: token recognition error at: 'À'
+  //       |   --1--1---1--1-À1--0--1--1--1--1--0--2--1--1--0--1--1--1--1--0--1--1--1--3-[-1--1
+  //       | ................＾
+  //       ERROR: <input>:14:23: Syntax error: extraneous input '/' expecting {'[', '{', '(', '.', '-', '!', 'true', 'false', 'null', NUM_FLOAT, NUM_INT, NUM_UINT, STRING, BYTES, IDENTIFIER}
+  //       |   --1--1---1--1--1--0-/1--1--1--1--0--2--1--1--0--1--1--1--1--0--1--1--1--3-[-1--1
+  //       | ......................^`,
+  // },
+  // TODO: javascript doesn't like the one that starts with "I: `ó"
 ];
 
 describe('CELVisitor', () => {
   for (const testCase of testCases) {
     it(`should parse ${testCase.I}`, () => {
       // Arrange
-      const env = new CELEnvironment();
-      const ast = env.compile(testCase.I);
-      const program = new CELProgram(env, ast);
+      const parser = new CELParser(testCase.I);
 
       // Act
-      const expr = program.parse();
+      const expr = parser.parse();
 
       // Assert
       if (testCase.P) {
-        try {
-          expect(expr).toEqual(testCase.P);
-        } catch (e) {
-          // Log the tree and expression for debugging
-          console.log(env.astAsString(testCase.I));
-          console.log(toJsonString(ExprSchema, expr, { prettySpaces: 2 }));
-          throw e;
-        }
+        expect(expr).toEqual(testCase.P);
       } else if (testCase.M) {
-        try {
-          expect(expr).toEqual(testCase.M);
-        } catch (e) {
-          // Log the tree and expression for debugging
-          console.log(env.astAsString(testCase.I));
-          console.log(toJsonString(ExprSchema, expr, { prettySpaces: 2 }));
-          throw e;
-        }
+        expect(expr).toEqual(testCase.M);
       } else if (testCase.E) {
-        try {
-          expect(program.errors().errors).toContain(testCase.E);
-        } catch (e) {
-          // Log the tree and expression for debugging
-          console.log(env.astAsString(testCase.I));
-          console.log(toJsonString(ExprSchema, expr, { prettySpaces: 2 }));
-          throw e;
-        }
+        expect(parser.errors.toDisplayString()).toEqual(
+          // Account for the difference in spacing between the test case and
+          // the error message
+          testCase.E.split('\n')
+            .map((line) => line.trim())
+            .join('\n ')
+        );
       } else {
         throw new Error('Invalid test case');
       }

@@ -1,9 +1,9 @@
 /// <reference types='vitest' />
+import { nxCopyAssetsPlugin } from '@nx/vite/plugins/nx-copy-assets.plugin';
+import { nxViteTsPaths } from '@nx/vite/plugins/nx-tsconfig-paths.plugin';
+import * as path from 'path';
 import { defineConfig } from 'vite';
 import dts from 'vite-plugin-dts';
-import * as path from 'path';
-import { nxViteTsPaths } from '@nx/vite/plugins/nx-tsconfig-paths.plugin';
-import { nxCopyAssetsPlugin } from '@nx/vite/plugins/nx-copy-assets.plugin';
 
 export default defineConfig({
   root: __dirname,
@@ -57,6 +57,12 @@ export default defineConfig({
     coverage: {
       reportsDirectory: '../../coverage/packages/cel',
       provider: 'v8',
+    },
+    onConsoleLog(log: string, type: 'stdout' | 'stderr'): false | void {
+      console.log('log in test: ', log);
+      if (log === 'message from third party library' && type === 'stdout') {
+        return false;
+      }
     },
   },
 });
