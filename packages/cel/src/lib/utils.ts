@@ -2,10 +2,16 @@ import {
   ConstantSchema,
   Expr,
   ExprSchema,
+  Expr_CallSchema,
+  Expr_ComprehensionSchema,
+  Expr_CreateListSchema,
+  Expr_CreateStructSchema,
+  Expr_CreateStruct_EntrySchema,
   Expr_IdentSchema,
+  Expr_SelectSchema,
 } from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb.js';
 import { ValueSchema } from '@buf/google_cel-spec.bufbuild_es/cel/expr/value_pb.js';
-import { create } from '@bufbuild/protobuf';
+import { MessageInitShape, create } from '@bufbuild/protobuf';
 import { NullValue } from '@bufbuild/protobuf/wkt';
 
 export function parseString(str: string) {
@@ -41,6 +47,19 @@ export function parseInt64(str: string) {
     return -BigInt(decoded.slice(1));
   }
   return BigInt(decoded);
+}
+
+export function constExpr(
+  id: bigint,
+  init: MessageInitShape<typeof ConstantSchema>
+) {
+  return create(ExprSchema, {
+    id,
+    exprKind: {
+      case: 'constExpr',
+      value: create(ConstantSchema, init),
+    },
+  });
 }
 
 export function boolConstant(value: boolean) {
@@ -218,13 +237,15 @@ export const NULL_CONSTANT = create(ConstantSchema, {
   },
 });
 
-export const NULL_EXPR = create(ExprSchema, {
-  // TODO: id
-  exprKind: {
-    case: 'constExpr',
-    value: NULL_CONSTANT,
-  },
-});
+export function nullExpr(id: bigint) {
+  return create(ExprSchema, {
+    id,
+    exprKind: {
+      case: 'constExpr',
+      value: NULL_CONSTANT,
+    },
+  });
+}
 
 export const NULL_VALUE = create(ValueSchema, {
   kind: {
@@ -233,45 +254,132 @@ export const NULL_VALUE = create(ValueSchema, {
   },
 });
 
-export function identExpr(id: bigint, name: string) {
+export function identExpr(
+  id: bigint,
+  init: MessageInitShape<typeof Expr_IdentSchema>
+) {
   return create(ExprSchema, {
     id,
     exprKind: {
       case: 'identExpr',
-      value: create(Expr_IdentSchema, {
-        name,
-      }),
+      value: init,
     },
   });
 }
 
-export function globalCall(id: bigint, functionName: string, ...args: Expr[]) {
+export function callExpr(
+  id: bigint,
+  init: MessageInitShape<typeof Expr_CallSchema>
+) {
   return create(ExprSchema, {
     id,
     exprKind: {
       case: 'callExpr',
-      value: {
-        function: functionName,
-        args,
-      },
+      value: init,
     },
   });
 }
 
-export function listExpr(id: bigint, exprs: Expr[]) {
+export function listExpr(
+  id: bigint,
+  init: MessageInitShape<typeof Expr_CreateListSchema>
+) {
   return create(ExprSchema, {
     id,
     exprKind: {
       case: 'listExpr',
-      value: {
-        elements: exprs,
-      },
+      value: init,
+    },
+  });
+}
+
+export function selectExpr(
+  id: bigint,
+  init: MessageInitShape<typeof Expr_SelectSchema>
+) {
+  return create(ExprSchema, {
+    id,
+    exprKind: {
+      case: 'selectExpr',
+      value: init,
+    },
+  });
+}
+
+export function structExpr(
+  id: bigint,
+  init: MessageInitShape<typeof Expr_CreateStructSchema>
+) {
+  return create(ExprSchema, {
+    id,
+    exprKind: {
+      case: 'structExpr',
+      value: init,
+    },
+  });
+}
+
+export function createStructEntry(
+  id: bigint,
+  init: MessageInitShape<typeof Expr_CreateStruct_EntrySchema>
+) {
+  return create(Expr_CreateStruct_EntrySchema, {
+    id,
+    ...init,
+  });
+}
+
+export function createStructFieldEntry(
+  id: bigint,
+  init: {
+    key: string;
+    value: Expr;
+    optionalEntry?: boolean;
+  }
+) {
+  return createStructEntry(id, {
+    keyKind: {
+      case: 'fieldKey',
+      value: init.key,
+    },
+    value: init.value,
+    optionalEntry: init.optionalEntry ?? false,
+  });
+}
+
+export function createStructMapEntry(
+  id: bigint,
+  init: {
+    key: Expr;
+    value: Expr;
+    optionalEntry?: boolean;
+  }
+) {
+  return createStructEntry(id, {
+    keyKind: {
+      case: 'mapKey',
+      value: init.key,
+    },
+    value: init.value,
+    optionalEntry: init.optionalEntry ?? false,
+  });
+}
+
+export function comprehensionExpr(
+  id: bigint,
+  init: MessageInitShape<typeof Expr_ComprehensionSchema>
+) {
+  return create(ExprSchema, {
+    id,
+    exprKind: {
+      case: 'comprehensionExpr',
+      value: init,
     },
   });
 }
 
 export function unquote(str: string) {
-  const reg = /['"]/;
+  const reg = /['"`]/;
   if (!str) {
     return '';
   }
@@ -282,4 +390,11 @@ export function unquote(str: string) {
     str = str.substr(0, str.length - 1);
   }
   return str;
+}
+
+export function extractIdent(expr: Expr): string | null {
+  if (expr.exprKind.case !== 'identExpr') {
+    return null;
+  }
+  return expr.exprKind.value.name;
 }

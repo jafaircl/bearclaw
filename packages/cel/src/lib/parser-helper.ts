@@ -1,4 +1,4 @@
-import { SourceInfoSchema } from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb';
+import { SourceInfoSchema } from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb.js';
 import { create } from '@bufbuild/protobuf';
 import { ParserRuleContext, Token } from 'antlr4';
 import { Location, OffsetRange } from './types';
@@ -21,7 +21,9 @@ export class ParserHelper {
     return this.#id;
   }
 
-  public nextId(ctx?: ParserRuleContext | Token | Location | OffsetRange) {
+  public nextId(
+    ctx?: ParserRuleContext | Token | Location | OffsetRange | null
+  ) {
     const id = this.#id++;
     if (ctx) {
       let offsetRange: OffsetRange = { start: 0, stop: 0 };

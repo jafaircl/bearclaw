@@ -1,8 +1,5 @@
-import {
-  Expr,
-  ExprSchema,
-} from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb.js';
-import { create } from '@bufbuild/protobuf';
+import { Expr } from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb.js';
+import { callExpr } from './utils';
 
 export class LogicManager {
   private function: string;
@@ -41,15 +38,9 @@ export class LogicManager {
       return this.terms[0];
     }
     if (this.variadicASTs) {
-      return create(ExprSchema, {
-        id: this.ops[0],
-        exprKind: {
-          case: 'callExpr',
-          value: {
-            function: this.function,
-            args: this.terms,
-          },
-        },
+      return callExpr(this.ops[0], {
+        function: this.function,
+        args: this.terms,
       });
     }
     return this.balancedTree(0, this.ops.length - 1);
@@ -69,15 +60,9 @@ export class LogicManager {
     } else {
       right = this.balancedTree(mid + 1, hi);
     }
-    return create(ExprSchema, {
-      id: this.ops[mid],
-      exprKind: {
-        case: 'callExpr',
-        value: {
-          function: this.function,
-          args: [left, right],
-        },
-      },
+    return callExpr(this.ops[mid], {
+      function: this.function,
+      args: [left, right],
     });
   }
 }

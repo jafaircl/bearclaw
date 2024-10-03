@@ -1,11 +1,7 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { isNil } from '@bearclaw/is';
-import {
-  Expr,
-  ExprSchema,
-  Expr_SelectSchema,
-} from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb.js';
-import { create } from '@bufbuild/protobuf';
+import { Expr } from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb.js';
+import { ParserRuleContext, Token } from 'antlr4';
 import { ACCUMULATOR_VAR } from './constants';
 import {
   ADD_OPERATOR,
@@ -23,7 +19,17 @@ import {
   NOT_STRICTLY_FALSE_OPERATOR,
 } from './operators';
 import { ParserHelper } from './parser-helper';
-import { boolExpr, globalCall, identExpr, int64Expr, listExpr } from './utils';
+import { Location, OffsetRange } from './types';
+import {
+  boolExpr,
+  callExpr,
+  comprehensionExpr,
+  extractIdent,
+  identExpr,
+  int64Expr,
+  listExpr,
+  selectExpr,
+} from './utils';
 
 export const STANDARD_MACROS = new Set([
   HAS_MACRO,
@@ -40,6 +46,7 @@ export function findMacro(name: string) {
 }
 
 export function expandMacro(
+  ctx: ParserRuleContext | Token | Location | OffsetRange | null,
   helper: ParserHelper,
   op: string,
   target: Expr | null,
@@ -47,170 +54,164 @@ export function expandMacro(
 ): Expr {
   switch (op) {
     case HAS_MACRO:
-      return expandHasMacro(helper, args);
+      return expandHasMacro(ctx, helper, args);
     case ALL_MACRO:
-      return expandAllMacro(helper, target!, args);
+      return expandAllMacro(ctx, helper, target!, args);
     case EXISTS_MACRO:
-      return expandExistsMacro(helper, target!, args);
+      return expandExistsMacro(ctx, helper, target!, args);
     case EXISTS_ONE_MACRO:
-      return expandExistsOneMacro(helper, target!, args);
+      return expandExistsOneMacro(ctx, helper, target!, args);
     case MAP_MACRO:
-      return expandMapMacro(helper, target!, args);
+      return expandMapMacro(ctx, helper, target!, args);
     case FILTER_MACRO:
-      return expandFilterMacro(helper, target!, args);
+      return expandFilterMacro(ctx, helper, target!, args);
     default:
       throw new Error(`Unknown macro: ${op}`);
   }
 }
 
-export function expandHasMacro(helper: ParserHelper, args: Expr[]): Expr {
+export function expandHasMacro(
+  ctx: ParserRuleContext | Token | Location | OffsetRange | null,
+  helper: ParserHelper,
+  args: Expr[]
+): Expr {
   const arg = args[0];
   if (arg.exprKind.case !== 'selectExpr') {
-    throw new Error('Invalid argument to has() macro');
+    throw new MacroError('invalid argument to has() macro', ctx, arg);
   }
-  return create(ExprSchema, {
-    id: helper.nextId(),
-    exprKind: {
-      case: 'selectExpr',
-      value: create(Expr_SelectSchema, {
-        operand: arg.exprKind.value.operand,
-        field: arg.exprKind.value.field,
-        testOnly: true,
-      }),
-    },
+  return selectExpr(helper.nextId(ctx), {
+    operand: arg.exprKind.value.operand,
+    field: arg.exprKind.value.field,
+    testOnly: true,
   });
 }
 
 export function expandAllMacro(
+  ctx: ParserRuleContext | Token | Location | OffsetRange | null,
   helper: ParserHelper,
   target: Expr,
   args: Expr[]
 ): Expr {
   const arg0 = args[0];
   if (arg0.exprKind.case !== 'identExpr') {
-    throw new Error('Invalid argument to all() macro');
+    throw new MacroError('argument must be a simple name', ctx, arg0);
   }
   const arg1 = args[1];
-  const accuInit = boolExpr(helper.nextId(), true);
-  const conditionArg0 = identExpr(helper.nextId(), ACCUMULATOR_VAR);
-  const condition = globalCall(
-    helper.nextId(),
-    NOT_STRICTLY_FALSE_OPERATOR,
-    conditionArg0
-  );
-  const stepArg0 = identExpr(helper.nextId(), ACCUMULATOR_VAR);
-  const step = globalCall(
-    helper.nextId(),
-    LOGICAL_AND_OPERATOR,
-    stepArg0,
-    arg1
-  );
-  const result = identExpr(helper.nextId(), ACCUMULATOR_VAR);
-  return fold(
-    helper.nextId(),
-    target,
-    arg0.exprKind.value.name,
-    ACCUMULATOR_VAR,
+  const accuInit = boolExpr(helper.nextId(ctx), true);
+  const conditionArg0 = identExpr(helper.nextId(ctx), {
+    name: ACCUMULATOR_VAR,
+  });
+  const condition = callExpr(helper.nextId(ctx), {
+    function: NOT_STRICTLY_FALSE_OPERATOR,
+    args: [conditionArg0],
+  });
+  const stepArg0 = identExpr(helper.nextId(ctx), { name: ACCUMULATOR_VAR });
+  const step = callExpr(helper.nextId(ctx), {
+    function: LOGICAL_AND_OPERATOR,
+    args: [stepArg0, arg1],
+  });
+  const result = identExpr(helper.nextId(ctx), { name: ACCUMULATOR_VAR });
+  return comprehensionExpr(helper.nextId(ctx), {
+    iterRange: target,
+    iterVar: arg0.exprKind.value.name,
+    accuVar: ACCUMULATOR_VAR,
     accuInit,
-    condition,
-    step,
-    result
-  );
+    loopCondition: condition,
+    loopStep: step,
+    result,
+  });
 }
 
 export function expandExistsMacro(
+  ctx: ParserRuleContext | Token | Location | OffsetRange | null,
   helper: ParserHelper,
   target: Expr,
   args: Expr[]
 ): Expr {
   const arg0 = args[0];
   if (arg0.exprKind.case !== 'identExpr') {
-    throw new Error('Invalid argument to exists() macro');
+    throw new MacroError('argument must be a simple name', ctx, arg0);
   }
   const arg1 = args[1];
-  const accuInit = boolExpr(helper.nextId(), false);
-  const conditionArg0Arg0 = identExpr(helper.nextId(), ACCUMULATOR_VAR);
-  const conditionArg0 = globalCall(
-    helper.nextId(),
-    LOGICAL_NOT_OPERATOR,
-    conditionArg0Arg0
-  );
-  const condition = globalCall(
-    helper.nextId(),
-    NOT_STRICTLY_FALSE_OPERATOR,
-    conditionArg0
-  );
-  const stepArg0 = identExpr(helper.nextId(), ACCUMULATOR_VAR);
-  const step = globalCall(helper.nextId(), LOGICAL_OR_OPERATOR, stepArg0, arg1);
-  const result = identExpr(helper.nextId(), ACCUMULATOR_VAR);
-  return fold(
-    helper.nextId(),
-    target,
-    arg0.exprKind.value.name,
-    ACCUMULATOR_VAR,
+  const accuInit = boolExpr(helper.nextId(ctx), false);
+  const conditionArg0Arg0 = identExpr(helper.nextId(ctx), {
+    name: ACCUMULATOR_VAR,
+  });
+  const conditionArg0 = callExpr(helper.nextId(ctx), {
+    function: LOGICAL_NOT_OPERATOR,
+    args: [conditionArg0Arg0],
+  });
+  const condition = callExpr(helper.nextId(ctx), {
+    function: NOT_STRICTLY_FALSE_OPERATOR,
+    args: [conditionArg0],
+  });
+  const stepArg0 = identExpr(helper.nextId(ctx), { name: ACCUMULATOR_VAR });
+  const step = callExpr(helper.nextId(ctx), {
+    function: LOGICAL_OR_OPERATOR,
+    args: [stepArg0, arg1],
+  });
+  const result = identExpr(helper.nextId(ctx), { name: ACCUMULATOR_VAR });
+  return comprehensionExpr(helper.nextId(ctx), {
+    iterRange: target,
+    iterVar: arg0.exprKind.value.name,
+    accuVar: ACCUMULATOR_VAR,
     accuInit,
-    condition,
-    step,
-    result
-  );
+    loopCondition: condition,
+    loopStep: step,
+    result,
+  });
 }
 
 export function expandExistsOneMacro(
+  ctx: ParserRuleContext | Token | Location | OffsetRange | null,
   helper: ParserHelper,
   target: Expr,
   args: Expr[]
 ): Expr {
   const arg0 = args[0];
   if (arg0.exprKind.case !== 'identExpr') {
-    throw new Error('Invalid argument to exists_one() macro');
+    throw new MacroError('argument must be a simple name', ctx, arg0);
   }
   const arg1 = args[1];
-  const accuInit = int64Expr(helper.nextId(), BigInt(0));
-  const condition = boolExpr(helper.nextId(), true);
-  const stepArg1Arg0 = identExpr(helper.nextId(), ACCUMULATOR_VAR);
-  const stepArg1Arg1 = int64Expr(helper.nextId(), BigInt(1));
-  const stepArg1 = globalCall(
-    helper.nextId(),
-    ADD_OPERATOR,
-    stepArg1Arg0,
-    stepArg1Arg1
-  );
-  const stepArg2 = identExpr(helper.nextId(), ACCUMULATOR_VAR);
-  const step = globalCall(
-    helper.nextId(),
-    CONDITIONAL_OPERATOR,
-    arg1,
-    stepArg1,
-    stepArg2
-  );
-  const resultArg0 = identExpr(helper.nextId(), ACCUMULATOR_VAR);
-  const resultArg1 = int64Expr(helper.nextId(), BigInt(1));
-  const result = globalCall(
-    helper.nextId(),
-    EQUALS_OPERATOR,
-    resultArg0,
-    resultArg1
-  );
-  return fold(
-    helper.nextId(),
-    target,
-    arg0.exprKind.value.name,
-    ACCUMULATOR_VAR,
+  const accuInit = int64Expr(helper.nextId(ctx), BigInt(0));
+  const condition = boolExpr(helper.nextId(ctx), true);
+  const stepArg1Arg0 = identExpr(helper.nextId(ctx), { name: ACCUMULATOR_VAR });
+  const stepArg1Arg1 = int64Expr(helper.nextId(ctx), BigInt(1));
+  const stepArg1 = callExpr(helper.nextId(ctx), {
+    function: ADD_OPERATOR,
+    args: [stepArg1Arg0, stepArg1Arg1],
+  });
+  const stepArg2 = identExpr(helper.nextId(ctx), { name: ACCUMULATOR_VAR });
+  const step = callExpr(helper.nextId(ctx), {
+    function: CONDITIONAL_OPERATOR,
+    args: [arg1, stepArg1, stepArg2],
+  });
+  const resultArg0 = identExpr(helper.nextId(ctx), { name: ACCUMULATOR_VAR });
+  const resultArg1 = int64Expr(helper.nextId(ctx), BigInt(1));
+  const result = callExpr(helper.nextId(ctx), {
+    function: EQUALS_OPERATOR,
+    args: [resultArg0, resultArg1],
+  });
+  return comprehensionExpr(helper.nextId(ctx), {
+    iterRange: target,
+    iterVar: arg0.exprKind.value.name,
+    accuVar: ACCUMULATOR_VAR,
     accuInit,
-    condition,
-    step,
-    result
-  );
+    loopCondition: condition,
+    loopStep: step,
+    result,
+  });
 }
 
 export function expandMapMacro(
+  ctx: ParserRuleContext | Token | Location | OffsetRange | null,
   helper: ParserHelper,
   target: Expr,
   args: Expr[]
 ): Expr {
   const v = extractIdent(args[0]);
   if (isNil(v)) {
-    throw new Error('argument is not an identifier');
+    throw new MacroError('argument is not an identifier', ctx, args[0]);
   }
   let fn: Expr | null = null;
   let filter: Expr | null = null;
@@ -220,100 +221,81 @@ export function expandMapMacro(
   } else {
     fn = args[1];
   }
-  const init = listExpr(helper.nextId(), []);
-  const condition = boolExpr(helper.nextId(), true);
-  const stepArg0 = identExpr(helper.nextId(), ACCUMULATOR_VAR);
-  const stepArg1 = listExpr(helper.nextId(), [fn]);
-  let step = globalCall(helper.nextId(), ADD_OPERATOR, stepArg0, stepArg1);
+  const init = listExpr(helper.nextId(ctx), {});
+  const condition = boolExpr(helper.nextId(ctx), true);
+  const stepArg0 = identExpr(helper.nextId(ctx), { name: ACCUMULATOR_VAR });
+  const stepArg1 = listExpr(helper.nextId(ctx), { elements: [fn] });
+  let step = callExpr(helper.nextId(ctx), {
+    function: ADD_OPERATOR,
+    args: [stepArg0, stepArg1],
+  });
   if (!isNil(filter)) {
-    const step2Arg2 = identExpr(helper.nextId(), ACCUMULATOR_VAR);
-    step = globalCall(
-      helper.nextId(),
-      CONDITIONAL_OPERATOR,
-      filter,
-      step,
-      step2Arg2
-    );
+    const step2Arg2 = identExpr(helper.nextId(ctx), { name: ACCUMULATOR_VAR });
+    step = callExpr(helper.nextId(ctx), {
+      function: CONDITIONAL_OPERATOR,
+      args: [filter, step, step2Arg2],
+    });
   }
-  const result = identExpr(helper.nextId(), ACCUMULATOR_VAR);
-  return fold(
-    helper.nextId(),
-    target,
-    v,
-    ACCUMULATOR_VAR,
-    init,
-    condition,
-    step,
-    result
-  );
+  const result = identExpr(helper.nextId(ctx), { name: ACCUMULATOR_VAR });
+  return comprehensionExpr(helper.nextId(ctx), {
+    iterRange: target,
+    iterVar: v,
+    accuVar: ACCUMULATOR_VAR,
+    accuInit: init,
+    loopCondition: condition,
+    loopStep: step,
+    result,
+  });
 }
 
 export function expandFilterMacro(
+  ctx: ParserRuleContext | Token | Location | OffsetRange | null,
   helper: ParserHelper,
   target: Expr,
   args: Expr[]
 ): Expr {
   const v = extractIdent(args[0]);
   if (isNil(v)) {
-    throw new Error('argument is not an identifier');
+    throw new MacroError('argument is not an identifier', ctx, args[0]);
   }
   const filter = args[1];
-  const listInit = listExpr(helper.nextId(), []);
-  const condition = boolExpr(helper.nextId(), true);
-  const stepArg0 = identExpr(helper.nextId(), ACCUMULATOR_VAR);
-  const stepArg1 = listExpr(helper.nextId(), [args[0]]);
-  let step = globalCall(helper.nextId(), ADD_OPERATOR, stepArg0, stepArg1);
-  const step2Arg1 = identExpr(helper.nextId(), ACCUMULATOR_VAR);
-  step = globalCall(
-    helper.nextId(),
-    CONDITIONAL_OPERATOR,
-    filter,
-    step,
-    step2Arg1
-  );
-  const result = identExpr(helper.nextId(), ACCUMULATOR_VAR);
-  return fold(
-    helper.nextId(),
-    target,
-    v,
-    ACCUMULATOR_VAR,
-    listInit,
-    condition,
-    step,
-    result
-  );
-}
-
-function fold(
-  exprId: bigint,
-  iterRange: Expr,
-  iterVar: string,
-  accuVar: string,
-  accuInit: Expr,
-  condition: Expr,
-  step: Expr,
-  result: Expr
-): Expr {
-  return create(ExprSchema, {
-    id: exprId,
-    exprKind: {
-      case: 'comprehensionExpr',
-      value: {
-        iterVar,
-        iterRange,
-        accuVar,
-        accuInit,
-        loopCondition: condition,
-        loopStep: step,
-        result,
-      },
-    },
+  const listInit = listExpr(helper.nextId(ctx), {});
+  const condition = boolExpr(helper.nextId(ctx), true);
+  const stepArg0 = identExpr(helper.nextId(ctx), { name: ACCUMULATOR_VAR });
+  const stepArg1 = listExpr(helper.nextId(ctx), { elements: [args[0]] });
+  let step = callExpr(helper.nextId(ctx), {
+    function: ADD_OPERATOR,
+    args: [stepArg0, stepArg1],
+  });
+  const step2Arg1 = identExpr(helper.nextId(ctx), { name: ACCUMULATOR_VAR });
+  step = callExpr(helper.nextId(ctx), {
+    function: CONDITIONAL_OPERATOR,
+    args: [filter, step, step2Arg1],
+  });
+  const result = identExpr(helper.nextId(ctx), { name: ACCUMULATOR_VAR });
+  return comprehensionExpr(helper.nextId(ctx), {
+    iterRange: target,
+    iterVar: v,
+    accuVar: ACCUMULATOR_VAR,
+    accuInit: listInit,
+    loopCondition: condition,
+    loopStep: step,
+    result,
   });
 }
 
-function extractIdent(expr: Expr): string | null {
-  if (expr.exprKind.case !== 'identExpr') {
-    return null;
+export class MacroError extends Error {
+  constructor(
+    message: string,
+    public readonly ctx:
+      | ParserRuleContext
+      | Token
+      | Location
+      | OffsetRange
+      | null,
+    public readonly expr?: Expr
+  ) {
+    super(message);
+    this.name = 'MacroError';
   }
-  return expr.exprKind.value.name;
 }
