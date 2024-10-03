@@ -79,7 +79,10 @@ export class Errors {
     for (const error of this.errors.errors) {
       const str = this._errorToDisplayString(error);
       // Deduplicate recursion errors.
-      if (str.includes('expression recursion limit exceeded')) {
+      if (
+        str.includes('expression recursion limit exceeded') ||
+        str.includes('max recursion depth exceeded')
+      ) {
         if (!hasRecursionError) {
           hasRecursionError = true;
           errors.push(str);

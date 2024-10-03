@@ -4708,6 +4708,361 @@ const testCases: TestInfo[] = [
   //       | ......................^`,
   // },
   // TODO: javascript doesn't like the one that starts with "I: `ó"
+  // Macro Calls Tests
+  // TODO: these are very complicated
+  // {
+  //   I: `x.filter(y, y.filter(z, z > 0))`,
+  //   P: `__comprehension__(
+  //   	// Variable
+  //   	y,
+  //   	// Target
+  //   	x^#1:*expr.Expr_IdentExpr#,
+  //   	// Accumulator
+  //   	__result__,
+  //   	// Init
+  //   	[]^#19:*expr.Expr_ListExpr#,
+  //   	// LoopCondition
+  //   	true^#20:*expr.Constant_BoolValue#,
+  //   	// LoopStep
+  //   	_?_:_(
+  //   	  __comprehension__(
+  //   		// Variable
+  //   		z,
+  //   		// Target
+  //   		y^#4:*expr.Expr_IdentExpr#,
+  //   		// Accumulator
+  //   		__result__,
+  //   		// Init
+  //   		[]^#10:*expr.Expr_ListExpr#,
+  //   		// LoopCondition
+  //   		true^#11:*expr.Constant_BoolValue#,
+  //   		// LoopStep
+  //   		_?_:_(
+  //   		  _>_(
+  //   			z^#7:*expr.Expr_IdentExpr#,
+  //   			0^#9:*expr.Constant_Int64Value#
+  //   		  )^#8:*expr.Expr_CallExpr#,
+  //   		  _+_(
+  //   			__result__^#12:*expr.Expr_IdentExpr#,
+  //   			[
+  //   			  z^#6:*expr.Expr_IdentExpr#
+  //   			]^#13:*expr.Expr_ListExpr#
+  //   		  )^#14:*expr.Expr_CallExpr#,
+  //   		  __result__^#15:*expr.Expr_IdentExpr#
+  //   		)^#16:*expr.Expr_CallExpr#,
+  //   		// Result
+  //   		__result__^#17:*expr.Expr_IdentExpr#)^#18:*expr.Expr_ComprehensionExpr#,
+  //   	  _+_(
+  //   		__result__^#21:*expr.Expr_IdentExpr#,
+  //   		[
+  //   		  y^#3:*expr.Expr_IdentExpr#
+  //   		]^#22:*expr.Expr_ListExpr#
+  //   	  )^#23:*expr.Expr_CallExpr#,
+  //   	  __result__^#24:*expr.Expr_IdentExpr#
+  //   	)^#25:*expr.Expr_CallExpr#,
+  //   	// Result
+  //   	__result__^#26:*expr.Expr_IdentExpr#)^#27:*expr.Expr_ComprehensionExpr#`,
+  //   M: `x^#1:*expr.Expr_IdentExpr#.filter(
+  //   	y^#3:*expr.Expr_IdentExpr#,
+  //   	^#18:filter#
+  //     )^#27:filter#,
+  //     y^#4:*expr.Expr_IdentExpr#.filter(
+  //   	z^#6:*expr.Expr_IdentExpr#,
+  //   	_>_(
+  //   	  z^#7:*expr.Expr_IdentExpr#,
+  //   	  0^#9:*expr.Constant_Int64Value#
+  //   	)^#8:*expr.Expr_CallExpr#
+  //     )^#18:filter#`,
+  // },
+  // {
+  // 	I: `has(a.b).filter(c, c)`,
+  // 	P: `__comprehension__(
+  // 		// Variable
+  // 		c,
+  // 		// Target
+  // 		a^#2:*expr.Expr_IdentExpr#.b~test-only~^#4:*expr.Expr_SelectExpr#,
+  // 		// Accumulator
+  // 		__result__,
+  // 		// Init
+  // 		[]^#8:*expr.Expr_ListExpr#,
+  // 		// LoopCondition
+  // 		true^#9:*expr.Constant_BoolValue#,
+  // 		// LoopStep
+  // 		_?_:_(
+  // 		  c^#7:*expr.Expr_IdentExpr#,
+  // 		  _+_(
+  // 			__result__^#10:*expr.Expr_IdentExpr#,
+  // 			[
+  // 			  c^#6:*expr.Expr_IdentExpr#
+  // 			]^#11:*expr.Expr_ListExpr#
+  // 		  )^#12:*expr.Expr_CallExpr#,
+  // 		  __result__^#13:*expr.Expr_IdentExpr#
+  // 		)^#14:*expr.Expr_CallExpr#,
+  // 		// Result
+  // 		__result__^#15:*expr.Expr_IdentExpr#)^#16:*expr.Expr_ComprehensionExpr#`,
+  // 	M: `^#4:has#.filter(
+  // 		c^#6:*expr.Expr_IdentExpr#,
+  // 		c^#7:*expr.Expr_IdentExpr#
+  // 		)^#16:filter#,
+  // 		has(
+  // 			a^#2:*expr.Expr_IdentExpr#.b^#3:*expr.Expr_SelectExpr#
+  // 		)^#4:has#`,
+  // },
+  // {
+  // 	I: `x.filter(y, y.exists(z, has(z.a)) && y.exists(z, has(z.b)))`,
+  // 	P: `__comprehension__(
+  // 		// Variable
+  // 		y,
+  // 		// Target
+  // 		x^#1:*expr.Expr_IdentExpr#,
+  // 		// Accumulator
+  // 		__result__,
+  // 		// Init
+  // 		[]^#35:*expr.Expr_ListExpr#,
+  // 		// LoopCondition
+  // 		true^#36:*expr.Constant_BoolValue#,
+  // 		// LoopStep
+  // 		_?_:_(
+  // 		  _&&_(
+  // 			__comprehension__(
+  // 			  // Variable
+  // 			  z,
+  // 			  // Target
+  // 			  y^#4:*expr.Expr_IdentExpr#,
+  // 			  // Accumulator
+  // 			  __result__,
+  // 			  // Init
+  // 			  false^#11:*expr.Constant_BoolValue#,
+  // 			  // LoopCondition
+  // 			  @not_strictly_false(
+  // 				!_(
+  // 				  __result__^#12:*expr.Expr_IdentExpr#
+  // 				)^#13:*expr.Expr_CallExpr#
+  // 			  )^#14:*expr.Expr_CallExpr#,
+  // 			  // LoopStep
+  // 			  _||_(
+  // 				__result__^#15:*expr.Expr_IdentExpr#,
+  // 				z^#8:*expr.Expr_IdentExpr#.a~test-only~^#10:*expr.Expr_SelectExpr#
+  // 			  )^#16:*expr.Expr_CallExpr#,
+  // 			  // Result
+  // 			  __result__^#17:*expr.Expr_IdentExpr#)^#18:*expr.Expr_ComprehensionExpr#,
+  // 			__comprehension__(
+  // 			  // Variable
+  // 			  z,
+  // 			  // Target
+  // 			  y^#19:*expr.Expr_IdentExpr#,
+  // 			  // Accumulator
+  // 			  __result__,
+  // 			  // Init
+  // 			  false^#26:*expr.Constant_BoolValue#,
+  // 			  // LoopCondition
+  // 			  @not_strictly_false(
+  // 				!_(
+  // 				  __result__^#27:*expr.Expr_IdentExpr#
+  // 				)^#28:*expr.Expr_CallExpr#
+  // 			  )^#29:*expr.Expr_CallExpr#,
+  // 			  // LoopStep
+  // 			  _||_(
+  // 				__result__^#30:*expr.Expr_IdentExpr#,
+  // 				z^#23:*expr.Expr_IdentExpr#.b~test-only~^#25:*expr.Expr_SelectExpr#
+  // 			  )^#31:*expr.Expr_CallExpr#,
+  // 			  // Result
+  // 			  __result__^#32:*expr.Expr_IdentExpr#)^#33:*expr.Expr_ComprehensionExpr#
+  // 		  )^#34:*expr.Expr_CallExpr#,
+  // 		  _+_(
+  // 			__result__^#37:*expr.Expr_IdentExpr#,
+  // 			[
+  // 			  y^#3:*expr.Expr_IdentExpr#
+  // 			]^#38:*expr.Expr_ListExpr#
+  // 		  )^#39:*expr.Expr_CallExpr#,
+  // 		  __result__^#40:*expr.Expr_IdentExpr#
+  // 		)^#41:*expr.Expr_CallExpr#,
+  // 		// Result
+  // 		__result__^#42:*expr.Expr_IdentExpr#)^#43:*expr.Expr_ComprehensionExpr#`,
+  // 	M: `x^#1:*expr.Expr_IdentExpr#.filter(
+  // 		y^#3:*expr.Expr_IdentExpr#,
+  // 		_&&_(
+  // 		  ^#18:exists#,
+  // 		  ^#33:exists#
+  // 		)^#34:*expr.Expr_CallExpr#
+  // 		)^#43:filter#,
+  // 		y^#19:*expr.Expr_IdentExpr#.exists(
+  // 			z^#21:*expr.Expr_IdentExpr#,
+  // 			^#25:has#
+  // 		)^#33:exists#,
+  // 		has(
+  // 			z^#23:*expr.Expr_IdentExpr#.b^#24:*expr.Expr_SelectExpr#
+  // 		)^#25:has#,
+  // 		y^#4:*expr.Expr_IdentExpr#.exists(
+  // 			z^#6:*expr.Expr_IdentExpr#,
+  // 			^#10:has#
+  // 		)^#18:exists#,
+  // 		has(
+  // 			z^#8:*expr.Expr_IdentExpr#.a^#9:*expr.Expr_SelectExpr#
+  // 		)^#10:has#`,
+  // },
+  // {
+  //   I: `(has(a.b) || has(c.d)).string()`,
+  //   P: `_||_(
+  // 		  a^#2:*expr.Expr_IdentExpr#.b~test-only~^#4:*expr.Expr_SelectExpr#,
+  // 		  c^#6:*expr.Expr_IdentExpr#.d~test-only~^#8:*expr.Expr_SelectExpr#
+  // 	    )^#9:*expr.Expr_CallExpr#.string()^#10:*expr.Expr_CallExpr#`,
+  //   M: `has(
+  // 		  c^#6:*expr.Expr_IdentExpr#.d^#7:*expr.Expr_SelectExpr#
+  // 		)^#8:has#,
+  // 		has(
+  // 		  a^#2:*expr.Expr_IdentExpr#.b^#3:*expr.Expr_SelectExpr#
+  // 		)^#4:has#`,
+  // },
+  // {
+  // 	I: `has(a.b).asList().exists(c, c)`,
+  // 	P: `__comprehension__(
+  // 		// Variable
+  // 		c,
+  // 		// Target
+  // 		a^#2:*expr.Expr_IdentExpr#.b~test-only~^#4:*expr.Expr_SelectExpr#.asList()^#5:*expr.Expr_CallExpr#,
+  // 		// Accumulator
+  // 		__result__,
+  // 		// Init
+  // 		false^#9:*expr.Constant_BoolValue#,
+  // 		// LoopCondition
+  // 		@not_strictly_false(
+  // 		  !_(
+  // 			__result__^#10:*expr.Expr_IdentExpr#
+  // 		  )^#11:*expr.Expr_CallExpr#
+  // 		)^#12:*expr.Expr_CallExpr#,
+  // 		// LoopStep
+  // 		_||_(
+  // 		  __result__^#13:*expr.Expr_IdentExpr#,
+  // 		  c^#8:*expr.Expr_IdentExpr#
+  // 		)^#14:*expr.Expr_CallExpr#,
+  // 		// Result
+  // 		__result__^#15:*expr.Expr_IdentExpr#)^#16:*expr.Expr_ComprehensionExpr#`,
+  // 	M: `^#4:has#.asList()^#5:*expr.Expr_CallExpr#.exists(
+  // 		c^#7:*expr.Expr_IdentExpr#,
+  // 		c^#8:*expr.Expr_IdentExpr#
+  // 	  )^#16:exists#,
+  // 	  has(
+  // 		a^#2:*expr.Expr_IdentExpr#.b^#3:*expr.Expr_SelectExpr#
+  // 	  )^#4:has#`,
+  // },
+  // {
+  // 	I: `[has(a.b), has(c.d)].exists(e, e)`,
+  // 	P: `__comprehension__(
+  // 		// Variable
+  // 		e,
+  // 		// Target
+  // 		[
+  // 		  a^#3:*expr.Expr_IdentExpr#.b~test-only~^#5:*expr.Expr_SelectExpr#,
+  // 		  c^#7:*expr.Expr_IdentExpr#.d~test-only~^#9:*expr.Expr_SelectExpr#
+  // 		]^#1:*expr.Expr_ListExpr#,
+  // 		// Accumulator
+  // 		__result__,
+  // 		// Init
+  // 		false^#13:*expr.Constant_BoolValue#,
+  // 		// LoopCondition
+  // 		@not_strictly_false(
+  // 		  !_(
+  // 			__result__^#14:*expr.Expr_IdentExpr#
+  // 		  )^#15:*expr.Expr_CallExpr#
+  // 		)^#16:*expr.Expr_CallExpr#,
+  // 		// LoopStep
+  // 		_||_(
+  // 		  __result__^#17:*expr.Expr_IdentExpr#,
+  // 		  e^#12:*expr.Expr_IdentExpr#
+  // 		)^#18:*expr.Expr_CallExpr#,
+  // 		// Result
+  // 		__result__^#19:*expr.Expr_IdentExpr#)^#20:*expr.Expr_ComprehensionExpr#`,
+  // 	M: `[
+  // 		^#5:has#,
+  // 		^#9:has#
+  // 	  ]^#1:*expr.Expr_ListExpr#.exists(
+  // 		e^#11:*expr.Expr_IdentExpr#,
+  // 		e^#12:*expr.Expr_IdentExpr#
+  // 	  )^#20:exists#,
+  // 	  has(
+  // 		c^#7:*expr.Expr_IdentExpr#.d^#8:*expr.Expr_SelectExpr#
+  // 	  )^#9:has#,
+  // 	  has(
+  // 		a^#3:*expr.Expr_IdentExpr#.b^#4:*expr.Expr_SelectExpr#
+  // 	  )^#5:has#`,
+  // },
+  {
+    I: `y!=y!=y!=y!=y!=y!=y!=y!=y!=-y!=-y!=-y!=-y-y!=-y!=-y!=-y-y!=-y!=-y!=-y-y!=-y
+		!=-y!=-y-y!=-y!=-y!=-y-y!=-y!=-y!=-y-y!=-y!=-y!=-y-y!=-y!=-y!=-y-y!=-y!=-y!=-y-y
+		!=-y!=-y!=-y-y!=-y!=-y!=-y-y!=-y!=-y!=-y-y!=-y!=-y!=-y-y!=-y!=-y!=-y-y!=-y!=-y
+		!=-y-y!=-y!=-y!=-y-y!=-y!=-y!=-y-y!=-y!=-y!=-y-y!=-y!=-y!=-y-y!=-y!=-y!=-y-y!=-y
+		!=-y!=-y-y!=-y!=-y!=-y-y!=-y!=-y!=-y-y!=-y!=-y!=-y-y!=-y!=-y!=-y-y!=-y!=-y!=-y-y
+		!=-y!=-y!=-y-y!=-y!=-y!=-y-y!=-y!=-y!=-y-y!=-y`,
+    E: `ERROR: <input>:-1:0: max recursion depth exceeded`,
+  },
+  {
+    // More than 32 nested list creation statements
+    I: `[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[['not fine']]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]`,
+    E: `ERROR: <input>:-1:0: expression recursion limit exceeded: 32`,
+  },
+  {
+    // More than 32 arithmetic operations.
+    I: `1 + 2 + 3 + 4 + 5 + 6 + 7 + 8 + 9 + 10
+		+ 11 + 12 + 13 + 14 + 15 + 16 + 17 + 18 + 19 + 20
+		+ 21 + 22 + 23 + 24 + 25 + 26 + 27 + 28 + 29 + 30
+		+ 31 + 32 + 33 + 34`,
+    E: `ERROR: <input>:-1:0: max recursion depth exceeded`,
+  },
+  {
+    // More than 32 field selections
+    I: `a.b.c.d.e.f.g.h.i.j.k.l.m.n.o.p.q.r.s.t.u.v.w.x.y.z.A.B.C.D.E.F.G.H`,
+    E: `ERROR: <input>:-1:0: max recursion depth exceeded`,
+  },
+  {
+    // More than 32 index operations
+    I: `a[1][2][3][4][5][6][7][8][9][10][11][12][13][14][15][16][17][18][19][20]
+		     [21][22][23][24][25][26][27][28][29][30][31][32][33]`,
+    E: `ERROR: <input>:-1:0: max recursion depth exceeded`,
+  },
+  {
+    // More than 32 relation operators
+    I: `a < 1 < 2 < 3 < 4 < 5 < 6 < 7 < 8 < 9 < 10 < 11
+		      < 12 < 13 < 14 < 15 < 16 < 17 < 18 < 19 < 20 < 21
+			  < 22 < 23 < 24 < 25 < 26 < 27 < 28 < 29 < 30 < 31
+			  < 32 < 33`,
+    E: `ERROR: <input>:-1:0: max recursion depth exceeded`,
+  },
+  {
+    // More than 32 index / relation operators. Note, the recursion count is the
+    // maximum recursion level on the left or right side index expression (20) plus
+    // the number of relation operators (13)
+    I: `a[1][2][3][4][5][6][7][8][9][10][11][12][13][14][15][16][17][18][19][20] !=
+		a[1][2][3][4][5][6][7][8][9][10][11][12][13][14][15][16][17][18][19][20] !=
+		a[1][2][3][4][5][6][7][8][9][10][11][12][13][14][15][16][17][18][19][20] !=
+		a[1][2][3][4][5][6][7][8][9][10][11][12][13][14][15][16][17][18][19][20] !=
+		a[1][2][3][4][5][6][7][8][9][10][11][12][13][14][15][16][17][18][19][20] !=
+		a[1][2][3][4][5][6][7][8][9][10][11][12][13][14][15][16][17][18][19][20] !=
+		a[1][2][3][4][5][6][7][8][9][10][11][12][13][14][15][16][17][18][19][20] !=
+		a[1][2][3][4][5][6][7][8][9][10][11][12][13][14][15][16][17][18][19][20] !=
+		a[1][2][3][4][5][6][7][8][9][10][11][12][13][14][15][16][17][18][19][20] !=
+		a[1][2][3][4][5][6][7][8][9][10][11][12][13][14][15][16][17][18][19][20] !=
+		a[1][2][3][4][5][6][7][8][9][10][11][12][13][14][15][16][17][18][19][20] !=
+		a[1][2][3][4][5][6][7][8][9][10][11][12][13][14][15][16][17][18][19][20] !=
+		a[1][2][3][4][5][6][7][8][9][10][11][12][13][14][15][16][17][18][19][20] !=
+		a[1][2][3][4][5][6][7][8][9][10][11][12][13][14][15][16][17][18][19][20]`,
+    E: `ERROR: <input>:-1:0: max recursion depth exceeded`,
+  },
+  // { // TODO: the error message is wrong
+  //   I: `self.true == 1`,
+  //   E: `ERROR: <input>:1:6: Syntax error: mismatched input 'true' expecting IDENTIFIER
+  // 	| self.true == 1
+  // 	| .....^`,
+  // },
+  {
+    I: `a.?b && a[?b]`,
+    E: `ERROR: <input>:1:2: unsupported syntax '.?'
+        | a.?b && a[?b]
+        | .^
+        ERROR: <input>:1:10: unsupported syntax '[?'
+        | a.?b && a[?b]
+		| .........^`,
+  },
 ];
 
 describe('CELVisitor', () => {

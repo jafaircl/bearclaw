@@ -78,11 +78,13 @@ import {
   getOperatorFromText,
 } from './operators';
 import { ParserHelper } from './parser-helper';
+import { Location } from './types';
 
 export class CELParser extends GeneratedCelVisitor<Expr> {
   readonly #helper!: ParserHelper;
   readonly #errors!: Errors;
   readonly #maxRecursionDepth: number = 100;
+  #recursionDepth = 0;
 
   constructor(
     public readonly source: string,
@@ -124,7 +126,21 @@ export class CELParser extends GeneratedCelVisitor<Expr> {
   }
 
   override visit = (ctx: ParseTree) => {
-    return super.visit(this._unnest(ctx));
+    const tree = this._unnest(ctx);
+    if (
+      tree instanceof ExprContext ||
+      tree instanceof RelationContext ||
+      tree instanceof CalcContext ||
+      tree instanceof SelectContext ||
+      tree instanceof MemberCallContext ||
+      tree instanceof IndexContext
+    ) {
+      this._checkAndIncrementRecusionDepth();
+      const out = super.visit(tree);
+      this._decrementRecursionDepth();
+      return out;
+    }
+    return super.visit(tree);
   };
 
   override visitStart = (ctx: StartContext): Expr => {
@@ -250,7 +266,7 @@ export class CELParser extends GeneratedCelVisitor<Expr> {
     const id = ctx._id.text;
     if (!isNil(ctx._opt)) {
       if (!this.options?.enableOptionalSyntax) {
-        return this._reportError(ctx, "unsupported syntax '.?'");
+        return this._reportError(ctx._op, "unsupported syntax '.?'");
       }
       return create(ExprSchema, {
         id: this.#helper.nextId(ctx._op),
@@ -303,7 +319,7 @@ export class CELParser extends GeneratedCelVisitor<Expr> {
     let operator = INDEX_OPERATOR;
     if (!isNil(ctx._opt)) {
       if (!this.options?.enableOptionalSyntax) {
-        return this._reportError(ctx, "unsupported syntax '[?'");
+        return this._reportError(ctx._op, "unsupported syntax '[?'");
       }
       operator = OPT_INDEX_OPERATOR;
     }
@@ -812,7 +828,7 @@ export class CELParser extends GeneratedCelVisitor<Expr> {
     }
   }
 
-  private _reportError(ctx: ParserRuleContext, message: string) {
+  private _reportError(ctx: ParserRuleContext | Token, message: string) {
     const error = create(ExprSchema, {
       id: this.#helper.nextId(ctx),
       exprKind: {
@@ -825,12 +841,27 @@ export class CELParser extends GeneratedCelVisitor<Expr> {
         },
       },
     });
-    this.#errors.reportErrorAtId(
-      error.id,
-      { line: ctx.start.line, column: ctx.start.column },
-      message
-    );
+    let location: Location;
+    if (ctx instanceof ParserRuleContext) {
+      location = { line: ctx.start.line, column: ctx.start.column };
+    } else if (ctx instanceof Token) {
+      location = { line: ctx.line, column: ctx.column };
+    } else {
+      location = { line: -1, column: -1 };
+    }
+    this.#errors.reportErrorAtId(error.id, location, message);
     return error;
+  }
+
+  private _checkAndIncrementRecusionDepth() {
+    this.#recursionDepth++;
+    if (this.#recursionDepth > this.#maxRecursionDepth) {
+      return this.errors.reportInternalError('max recursion depth exceeded');
+    }
+  }
+
+  private _decrementRecursionDepth() {
+    this.#recursionDepth--;
   }
 }
 
@@ -852,8 +883,8 @@ class RecursionListener extends ParseTreeListener {
     }
     let depth = this.#ruleTypeDepth.get(ruleIndex);
     if (isNil(depth)) {
-      this.#ruleTypeDepth.set(ruleIndex, 0);
-      depth = 0;
+      this.#ruleTypeDepth.set(ruleIndex, 1);
+      depth = 1;
     } else {
       depth++;
     }
