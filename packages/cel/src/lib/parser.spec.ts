@@ -1927,7 +1927,6 @@ const testCases: TestInfo[] = [
       },
     }),
   },
-
   {
     I: `m.all(v, f)`,
     // P: `__comprehension__(
@@ -4722,9 +4721,9 @@ describe('CELVisitor', () => {
 
       // Assert
       if (testCase.P) {
-        expect(expr).toEqual(testCase.P);
+        expect(expr.expr).toEqual(testCase.P);
       } else if (testCase.M) {
-        expect(expr).toEqual(testCase.M);
+        expect(expr.expr).toEqual(testCase.M);
       } else if (testCase.E) {
         expect(parser.errors.toDisplayString()).toEqual(
           // Account for the difference in spacing between the test case and

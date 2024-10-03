@@ -11,6 +11,7 @@ import {
 import { create, createRegistry } from '@bufbuild/protobuf';
 import { anyPack, anyUnpack } from '@bufbuild/protobuf/wkt';
 import { ErrorListener, RecognitionException, Recognizer, Token } from 'antlr4';
+import { Location } from './types';
 
 export class Errors {
   public readonly errors = create(ErrorSetSchema);
@@ -22,16 +23,11 @@ export class Errors {
     public readonly maxErrorsToReport = 100
   ) {}
 
-  public reportError(line: number, column: number, message: string) {
-    this.reportErrorAtId(BigInt(0), line, column, message);
+  public reportError(location: Location, message: string) {
+    this.reportErrorAtId(BigInt(0), location, message);
   }
 
-  public reportErrorAtId(
-    id: bigint,
-    line: number,
-    column: number,
-    message: string
-  ) {
+  public reportErrorAtId(id: bigint, location: Location, message: string) {
     this.numErrors++;
     if (this.numErrors > this.maxErrorsToReport) {
       return;
@@ -44,10 +40,10 @@ export class Errors {
           SourceInfoSchema,
           create(SourceInfoSchema, {
             positions: {
-              [id.toString()]: column,
+              [id.toString()]: location.column,
             },
-            lineOffsets: [line],
-            location: `${line}:${column}`,
+            lineOffsets: [location.line],
+            location: `${location.line}:${location.column}`,
             syntaxVersion: 'cel1',
           })
         ),
@@ -57,11 +53,24 @@ export class Errors {
   }
 
   public reportInternalError(message: string) {
-    this.reportError(-1, -1, message);
+    this.reportError({ line: -1, column: -1 }, message);
   }
 
-  public reportSyntaxError(line: number, column: number, message: string) {
-    this.reportError(line, column, `Syntax error: ${message}`);
+  public reportSyntaxError(location: Location, message: string) {
+    this.reportError(location, `Syntax error: ${message}`);
+  }
+
+  public reportUnexpectedAstTypeError(
+    id: bigint,
+    location: Location,
+    kind: string,
+    typeName: string
+  ) {
+    return this.reportErrorAtId(
+      id,
+      location,
+      `unexpected ${kind} type: ${typeName}`
+    );
   }
 
   public toDisplayString() {
@@ -121,7 +130,7 @@ export class LexerErrorListener extends ErrorListener<number> {
     msg: string,
     e: RecognitionException | undefined
   ): void {
-    this.errors.reportSyntaxError(line, charPositionInLine, msg);
+    this.errors.reportSyntaxError({ line, column: charPositionInLine }, msg);
   }
 }
 
@@ -141,7 +150,7 @@ export class ParserErrorListener extends ErrorListener<Token> {
     if (msg.startsWith('expression recursion limit exceeded')) {
       this.errors.reportInternalError(msg);
     } else {
-      this.errors.reportSyntaxError(line, charPositionInLine, msg);
+      this.errors.reportSyntaxError({ line, column: charPositionInLine }, msg);
     }
   }
 }

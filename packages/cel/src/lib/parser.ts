@@ -6,6 +6,7 @@ import {
   Expr_CreateStruct,
   Expr_CreateStruct_Entry,
   Expr_CreateStruct_EntrySchema,
+  ParsedExprSchema,
 } from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb.js';
 import { create } from '@bufbuild/protobuf';
 import { NullValue } from '@bufbuild/protobuf/wkt';
@@ -76,10 +77,10 @@ import {
   OPT_SELECT_OPERATOR,
   getOperatorFromText,
 } from './operators';
-import { IdHelper } from './utils';
+import { ParserHelper } from './parser-helper';
 
 export class CELParser extends GeneratedCelVisitor<Expr> {
-  #id = new IdHelper();
+  readonly #helper!: ParserHelper;
   readonly #errors!: Errors;
   readonly #maxRecursionDepth: number = 100;
 
@@ -92,6 +93,7 @@ export class CELParser extends GeneratedCelVisitor<Expr> {
     }
   ) {
     super();
+    this.#helper = new ParserHelper(source);
     this.#errors = new Errors(source);
     if (this.options?.maxRecursionDepth) {
       this.#maxRecursionDepth = this.options.maxRecursionDepth;
@@ -114,7 +116,11 @@ export class CELParser extends GeneratedCelVisitor<Expr> {
     parser.addErrorListener(new ParserErrorListener(this.#errors));
     parser.addParseListener(new RecursionListener(this.#maxRecursionDepth));
 
-    return this.visit(parser.start());
+    const expr = this.visit(parser.start());
+    return create(ParsedExprSchema, {
+      expr,
+      sourceInfo: this.#helper.sourceInfo,
+    });
   }
 
   override visit = (ctx: ParseTree) => {
@@ -130,7 +136,7 @@ export class CELParser extends GeneratedCelVisitor<Expr> {
     if (isNil(ctx._op)) {
       return result;
     }
-    const opId = this.#id.nextId();
+    const opId = this.#helper.nextId(ctx._op);
     const ifTrue = this.visit(ctx._e1);
     const ifFalse = this.visit(ctx._e2);
     return this._globalCallOrMacro(ctx, opId, CONDITIONAL_OPERATOR, [
@@ -146,12 +152,14 @@ export class CELParser extends GeneratedCelVisitor<Expr> {
       LOGICAL_OR_OPERATOR,
       result
     );
+    const rest = ctx._e1;
     for (let i = 0; i < ctx._ops.length; i++) {
-      if (i >= ctx._e1.length) {
+      if (i >= rest.length) {
         return this._reportError(ctx, "unexpected character, wanted '||'");
       }
-      const term = this.visit(ctx._e1[i]);
-      logicManager.addTerm(this.#id.nextId(), term);
+      const term = this.visit(rest[i]);
+      const op = ctx._ops[i];
+      logicManager.addTerm(this.#helper.nextId(op), term);
     }
     return logicManager.toExpr();
   };
@@ -162,12 +170,14 @@ export class CELParser extends GeneratedCelVisitor<Expr> {
       LOGICAL_AND_OPERATOR,
       result
     );
+    const rest = ctx._e1;
     for (let i = 0; i < ctx._ops.length; i++) {
       if (i >= ctx._e1.length) {
         return this._reportError(ctx, "unexpected character, wanted '&&'");
       }
-      const term = this.visit(ctx._e1[i]);
-      logicManager.addTerm(this.#id.nextId(), term);
+      const term = this.visit(rest[i]);
+      const op = ctx._ops[i];
+      logicManager.addTerm(this.#helper.nextId(op), term);
     }
     return logicManager.toExpr();
   };
@@ -178,13 +188,13 @@ export class CELParser extends GeneratedCelVisitor<Expr> {
       opText = ctx._op.text;
     }
     const operator = getOperatorFromText(opText);
-    if (isNil(operator)) {
-      return this._reportError(ctx, 'operator not found');
+    if (!isNil(operator)) {
+      const left = this.visit(ctx.relation(0));
+      const id = this.#helper.nextId(ctx._op);
+      const right = this.visit(ctx.relation(1));
+      return this._globalCallOrMacro(ctx, id, operator, [left, right]);
     }
-    const left = this.visit(ctx.relation(0));
-    const id = this.#id.nextId();
-    const right = this.visit(ctx.relation(1));
-    return this._globalCallOrMacro(ctx, id, operator, [left, right]);
+    return this._reportError(ctx, 'operator not found');
   };
 
   override visitCalc = (ctx: CalcContext): Expr => {
@@ -193,13 +203,13 @@ export class CELParser extends GeneratedCelVisitor<Expr> {
       opText = ctx._op.text;
     }
     const operator = getOperatorFromText(opText);
-    if (isNil(operator)) {
-      return this._reportError(ctx, 'operator not found');
+    if (!isNil(operator)) {
+      const lhs = this.visit(ctx.calc(0));
+      const opId = this.#helper.nextId(ctx._op);
+      const rhs = this.visit(ctx.calc(1));
+      return this._globalCallOrMacro(ctx, opId, operator, [lhs, rhs]);
     }
-    const lhs = this.visit(ctx.calc(0));
-    const opId = this.#id.nextId();
-    const rhs = this.visit(ctx.calc(1));
-    return this._globalCallOrMacro(ctx, opId, operator, [lhs, rhs]);
+    return this._reportError(ctx, 'operator not found');
   };
 
   override visitMemberExpr = (ctx: MemberExprContext): Expr => {
@@ -210,7 +220,7 @@ export class CELParser extends GeneratedCelVisitor<Expr> {
     if (!isNil(ctx._ops) && ctx._ops.length % 2 === 0) {
       return this.visit(ctx.member());
     }
-    const id = this.#id.nextId();
+    const id = this.#helper.nextId(ctx._ops[0]);
     const target = this.visit(ctx.member());
     return this._globalCallOrMacro(ctx, id, LOGICAL_NOT_OPERATOR, [target]);
   };
@@ -219,7 +229,7 @@ export class CELParser extends GeneratedCelVisitor<Expr> {
     if (isNil(ctx._ops) || ctx._ops.length % 2 === 0) {
       return this.visit(ctx.member());
     }
-    const opId = this.#id.nextId();
+    const opId = this.#helper.nextId(ctx._ops[0]);
     const target = this.visit(ctx.member());
     return this._globalCallOrMacro(ctx, opId, NEGATE_OPERATOR, [target]);
   };
@@ -227,7 +237,7 @@ export class CELParser extends GeneratedCelVisitor<Expr> {
   override visitMemberCall = (ctx: MemberCallContext): Expr => {
     const operand = this.visit(ctx.member());
     const id = ctx._id.text;
-    const opId = this.#id.nextId();
+    const opId = this.#helper.nextId(ctx._open);
     let args: Expr[] = [];
     if (!isNil(ctx._args?.expr_list)) {
       args = this.visitSlice(ctx._args.expr_list());
@@ -243,15 +253,15 @@ export class CELParser extends GeneratedCelVisitor<Expr> {
         return this._reportError(ctx, "unsupported syntax '.?'");
       }
       return create(ExprSchema, {
-        id: this.#id.nextId(),
+        id: this.#helper.nextId(ctx._op),
         exprKind: {
           case: 'callExpr',
           value: {
             function: OPT_SELECT_OPERATOR,
             args: [
               operand,
-              create(ExprSchema, {
-                id: this.#id.nextId(),
+              {
+                id: this.#helper.nextId(ctx._id),
                 exprKind: {
                   case: 'constExpr',
                   value: {
@@ -261,14 +271,14 @@ export class CELParser extends GeneratedCelVisitor<Expr> {
                     },
                   },
                 },
-              }),
+              },
             ],
           },
         },
       });
     }
     return create(ExprSchema, {
-      id: this.#id.nextId(),
+      id: this.#helper.nextId(ctx._op),
       exprKind: {
         case: 'selectExpr',
         value: {
@@ -288,7 +298,7 @@ export class CELParser extends GeneratedCelVisitor<Expr> {
     if (isNil(ctx._op)) {
       return this._reportError(ctx, 'no valid identifier is specified');
     }
-    const opId = this.#id.nextId();
+    const opId = this.#helper.nextId(ctx._op);
     const index = this.visit(ctx._index);
     let operator = INDEX_OPERATOR;
     if (!isNil(ctx._opt)) {
@@ -314,7 +324,7 @@ export class CELParser extends GeneratedCelVisitor<Expr> {
     }
     identName += id;
     if (!isNil(ctx._op)) {
-      const opId = this.#id.nextId();
+      const opId = this.#helper.nextId(ctx._op);
       let args: Expr[] = [];
       if (!isNil(ctx._args)) {
         args = this.visitSlice(ctx._args.expr_list());
@@ -322,7 +332,7 @@ export class CELParser extends GeneratedCelVisitor<Expr> {
       return this._globalCallOrMacro(ctx, opId, identName, args);
     }
     return create(ExprSchema, {
-      id: this.#id.nextId(),
+      id: this.#helper.nextId(ctx._id),
       exprKind: {
         case: 'identExpr',
         value: {
@@ -337,7 +347,7 @@ export class CELParser extends GeneratedCelVisitor<Expr> {
   //   };
 
   override visitCreateList = (ctx: CreateListContext): Expr => {
-    const listId = this.#id.nextId();
+    const listId = this.#helper.nextId(ctx._op);
     let elements: Expr[] = [];
     let optionalIndices: number[] = [];
     if (!isNil(ctx._elems)) {
@@ -362,7 +372,7 @@ export class CELParser extends GeneratedCelVisitor<Expr> {
   };
 
   override visitCreateStruct = (ctx: CreateStructContext): Expr => {
-    const structId = this.#id.nextId();
+    const structId = this.#helper.nextId(ctx._op);
     let entries: Expr_CreateStruct_Entry[] = [];
     if (!isNil(ctx._entries)) {
       const mapInit = this.visit(ctx._entries);
@@ -394,7 +404,7 @@ export class CELParser extends GeneratedCelVisitor<Expr> {
     if (!isNil(ctx._leadingDot)) {
       messageName = `.${messageName}`;
     }
-    const id = this.#id.nextId();
+    const id = this.#helper.nextId(ctx._op);
     let entries: Expr_CreateStruct_Entry[] = [];
     if (!isNil(ctx._entries)) {
       const initializer = this.visit(ctx._entries);
@@ -425,7 +435,7 @@ export class CELParser extends GeneratedCelVisitor<Expr> {
       return this._reportError(ctx, 'expr is not a constant');
     }
     return create(ExprSchema, {
-      id: this.#id.nextId(),
+      id: this.#helper.nextId(ctx),
       exprKind: {
         case: 'constExpr',
         value: expr.exprKind.value,
@@ -435,7 +445,7 @@ export class CELParser extends GeneratedCelVisitor<Expr> {
 
   override visitExprList = (ctx: ExprListContext): Expr => {
     return create(ExprSchema, {
-      id: this.#id.nextId(),
+      id: this.#helper.nextId(ctx),
       exprKind: {
         case: 'listExpr',
         value: {
@@ -492,7 +502,7 @@ export class CELParser extends GeneratedCelVisitor<Expr> {
         return create(ExprSchema);
       }
       const field = ctx._fields[i];
-      const exprId = this.#id.nextId();
+      const exprId = this.#helper.nextId(ctx._cols[i]);
       const optionalEntry = !isNil(field._opt);
       const id = field.IDENTIFIER();
       if (isNil(id)) {
@@ -511,7 +521,7 @@ export class CELParser extends GeneratedCelVisitor<Expr> {
       );
     }
     return create(ExprSchema, {
-      id: this.#id.nextId(),
+      id: this.#helper.nextId(ctx),
       exprKind: {
         case: 'structExpr',
         value: {
@@ -532,7 +542,7 @@ export class CELParser extends GeneratedCelVisitor<Expr> {
         // This is the result of a syntax error detected elsewhere.
         return create(ExprSchema);
       }
-      const colId = this.#id.nextId();
+      const colId = this.#helper.nextId(ctx._cols[i]);
       const optKey = ctx._keys[i];
       const optionalKey = !isNil(optKey._opt);
       const key = this.visit(optKey._e);
@@ -550,7 +560,7 @@ export class CELParser extends GeneratedCelVisitor<Expr> {
       );
     }
     return create(ExprSchema, {
-      id: this.#id.nextId(),
+      id: this.#helper.nextId(ctx),
       exprKind: {
         case: 'structExpr',
         value: {
@@ -568,7 +578,7 @@ export class CELParser extends GeneratedCelVisitor<Expr> {
     const constant = parseIntConstant(ctx.getText());
     // TODO: parse error handling
     return create(ExprSchema, {
-      id: this.#id.nextId(),
+      id: this.#helper.nextId(ctx),
       exprKind: {
         case: 'constExpr',
         value: constant,
@@ -580,7 +590,7 @@ export class CELParser extends GeneratedCelVisitor<Expr> {
     const constant = parseUintConstant(ctx.getText());
     // TODO: parse error handling
     return create(ExprSchema, {
-      id: this.#id.nextId(),
+      id: this.#helper.nextId(ctx),
       exprKind: {
         case: 'constExpr',
         value: constant,
@@ -592,7 +602,7 @@ export class CELParser extends GeneratedCelVisitor<Expr> {
     const constant = parseDoubleConstant(ctx.getText());
     // TODO: parse error handling
     return create(ExprSchema, {
-      id: this.#id.nextId(),
+      id: this.#helper.nextId(ctx),
       exprKind: {
         case: 'constExpr',
         value: constant,
@@ -604,7 +614,7 @@ export class CELParser extends GeneratedCelVisitor<Expr> {
     const constant = parseStringConstant(ctx.getText());
     // TODO: parse error handling
     return create(ExprSchema, {
-      id: this.#id.nextId(),
+      id: this.#helper.nextId(ctx),
       exprKind: {
         case: 'constExpr',
         value: constant,
@@ -616,7 +626,7 @@ export class CELParser extends GeneratedCelVisitor<Expr> {
     const constant = parseBytesConstant(ctx.getText());
     // TODO: parse error handling
     return create(ExprSchema, {
-      id: this.#id.nextId(),
+      id: this.#helper.nextId(ctx),
       exprKind: {
         case: 'constExpr',
         value: constant,
@@ -627,7 +637,7 @@ export class CELParser extends GeneratedCelVisitor<Expr> {
   override visitBoolTrue = (ctx: BoolTrueContext): Expr => {
     assert(ctx.getText() === 'true', new ParseException('true expected', 0));
     return create(ExprSchema, {
-      id: this.#id.nextId(),
+      id: this.#helper.nextId(ctx),
       exprKind: {
         case: 'constExpr',
         value: {
@@ -643,7 +653,7 @@ export class CELParser extends GeneratedCelVisitor<Expr> {
   override visitBoolFalse = (ctx: BoolFalseContext): Expr => {
     assert(ctx.getText() === 'false', new ParseException('false expected', 0));
     return create(ExprSchema, {
-      id: this.#id.nextId(),
+      id: this.#helper.nextId(ctx),
       exprKind: {
         case: 'constExpr',
         value: {
@@ -659,7 +669,7 @@ export class CELParser extends GeneratedCelVisitor<Expr> {
   override visitNull = (ctx: NullContext): Expr => {
     assert(ctx.getText() === 'null', new ParseException('null expected', 0));
     return create(ExprSchema, {
-      id: this.#id.nextId(),
+      id: this.#helper.nextId(ctx),
       exprKind: {
         case: 'constExpr',
         value: {
@@ -795,7 +805,7 @@ export class CELParser extends GeneratedCelVisitor<Expr> {
       return null;
     }
     try {
-      const expanded = expandMacro(this.#id, macro, target, args);
+      const expanded = expandMacro(this.#helper, macro, target, args);
       return expanded;
     } catch (e) {
       return this._reportError(ctx, (e as Error).message);
@@ -804,7 +814,7 @@ export class CELParser extends GeneratedCelVisitor<Expr> {
 
   private _reportError(ctx: ParserRuleContext, message: string) {
     const error = create(ExprSchema, {
-      id: this.#id.nextId(),
+      id: this.#helper.nextId(ctx),
       exprKind: {
         case: 'constExpr',
         value: {
@@ -817,8 +827,7 @@ export class CELParser extends GeneratedCelVisitor<Expr> {
     });
     this.#errors.reportErrorAtId(
       error.id,
-      ctx.start.line,
-      ctx.start.column,
+      { line: ctx.start.line, column: ctx.start.column },
       message
     );
     return error;
