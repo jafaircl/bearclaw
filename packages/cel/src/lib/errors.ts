@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
+import { Type } from '@buf/google_cel-spec.bufbuild_es/cel/expr/checked_pb';
 import { ErrorSetSchema } from '@buf/google_cel-spec.bufbuild_es/cel/expr/eval_pb.js';
 import {
   SourceInfo,
@@ -11,6 +12,7 @@ import {
 import { create, createRegistry } from '@bufbuild/protobuf';
 import { anyPack, anyUnpack } from '@bufbuild/protobuf/wkt';
 import { ErrorListener, RecognitionException, Recognizer, Token } from 'antlr4';
+import { CELContainer } from './container';
 import { Location } from './types';
 
 export class Errors {
@@ -71,6 +73,48 @@ export class Errors {
       location,
       `unexpected ${kind} type: ${typeName}`
     );
+  }
+
+  public reportUndeclaredReference(
+    id: bigint,
+    location: Location,
+    container: CELContainer,
+    name: string
+  ) {
+    return this.reportErrorAtId(
+      id,
+      location,
+      `undeclared reference to '${name}' (in container '${container.name}')`
+    );
+  }
+
+  public reportTypeMismatch(
+    id: bigint,
+    location: Location,
+    expected: Type,
+    actual: Type
+  ) {
+    return this.reportErrorAtId(
+      id,
+      location,
+      `expected type ${expected.$typeName} but found ${actual.$typeName}`
+    );
+  }
+
+  public reportTypeDoesNotSupportFieldSelection(
+    id: bigint,
+    location: Location,
+    type: Type
+  ) {
+    return this.reportErrorAtId(
+      id,
+      location,
+      `type '${type.typeKind.case}' does not support field selection`
+    );
+  }
+
+  public reportUndefinedField(id: bigint, location: Location, field: string) {
+    return this.reportErrorAtId(id, location, `undefined field '${field}'`);
   }
 
   public toDisplayString() {

@@ -1,11 +1,13 @@
+import { Type_PrimitiveType } from '@buf/google_cel-spec.bufbuild_es/cel/expr/checked_pb';
 import {
   ConstantSchema,
   ExprSchema,
   Expr_CreateStruct_EntrySchema,
 } from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb.js';
 import { ValueSchema } from '@buf/google_cel-spec.bufbuild_es/cel/expr/value_pb.js';
-import { create } from '@bufbuild/protobuf';
+import { ScalarType, create } from '@bufbuild/protobuf';
 import { NullValue } from '@bufbuild/protobuf/wkt';
+import { primitiveType } from './types';
 import {
   NULL_CONSTANT,
   NULL_VALUE,
@@ -31,6 +33,7 @@ import {
   int64Value,
   listExpr,
   nullExpr,
+  scalarTypeToPrimitiveType,
   selectExpr,
   stringConstant,
   stringExpr,
@@ -741,5 +744,71 @@ describe('utils', () => {
   it('extractIdent', () => {
     expect(extractIdent(identExpr(BigInt(1), { name: 'a' }))).toEqual('a');
     expect(extractIdent(int64Expr(BigInt(1), BigInt(1)))).toEqual(null);
+  });
+
+  it('scalarTypeToPrimitiveType', () => {
+    const testCases = [
+      {
+        in: ScalarType.BOOL,
+        out: Type_PrimitiveType.BOOL,
+      },
+      {
+        in: ScalarType.BYTES,
+        out: Type_PrimitiveType.BYTES,
+      },
+      {
+        in: ScalarType.DOUBLE,
+        out: Type_PrimitiveType.DOUBLE,
+      },
+      {
+        in: ScalarType.INT64,
+        out: Type_PrimitiveType.INT64,
+      },
+      {
+        in: ScalarType.STRING,
+        out: Type_PrimitiveType.STRING,
+      },
+      {
+        in: ScalarType.UINT64,
+        out: Type_PrimitiveType.UINT64,
+      },
+      {
+        in: ScalarType.FIXED32,
+        out: Type_PrimitiveType.DOUBLE,
+      },
+      {
+        in: ScalarType.FIXED64,
+        out: Type_PrimitiveType.DOUBLE,
+      },
+      {
+        in: ScalarType.FLOAT,
+        out: Type_PrimitiveType.DOUBLE,
+      },
+      {
+        in: ScalarType.SFIXED32,
+        out: Type_PrimitiveType.DOUBLE,
+      },
+      {
+        in: ScalarType.SFIXED64,
+        out: Type_PrimitiveType.DOUBLE,
+      },
+      {
+        in: ScalarType.SINT32,
+        out: Type_PrimitiveType.INT64,
+      },
+      {
+        in: ScalarType.SINT64,
+        out: Type_PrimitiveType.INT64,
+      },
+      {
+        in: ScalarType.UINT32,
+        out: Type_PrimitiveType.UINT64,
+      },
+    ];
+    for (const testCase of testCases) {
+      expect(scalarTypeToPrimitiveType(testCase.in)).toEqual(
+        primitiveType(testCase.out)
+      );
+    }
   });
 });

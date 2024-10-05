@@ -1,4 +1,15 @@
+/* eslint-disable no-case-declarations */
+/* eslint-disable @typescript-eslint/no-unused-vars */
+import { isNil } from '@bearclaw/is';
 import {
+  DeclSchema,
+  Decl_FunctionDeclSchema,
+  Decl_IdentDeclSchema,
+  ReferenceSchema,
+  Type_PrimitiveType,
+} from '@buf/google_cel-spec.bufbuild_es/cel/expr/checked_pb.js';
+import {
+  Constant,
   ConstantSchema,
   Expr,
   ExprSchema,
@@ -9,10 +20,24 @@ import {
   Expr_CreateStruct_EntrySchema,
   Expr_IdentSchema,
   Expr_SelectSchema,
+  SourceInfo,
 } from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb.js';
 import { ValueSchema } from '@buf/google_cel-spec.bufbuild_es/cel/expr/value_pb.js';
-import { MessageInitShape, create } from '@bufbuild/protobuf';
+import {
+  DescField,
+  MessageInitShape,
+  ScalarType,
+  create,
+} from '@bufbuild/protobuf';
 import { NullValue } from '@bufbuild/protobuf/wkt';
+import {
+  DYN_TYPE,
+  Location,
+  listType,
+  mapType,
+  messageType,
+  primitiveType,
+} from './types';
 
 export function parseString(str: string) {
   const decoded = decodeURIComponent(str);
@@ -378,6 +403,45 @@ export function comprehensionExpr(
   });
 }
 
+export function functionDecl(
+  name: string,
+  init: MessageInitShape<typeof Decl_FunctionDeclSchema>
+) {
+  return create(DeclSchema, {
+    name,
+    declKind: {
+      case: 'function',
+      value: init,
+    },
+  });
+}
+
+export function identDecl(
+  name: string,
+  init: MessageInitShape<typeof Decl_IdentDeclSchema>
+) {
+  return create(DeclSchema, {
+    name,
+    declKind: {
+      case: 'ident',
+      value: init,
+    },
+  });
+}
+
+export function identReference(name: string, value: Constant) {
+  return create(ReferenceSchema, {
+    name,
+    value,
+  });
+}
+
+export function functionReference(overloadId: string[]) {
+  return create(ReferenceSchema, {
+    overloadId,
+  });
+}
+
 export function unquote(str: string) {
   const reg = /['"`]/;
   if (!str) {
@@ -397,4 +461,180 @@ export function extractIdent(expr: Expr): string | null {
     return null;
   }
   return expr.exprKind.value.name;
+}
+
+/**
+ * Returns the line and column information for a given character offset.
+ *
+ * @param offset the 0-based character offset
+ * @returns the line and column information
+ */
+export function getLocationByOffset(
+  sourceInfo: SourceInfo,
+  offset: number
+): Location {
+  let line = 1;
+  let column = offset;
+  for (let i = 0; i < sourceInfo.lineOffsets.length; i++) {
+    const lineOffset = sourceInfo.lineOffsets[i];
+    if (lineOffset > offset) {
+      break;
+    }
+    line++;
+    column = offset - lineOffset;
+  }
+  return { line, column };
+}
+
+/**
+ * calculates the 0-based character offset from a 1-based line and 0-based
+ * column.
+ * @param line a 1-based line number
+ * @param column a 0-based column number
+ */
+export function computeOffset(
+  baseLine: number,
+  baseColumn: number,
+  sourceInfo: SourceInfo,
+  line: number,
+  column: number
+) {
+  line = baseLine + line;
+  column = baseColumn + column;
+  if (line === 1) {
+    return column;
+  }
+  if (line < 1 || line > sourceInfo.lineOffsets.length) {
+    return -1;
+  }
+  const offset = sourceInfo.lineOffsets[line - 2];
+  return offset + column;
+}
+
+export function mapToObject<K extends string | number | symbol, V>(
+  map: Map<K, V>
+) {
+  const obj = {} as Record<K, V>;
+  for (const [key, value] of map.entries()) {
+    obj[key] = value;
+  }
+  return obj;
+}
+
+/**
+ * Converts an expression AST into a qualified name if possible, or an empty
+ * string otherwise.
+ *
+ * @param expr the expression AST
+ * @returns a qualified name or an empty string
+ */
+export function toQualifiedName(expr: Expr): string {
+  switch (expr.exprKind.case) {
+    case 'identExpr':
+      return expr.exprKind.value.name;
+    case 'selectExpr':
+      // Test only expressions are not valid as qualified names.
+      if (expr.exprKind.value.testOnly) {
+        return '';
+      }
+      if (isNil(expr.exprKind.value.operand)) {
+        return '';
+      }
+      return `${toQualifiedName(expr.exprKind.value.operand)}.${
+        expr.exprKind.value.field
+      }`;
+    default:
+      return '';
+  }
+}
+
+/**
+ * Get the CEL type for a field descriptor.
+ *
+ * @param field the field descriptor
+ * @returns the CEL type for the field
+ */
+export function getFieldDescriptorType(field: DescField) {
+  switch (field.fieldKind) {
+    case 'message':
+      return messageType(field.message.typeName);
+    case 'enum':
+      return messageType(field.enum.typeName);
+    case 'list':
+      switch (field.listKind) {
+        case 'message':
+          return listType({
+            elemType: messageType(field.message.typeName),
+          });
+        case 'enum':
+          return listType({
+            elemType: messageType(field.enum.typeName),
+          });
+        case 'scalar':
+          return listType({
+            elemType: scalarTypeToPrimitiveType(field.scalar),
+          });
+        default:
+          return DYN_TYPE;
+      }
+    case 'scalar':
+      return scalarTypeToPrimitiveType(field.scalar);
+    case 'map':
+      const keyType = scalarTypeToPrimitiveType(field.mapKey);
+      switch (field.mapKind) {
+        case 'enum':
+          return mapType({
+            keyType,
+            valueType: messageType(field.enum.typeName),
+          });
+        case 'message':
+          return mapType({
+            keyType,
+            valueType: messageType(field.message.typeName),
+          });
+        case 'scalar':
+          return mapType({
+            keyType,
+            valueType: scalarTypeToPrimitiveType(field.scalar),
+          });
+        default:
+          return DYN_TYPE;
+      }
+    default:
+      return DYN_TYPE;
+  }
+}
+
+/**
+ * Converts a protobuf scalar type to a CEL primitive type.
+ *
+ * @param scalar the scalar type
+ * @returns the CEL primitive type
+ */
+export function scalarTypeToPrimitiveType(scalar: ScalarType) {
+  switch (scalar) {
+    case ScalarType.BOOL:
+      return primitiveType(Type_PrimitiveType.BOOL);
+    case ScalarType.BYTES:
+      return primitiveType(Type_PrimitiveType.BYTES);
+    case ScalarType.SFIXED32:
+    case ScalarType.SFIXED64:
+    case ScalarType.FIXED32:
+    case ScalarType.FIXED64:
+    case ScalarType.FLOAT:
+    case ScalarType.DOUBLE:
+      return primitiveType(Type_PrimitiveType.DOUBLE);
+    case ScalarType.INT32:
+    case ScalarType.INT64:
+    case ScalarType.SINT32:
+    case ScalarType.SINT64:
+      return primitiveType(Type_PrimitiveType.INT64);
+    case ScalarType.STRING:
+      return primitiveType(Type_PrimitiveType.STRING);
+    case ScalarType.UINT32:
+    case ScalarType.UINT64:
+      return primitiveType(Type_PrimitiveType.UINT64);
+    default:
+      return DYN_TYPE;
+  }
 }

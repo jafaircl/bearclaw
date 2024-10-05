@@ -2,6 +2,7 @@ import { SourceInfoSchema } from '@buf/google_cel-spec.bufbuild_es/cel/expr/synt
 import { create } from '@bufbuild/protobuf';
 import { ParserRuleContext, Token } from 'antlr4';
 import { Location, OffsetRange } from './types';
+import { computeOffset, getLocationByOffset } from './utils';
 
 export class ParserHelper {
   #id = BigInt(1);
@@ -55,16 +56,13 @@ export class ParserHelper {
    * @param column a 0-based column number
    */
   computeOffset(line: number, column: number) {
-    line = this.#baseLine + line;
-    column = this.#baseColumn + column;
-    if (line === 1) {
-      return column;
-    }
-    if (line < 1 || line > this.#sourceInfo.lineOffsets.length) {
-      return -1;
-    }
-    const offset = this.#sourceInfo.lineOffsets[line - 2];
-    return offset + column;
+    return computeOffset(
+      this.#baseLine,
+      this.#baseColumn,
+      this.#sourceInfo,
+      line,
+      column
+    );
   }
 
   /**
@@ -74,17 +72,7 @@ export class ParserHelper {
    * @returns the line and column information
    */
   getLocationByOffset(offset: number): Location {
-    let line = 1;
-    let column = offset;
-    for (let i = 0; i < this.#sourceInfo.lineOffsets.length; i++) {
-      const lineOffset = this.#sourceInfo.lineOffsets[i];
-      if (lineOffset > offset) {
-        break;
-      }
-      line++;
-      column = offset - lineOffset;
-    }
-    return { line, column };
+    return getLocationByOffset(this.#sourceInfo, offset);
   }
 
   /**
