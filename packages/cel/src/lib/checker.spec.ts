@@ -230,6 +230,12 @@ const testCases: TestInfo[] = [
     outType: INT64_TYPE,
     env: defaultEnv,
   },
+  {
+    in: `[1] + [2]`,
+    out: `_+_([1~int]~list(int), [2~int]~list(int))~list(int)^add_list`,
+    outType: listType({ elemType: INT64_TYPE }),
+    env: defaultEnv,
+  },
 ];
 
 describe('CELChecker', () => {

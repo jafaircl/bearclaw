@@ -22,9 +22,15 @@ import {
   OPT_SELECT_OPERATOR,
 } from './operators';
 import {
+  BOOL_TYPE,
+  BYTES_TYPE,
+  DOUBLE_TYPE,
   DYN_TYPE,
   ERROR_TYPE,
+  INT64_TYPE,
   NULL_TYPE,
+  STRING_TYPE,
+  UINT64_TYPE,
   functionType,
   isAssignable,
   isAssignableList,
@@ -136,19 +142,19 @@ export class CELChecker {
     }
     switch (expr.exprKind.value.constantKind.case) {
       case 'boolValue':
-        return primitiveType(Type_PrimitiveType.BOOL);
+        return BOOL_TYPE;
       case 'bytesValue':
-        return primitiveType(Type_PrimitiveType.BYTES);
+        return BYTES_TYPE;
       case 'doubleValue':
-        return primitiveType(Type_PrimitiveType.DOUBLE);
+        return DOUBLE_TYPE;
       case 'int64Value':
-        return primitiveType(Type_PrimitiveType.INT64);
+        return INT64_TYPE;
       case 'nullValue':
         return NULL_TYPE;
       case 'stringValue':
-        return primitiveType(Type_PrimitiveType.STRING);
+        return STRING_TYPE;
       case 'uint64Value':
-        return primitiveType(Type_PrimitiveType.UINT64);
+        return UINT64_TYPE;
       case 'durationValue':
         return wellKnownType(Type_WellKnownType.DURATION);
       case 'timestampValue':
@@ -348,10 +354,8 @@ export class CELChecker {
         this.setType(expr.id, ERROR_TYPE);
         return;
       }
-      // TODO
-      // // Overwrite the function name with its fully qualified resolved name.
-      // expr.exprKind.value.function = toQualifiedName(expr);
-      // e.SetKindCase(c.NewCall(e.ID(), fn.Name(), args...))
+      // Overwrite the function name with its fully qualified resolved name.
+      expr.exprKind.value.function = toQualifiedName(expr);
       // Check to see whether the overload resolves.
       this.resolveOverloadOrError(expr, fn, null, args);
       return;
@@ -514,7 +518,7 @@ export class CELChecker {
         overloadType = substitute(substitutions, overloadType, false);
       }
 
-      const candidateArgTypes = overload.params.slice();
+      const candidateArgTypes = overload.params;
       if (this._isAssignableList(argTypes, candidateArgTypes)) {
         if (isNil(checkedRef)) {
           checkedRef = functionReference([overload.overloadId]);

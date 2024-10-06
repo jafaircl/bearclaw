@@ -10,9 +10,11 @@ import {
   Type_ListTypeSchema,
   Type_MapTypeSchema,
   Type_PrimitiveType,
+  Type_PrimitiveTypeSchema,
   Type_WellKnownType,
+  Type_WellKnownTypeSchema,
 } from '@buf/google_cel-spec.bufbuild_es/cel/expr/checked_pb.js';
-import { MessageInitShape, create } from '@bufbuild/protobuf';
+import { MessageInitShape, create, enumToJson } from '@bufbuild/protobuf';
 import { EmptySchema, NullValue } from '@bufbuild/protobuf/wkt';
 
 export interface Location {
@@ -518,8 +520,7 @@ export function isValidTypeSubstitution(
       // only update the type reference map if the target type does not occur
       // within it.
       if (notReferencedIn(mapping, t2New, t2)) {
-        const t2Key = Array.from(mapping).find(([_, v]) => v === t2)?.[0];
-        mapping.set(t2Key!, t2New);
+        mapping.set(formatCELType(t2New), t2New);
       }
       // acknowledge the type agreement, and that the substitution is already
       // tracked.
@@ -528,8 +529,7 @@ export function isValidTypeSubstitution(
     return [false, true];
   }
   if (notReferencedIn(mapping, t2, t1)) {
-    const t2Key = Array.from(mapping).find(([_, v]) => v === t2)?.[0];
-    mapping.set(t2Key!, t1);
+    mapping.set(formatCELType(t2), t1);
     return [true, false];
   }
   return [false, false];
@@ -687,7 +687,7 @@ export function substitute(
   t: Type,
   typeParamToDyn: boolean
 ): Type {
-  const tSub = Array.from(mapping).find(([_, v]) => v === t)?.[1];
+  const tSub = findTypeInMapping(mapping, t);
   if (!isNil(tSub)) {
     return substitute(mapping, tSub, typeParamToDyn);
   }
@@ -698,8 +698,8 @@ export function substitute(
     case 'abstractType':
       return abstractType({
         name: t.typeKind.value.name,
-        parameterTypes: t.typeKind.value.parameterTypes.map((t) =>
-          substitute(mapping, t, typeParamToDyn)
+        parameterTypes: t.typeKind.value.parameterTypes.map((_t) =>
+          substitute(mapping, _t, typeParamToDyn)
         ),
       });
     case 'listType':
@@ -720,11 +720,50 @@ export function substitute(
         ),
       });
     case 'type':
-      // TODO: implement
+      return substitute(mapping, t.typeKind.value, typeParamToDyn);
+    case 'typeParam':
+      const sub = mapping.get(t.typeKind.value);
+      if (!isNil(sub)) {
+        return substitute(mapping, sub, typeParamToDyn);
+      }
       return t;
     default:
       return t;
   }
+}
+
+export function formatCELType(t: Type): string {
+  switch (t.typeKind.case) {
+    case 'primitive':
+      // TODO: implement
+      return enumToJson(Type_PrimitiveTypeSchema, t.typeKind.value) as string;
+    case 'wellKnown':
+      // TODO: implement
+      return enumToJson(Type_WellKnownTypeSchema, t.typeKind.value) as string;
+    case 'error':
+      return '!error!';
+    case 'null':
+      return 'null';
+    case 'typeParam':
+      return t.typeKind.value;
+    case 'abstractType':
+      if (t.typeKind.value.name === 'function') {
+        // TODO: implement
+      }
+      break;
+    case 'listType':
+      return `list(${formatCELType(t.typeKind.value.elemType!)})`;
+  }
+  // TODO: implement
+  return t.typeKind.case ?? 'unknown';
+}
+
+export function findTypeInMapping(mapping: Map<string, Type>, t: Type) {
+  return mapping.get(formatCELType(t));
+}
+
+export function findTypeKeyInMapping(mapping: Map<string, Type>, t: Type) {
+  return Array.from(mapping).find(([_, v]) => v === t)?.[0];
 }
 
 /**
