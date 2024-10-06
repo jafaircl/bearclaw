@@ -14,6 +14,7 @@ import {
 } from '@bufbuild/protobuf';
 import { CELContainer } from './container';
 import { CELParser } from './parser';
+import { STANDARD_FUNCTION_DECLARATIONS, standardTypes } from './standard';
 import { DYN_TYPE, messageType } from './types';
 import { getFieldDescriptorType, identDecl } from './utils';
 
@@ -46,6 +47,27 @@ export class CELEnvironment {
 
   compile(input: string): CELParser {
     return new CELParser(input);
+  }
+
+  extend(options?: CELEnvironmentOptions) {
+    let container = this.container;
+    if (options?.container) {
+      container = this.container.extend(
+        options.container.name,
+        options.container.aliases
+      );
+    }
+    const registry = this.registry;
+    if (options?.registry) {
+      for (const descriptor of options.registry) {
+        registry.add(descriptor);
+      }
+    }
+    let declarations = this.declarations;
+    if (options?.declarations) {
+      declarations = [...this.declarations, ...options.declarations];
+    }
+    return new CELEnvironment({ container, registry, declarations });
   }
 
   /**
@@ -275,6 +297,31 @@ export class CELEnvironment {
     return null;
   }
 
+  /**
+   * Returns a Decl proto for typeName as a function in the Env. Returns null if
+   * no such function is found in the Env.
+   *
+   * @param name the name of the function to look up.
+   * @returns the function declaration, or null if not found.
+   */
+  lookupFunction(name: string): Decl | null {
+    const candidateNames = this.container.resolveCandidateNames(name);
+    for (const candidateName of candidateNames) {
+      const func = this.findFunction(candidateName);
+      if (!isNil(func)) {
+        return func;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Look up the type of a field in a message.
+   *
+   * @param message the message name
+   * @param field the field name
+   * @returns the field type, or null if not found.
+   */
   lookupFieldType(message: string, field: string) {
     const candidateNames = this.container.resolveCandidateNames(message);
     for (const candidateName of candidateNames) {
@@ -296,3 +343,9 @@ export class CELEnvironment {
     }
   }
 }
+
+export const STANDARD_ENV = new CELEnvironment({
+  container: new CELContainer(),
+  registry: createMutableRegistry(...standardTypes),
+  declarations: [...STANDARD_FUNCTION_DECLARATIONS],
+});

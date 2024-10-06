@@ -117,6 +117,23 @@ export class Errors {
     return this.reportErrorAtId(id, location, `undefined field '${field}'`);
   }
 
+  public reportNoMatchingOverload(
+    id: bigint,
+    location: Location,
+    name: string,
+    args: Type[],
+    isInstance: boolean
+  ) {
+    // TODO
+    // signature := formatFunctionDeclType(nil, args, isInstance)
+    const signature = '';
+    return this.reportErrorAtId(
+      id,
+      location,
+      `ound no matching overload for '${name}' applied to '${signature}'`
+    );
+  }
+
   public toDisplayString() {
     let hasRecursionError = false;
     const errors = [];

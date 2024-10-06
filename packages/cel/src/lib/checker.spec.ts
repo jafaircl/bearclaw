@@ -1,19 +1,21 @@
 import { isNil } from '@bearclaw/is';
-import {
-  Type,
-  Type_PrimitiveType,
-} from '@buf/google_cel-spec.bufbuild_es/cel/expr/checked_pb.js';
+import { Type } from '@buf/google_cel-spec.bufbuild_es/cel/expr/checked_pb.js';
 import { CELChecker } from './checker';
 import { CELContainer } from './container';
-import { CELEnvironment } from './environment';
+import { CELEnvironment, STANDARD_ENV } from './environment';
 import { CELParser } from './parser';
 import {
+  BOOL_TYPE,
+  BYTES_TYPE,
+  DOUBLE_TYPE,
   DYN_TYPE,
   ERROR_TYPE,
+  INT64_TYPE,
   NULL_TYPE,
+  STRING_TYPE,
+  UINT64_TYPE,
   listType,
   mapType,
-  primitiveType,
 } from './types';
 import { functionDecl, identDecl } from './utils';
 
@@ -43,32 +45,32 @@ interface TestInfo {
   // opts []Option
 }
 
-const defaultEnv = new CELEnvironment({
+const defaultEnv = STANDARD_ENV.extend({
   declarations: [
-    functionDecl('"fg_s"', {
+    functionDecl('fg_s', {
       overloads: [
         {
           overloadId: 'fg_s_0',
-          resultType: primitiveType(Type_PrimitiveType.STRING),
+          resultType: STRING_TYPE,
         },
       ],
     }),
-    functionDecl('"ffi_s_s"', {
+    functionDecl('fi_s_s', {
       overloads: [
         {
           overloadId: 'fi_s_s_0',
-          params: [primitiveType(Type_PrimitiveType.STRING)],
-          resultType: primitiveType(Type_PrimitiveType.STRING),
+          params: [STRING_TYPE],
+          resultType: STRING_TYPE,
           isInstanceFunction: true,
         },
       ],
     }),
-    identDecl('is', { type: primitiveType(Type_PrimitiveType.STRING) }),
-    identDecl('ii', { type: primitiveType(Type_PrimitiveType.INT64) }),
-    identDecl('iu', { type: primitiveType(Type_PrimitiveType.UINT64) }),
-    identDecl('iz', { type: primitiveType(Type_PrimitiveType.BOOL) }),
-    identDecl('ib', { type: primitiveType(Type_PrimitiveType.BYTES) }),
-    identDecl('id', { type: primitiveType(Type_PrimitiveType.DOUBLE) }),
+    identDecl('is', { type: STRING_TYPE }),
+    identDecl('ii', { type: INT64_TYPE }),
+    identDecl('iu', { type: UINT64_TYPE }),
+    identDecl('iz', { type: BOOL_TYPE }),
+    identDecl('ib', { type: BYTES_TYPE }),
+    identDecl('id', { type: DOUBLE_TYPE }),
     identDecl('ix', { type: NULL_TYPE }),
   ],
 });
@@ -78,13 +80,13 @@ const testCases: TestInfo[] = [
   {
     in: `a.b`,
     out: `a.b~bool`,
-    outType: primitiveType(Type_PrimitiveType.STRING),
+    outType: STRING_TYPE,
     env: new CELEnvironment({
       declarations: [
         identDecl('a', {
           type: mapType({
-            keyType: primitiveType(Type_PrimitiveType.STRING),
-            valueType: primitiveType(Type_PrimitiveType.STRING),
+            keyType: STRING_TYPE,
+            valueType: STRING_TYPE,
           }),
         }),
       ],
@@ -94,32 +96,32 @@ const testCases: TestInfo[] = [
   {
     in: `"A"`,
     out: `"A"~string`,
-    outType: primitiveType(Type_PrimitiveType.STRING),
+    outType: STRING_TYPE,
   },
   {
     in: `12`,
     out: `12~int`,
-    outType: primitiveType(Type_PrimitiveType.INT64),
+    outType: INT64_TYPE,
   },
   {
     in: `12u`,
     out: `12u~uint`,
-    outType: primitiveType(Type_PrimitiveType.UINT64),
+    outType: UINT64_TYPE,
   },
   {
     in: `true`,
     out: `true~bool`,
-    outType: primitiveType(Type_PrimitiveType.BOOL),
+    outType: BOOL_TYPE,
   },
   {
     in: `false`,
     out: `false~bool`,
-    outType: primitiveType(Type_PrimitiveType.BOOL),
+    outType: BOOL_TYPE,
   },
   {
     in: `12.23`,
     out: `12.23~double`,
-    outType: primitiveType(Type_PrimitiveType.DOUBLE),
+    outType: DOUBLE_TYPE,
   },
   {
     in: `null`,
@@ -129,37 +131,37 @@ const testCases: TestInfo[] = [
   {
     in: `b"ABC"`,
     out: `b"ABC"~bytes`,
-    outType: primitiveType(Type_PrimitiveType.BYTES),
+    outType: BYTES_TYPE,
   },
   // Ident types
   {
     in: `is`,
     out: `is~string^is`,
-    outType: primitiveType(Type_PrimitiveType.STRING),
+    outType: STRING_TYPE,
     env: defaultEnv,
   },
   {
     in: `ii`,
     out: `ii~int^ii`,
-    outType: primitiveType(Type_PrimitiveType.INT64),
+    outType: INT64_TYPE,
     env: defaultEnv,
   },
   {
     in: `iu`,
     out: `iu~uint^iu`,
-    outType: primitiveType(Type_PrimitiveType.UINT64),
+    outType: UINT64_TYPE,
     env: defaultEnv,
   },
   {
     in: `iz`,
     out: `iz~bool^iz`,
-    outType: primitiveType(Type_PrimitiveType.BOOL),
+    outType: BOOL_TYPE,
     env: defaultEnv,
   },
   {
     in: `id`,
     out: `id~double^id`,
-    outType: primitiveType(Type_PrimitiveType.DOUBLE),
+    outType: DOUBLE_TYPE,
     env: defaultEnv,
   },
   {
@@ -171,13 +173,13 @@ const testCases: TestInfo[] = [
   {
     in: `ib`,
     out: `ib~bytes^ib`,
-    outType: primitiveType(Type_PrimitiveType.BYTES),
+    outType: BYTES_TYPE,
     env: defaultEnv,
   },
   {
     in: `id`,
     out: `id~double^id`,
-    outType: primitiveType(Type_PrimitiveType.DOUBLE),
+    outType: DOUBLE_TYPE,
     env: defaultEnv,
   },
   {
@@ -188,7 +190,7 @@ const testCases: TestInfo[] = [
   {
     in: `[1]`,
     out: `[1~int]~list(int)`,
-    outType: listType({ elemType: primitiveType(Type_PrimitiveType.INT64) }),
+    outType: listType({ elemType: INT64_TYPE }),
   },
   {
     in: `[1, "A"]`,
@@ -202,6 +204,31 @@ const testCases: TestInfo[] = [
     err: `ERROR: <input>:1:1: undeclared reference to 'foo' (in container '')
 | foo
 | ^`,
+  },
+  // Call resolution
+  {
+    in: `fg_s()`,
+    out: `fg_s()~string^fg_s_0`,
+    outType: STRING_TYPE,
+    env: defaultEnv,
+  },
+  {
+    in: `is.fi_s_s()`,
+    out: `is~string^is.fi_s_s()~string^fi_s_s_0`,
+    outType: STRING_TYPE,
+    env: defaultEnv,
+  },
+  {
+    in: `1 + 2`,
+    out: `_+_(1~int, 2~int)~int^add_int64`,
+    outType: INT64_TYPE,
+    env: defaultEnv,
+  },
+  {
+    in: `1 + ii`,
+    out: `_+_(1~int, ii~int^ii)~int^add_int64`,
+    outType: INT64_TYPE,
+    env: defaultEnv,
   },
 ];
 

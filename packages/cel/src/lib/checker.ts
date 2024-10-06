@@ -1,8 +1,9 @@
 /* eslint-disable no-case-declarations */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-import { isNil } from '@bearclaw/is';
+import { isEmpty, isNil } from '@bearclaw/is';
 import {
   CheckedExprSchema,
+  Decl,
   Reference,
   Type,
   Type_PrimitiveType,
@@ -16,12 +17,21 @@ import { create } from '@bufbuild/protobuf';
 import { CELEnvironment } from './environment';
 import { Errors } from './errors';
 import {
+  LOGICAL_AND_OPERATOR,
+  LOGICAL_OR_OPERATOR,
+  OPT_SELECT_OPERATOR,
+} from './operators';
+import {
   DYN_TYPE,
   ERROR_TYPE,
   NULL_TYPE,
+  functionType,
   isAssignable,
+  isAssignableList,
   isDyn,
   isDynOrError,
+  isError,
+  isExactType,
   isOptionalType,
   listType,
   mostGeneral,
@@ -40,6 +50,11 @@ import {
   mapToObject,
   toQualifiedName,
 } from './utils';
+
+export interface OverloadResolution {
+  resultType?: Type;
+  checkedRef?: Reference;
+}
 
 export class CELChecker {
   readonly #errors!: Errors;
@@ -84,6 +99,9 @@ export class CELChecker {
         break;
       case 'selectExpr':
         this.checkSelect(expr);
+        break;
+      case 'callExpr':
+        this.checkCall(expr);
         break;
       default:
         this.#errors.reportUnexpectedAstTypeError(
@@ -180,7 +198,7 @@ export class CELChecker {
   checkSelect(expr: Expr) {
     if (expr.exprKind.case !== 'selectExpr') {
       // This should never happen
-      throw new Error('expr.exprKind.case is not identExpr');
+      throw new Error('expr.exprKind.case is not selectExpr');
     }
     // Before traversing down the tree, try to interpret as qualified name.
     const qname = toQualifiedName(expr);
@@ -299,10 +317,248 @@ export class CELChecker {
     return resultType;
   }
 
+  checkCall(expr: Expr) {
+    if (expr.exprKind.case !== 'callExpr') {
+      // This should never happen
+      throw new Error('expr.exprKind.case is not callExpr');
+    }
+    const call = expr.exprKind.value;
+    const fnName = call.function;
+    if (fnName === OPT_SELECT_OPERATOR) {
+      this.checkOptSelect(expr);
+      return;
+    }
+    const args = call.args;
+    // Traverse arguments.
+    for (const arg of args) {
+      this.check(arg);
+    }
+
+    // Regular static call with simple name.
+    if (isNil(call.target)) {
+      // Check for the existence of the function.
+      const fn = this.env.lookupFunction(fnName);
+      if (isNil(fn)) {
+        this.#errors.reportUndeclaredReference(
+          expr.id,
+          this.getLocationById(expr.id),
+          this.env.container,
+          fnName
+        );
+        this.setType(expr.id, ERROR_TYPE);
+        return;
+      }
+      // TODO
+      // // Overwrite the function name with its fully qualified resolved name.
+      // expr.exprKind.value.function = toQualifiedName(expr);
+      // e.SetKindCase(c.NewCall(e.ID(), fn.Name(), args...))
+      // Check to see whether the overload resolves.
+      this.resolveOverloadOrError(expr, fn, null, args);
+      return;
+    }
+
+    // If a receiver 'target' is present, it may either be a receiver function,
+    // or a namespaced function, but not both. Given a.b.c() either a.b.c is a
+    // function or c is a function with target a.b.
+    //
+    // Check whether the target is a namespaced function name.
+    const qualifiedPrefix = toQualifiedName(call.target);
+    if (!isEmpty(qualifiedPrefix)) {
+      const qualifiedName = `${qualifiedPrefix}.${fnName}`;
+      const fn = this.env.lookupFunction(qualifiedName);
+      if (!isNil(fn)) {
+        // The function name is namespaced and so preserving the target operand
+        // would be an inaccurate representation of the desired evaluation
+        // behavior.
+        // Overwrite with fully-qualified resolved function name sans receiver
+        // target.
+        expr.exprKind.value.function = qualifiedName;
+        this.resolveOverloadOrError(expr, fn, call.target, args);
+        return;
+      }
+    }
+
+    // Regular instance call.
+    this.check(call.target);
+    const fn = this.env.lookupFunction(fnName);
+    // Function found, attempt overload resolution.
+    if (!isNil(fn)) {
+      this.resolveOverloadOrError(expr, fn, call.target, args);
+      return;
+    }
+    // Function name not declared, record error.
+    this.setType(expr.id, ERROR_TYPE);
+    this.#errors.reportUndeclaredReference(
+      expr.id,
+      this.getLocationById(expr.id),
+      this.env.container,
+      fnName
+    );
+  }
+
+  resolveOverloadOrError(
+    expr: Expr,
+    fn: Decl,
+    target: Expr | null,
+    args: Expr[]
+  ) {
+    if (expr.exprKind.case !== 'callExpr') {
+      // This should never happen but acts as a type guard.
+      throw new Error('expr.exprKind.case is not callExpr');
+    }
+    if (fn.declKind.case !== 'function') {
+      // This should never happen but acts as a type guard.
+      throw new Error('fn.declKind.case is not a function');
+    }
+    // Attempt to resolve the overload.
+    const resolution = this.resolveOverload(expr, fn, target, args);
+    // No such overload, error noted in the resolveOverload call, type recorded
+    // here.
+    if (isNil(resolution)) {
+      this.setType(expr.id, ERROR_TYPE);
+      return;
+    }
+    // Overload found
+    this.setType(expr.id, resolution.resultType!);
+    this.setReference(expr.id, resolution.checkedRef!);
+  }
+
+  resolveOverload(
+    expr: Expr,
+    fn: Decl,
+    target: Expr | null,
+    args: Expr[]
+  ): OverloadResolution | null {
+    if (expr.exprKind.case !== 'callExpr') {
+      // This should never happen but acts as a type guard.
+      throw new Error('expr.exprKind.case is not callExpr');
+    }
+    if (fn.declKind.case !== 'function') {
+      // This should never happen but acts as a type guard.
+      throw new Error('fn.declKind.case is not a function');
+    }
+    const argTypes: Type[] = [];
+    if (!isNil(expr.exprKind.value.target)) {
+      const targetType = isNil(target) ? null : this.getType(target.id);
+      if (isNil(targetType)) {
+        // This should never happen but acts as a type guard.
+        throw new Error('targetType is nil');
+      }
+      argTypes.push(targetType);
+    }
+    for (const arg of args) {
+      const argType = this.getType(arg.id);
+      if (isNil(argType)) {
+        // This should never happen but acts as a type guard.
+        throw new Error('argType is nil');
+      }
+      argTypes.push(argType);
+    }
+
+    let resultType: Type | undefined = undefined;
+    let checkedRef: Reference | undefined = undefined;
+    for (const overload of fn.declKind.value.overloads) {
+      // TODO: implement disabled overloads
+      // // Determine whether the overload is currently considered.
+      // if c.env.isOverloadDisabled(overload.ID()) {
+      // 	continue
+      // }
+
+      // Ensure the call style for the overload matches.
+      if (
+        (isNil(target) && overload.isInstanceFunction) ||
+        (!isNil(target) && !overload.isInstanceFunction)
+      ) {
+        // not a compatible call style.
+        continue;
+      }
+
+      // Alternative type-checking behavior when the logical operators are
+      // compacted into variadic AST representations.
+      if (fn.name === LOGICAL_AND_OPERATOR || fn.name === LOGICAL_OR_OPERATOR) {
+        checkedRef = functionReference([overload.overloadId]);
+        for (let i = 0; i < argTypes.length; i++) {
+          const argType = argTypes[i];
+          if (
+            !this._isAssignable(argType, primitiveType(Type_PrimitiveType.BOOL))
+          ) {
+            this.#errors.reportTypeMismatch(
+              args[i].id,
+              this.getLocationById(args[i].id),
+              primitiveType(Type_PrimitiveType.BOOL),
+              argType
+            );
+            resultType = ERROR_TYPE;
+          }
+        }
+        if (!isNil(resultType) && isError(resultType)) {
+          return null;
+        }
+        return {
+          checkedRef,
+          resultType: primitiveType(Type_PrimitiveType.BOOL),
+        };
+      }
+
+      let overloadType = functionType({
+        resultType: overload.resultType,
+        argTypes: overload.params,
+      });
+      const typeParams = overload.typeParams;
+      if (typeParams.length > 0) {
+        // Instantiate overload's type with fresh type variables.
+        const substitutions = new Map<string, Type>();
+        for (const typeParam of typeParams) {
+          substitutions.set(typeParam, this._newTypeVar());
+        }
+        overloadType = substitute(substitutions, overloadType, false);
+      }
+
+      const candidateArgTypes = overload.params.slice();
+      if (this._isAssignableList(argTypes, candidateArgTypes)) {
+        if (isNil(checkedRef)) {
+          checkedRef = functionReference([overload.overloadId]);
+        } else {
+          checkedRef.overloadId.push(overload.overloadId);
+        }
+        // First matching overload, determines result type.
+        const fnResultType = substitute(
+          this.#mapping,
+          overload.resultType!,
+          false
+        );
+        if (isNil(resultType)) {
+          resultType = fnResultType;
+        } else if (
+          !isDyn(resultType) &&
+          !isExactType(fnResultType, resultType)
+        ) {
+          resultType = DYN_TYPE;
+        }
+      }
+    }
+
+    if (isNil(resultType)) {
+      for (let i = 0; i < argTypes.length; i++) {
+        argTypes[i] = substitute(this.#mapping, argTypes[i], false);
+      }
+      this.#errors.reportNoMatchingOverload(
+        expr.id,
+        this.getLocationById(expr.id),
+        fn.name,
+        argTypes,
+        !isNil(target)
+      );
+      return null;
+    }
+
+    return { checkedRef, resultType };
+  }
+
   checkListExpr(expr: Expr) {
     if (expr.exprKind.case !== 'listExpr') {
       // This should never happen
-      throw new Error('expr.exprKind.case is not identExpr');
+      throw new Error('expr.exprKind.case is not listExpr');
     }
     const createList = expr.exprKind.value;
     let elemsType: Type | undefined = undefined;
@@ -388,6 +644,15 @@ export class CELChecker {
 
   private _isAssignable(t1: Type, t2: Type) {
     const subs = isAssignable(this.#mapping, t1, t2);
+    if (!isNil(subs)) {
+      this.#mapping = subs;
+      return true;
+    }
+    return false;
+  }
+
+  private _isAssignableList(l1: Type[], l2: Type[]) {
+    const subs = isAssignableList(this.#mapping, l1, l2);
     if (!isNil(subs)) {
       this.#mapping = subs;
       return true;

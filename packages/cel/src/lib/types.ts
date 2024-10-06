@@ -48,6 +48,13 @@ export function primitiveType(value: Type_PrimitiveType) {
   });
 }
 
+export const BOOL_TYPE = primitiveType(Type_PrimitiveType.BOOL);
+export const BYTES_TYPE = primitiveType(Type_PrimitiveType.BYTES);
+export const DOUBLE_TYPE = primitiveType(Type_PrimitiveType.DOUBLE);
+export const INT64_TYPE = primitiveType(Type_PrimitiveType.INT64);
+export const STRING_TYPE = primitiveType(Type_PrimitiveType.STRING);
+export const UINT64_TYPE = primitiveType(Type_PrimitiveType.UINT64);
+
 export function wrapperType(value: Type_PrimitiveType) {
   return create(TypeSchema, {
     typeKind: {
@@ -316,6 +323,28 @@ export function isAssignable(mapping: Map<string, Type>, t1: Type, t2: Type) {
     return copy;
   }
   return null;
+}
+
+/**
+ * Returns an updated substitution mapping if l1 is assignable to l2.
+ *
+ * @param mapping the current type substitution mapping
+ * @param l1 the first list
+ * @param l2 the second list
+ * @returns an updated type substitution mapping or null if l1 is not assignable
+ */
+export function isAssignableList(
+  mapping: Map<string, Type>,
+  l1: Type[],
+  l2: Type[]
+) {
+  const copy = new Map(mapping);
+  for (let i = 0; i < l1.length; i++) {
+    if (!internalIsAssignable(copy, l1[i], l2[i])) {
+      return null;
+    }
+  }
+  return copy;
 }
 
 /**

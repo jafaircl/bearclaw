@@ -1,4 +1,4 @@
-export { CELEnvironment } from './environment';
+export { CELEnvironment, STANDARD_ENV } from './environment';
 export { CELProgram } from './program';
 // export { CELInterpreter } from './interpreter';
 export { CELChecker } from './checker';
