@@ -236,14 +236,36 @@ const testCases: TestInfo[] = [
     outType: listType({ elemType: INT64_TYPE }),
     env: defaultEnv,
   },
+  {
+    in: `[] + [1,2,3,] + [4]`,
+    outType: listType({ elemType: INT64_TYPE }),
+    out: `
+_+_(
+  _+_(
+      []~list(int),
+      [1~int, 2~int, 3~int]~list(int))~list(int)^add_list,
+      [4~int]~list(int))
+~list(int)^add_list
+`,
+  },
+  {
+    in: `[1, 2u] + []`,
+    out: `_+_(
+      [
+          1~int,
+          2u~uint
+      ]~list(dyn),
+      []~list(dyn)
+  )~list(dyn)^add_list`,
+    outType: listType({ elemType: DYN_TYPE }),
+  },
 ];
 
 describe('CELChecker', () => {
   for (const testCase of testCases) {
     it(`should parse ${testCase.in}`, () => {
-      const env =
-        testCase.env ??
-        new CELEnvironment({ container: new CELContainer(testCase.container) });
+      const container = new CELContainer(testCase.container ?? '');
+      const env = testCase.env ?? STANDARD_ENV.extend({ container });
       const parser = new CELParser(testCase.in);
       const parsed = parser.parse();
       if (isNil(parsed.expr)) {
@@ -252,9 +274,14 @@ describe('CELChecker', () => {
       const checker = new CELChecker(parsed, testCase.in, env);
       const result = checker.check();
       if (testCase.outType) {
-        expect(result.typeMap[parsed.expr.id.toString()]).toEqual(
-          testCase.outType
-        );
+        try {
+          expect(result.typeMap[parsed.expr.id.toString()]).toEqual(
+            testCase.outType
+          );
+        } catch (e) {
+          console.log(checker.errors.toDisplayString());
+          throw e;
+        }
       }
       if (testCase.err) {
         expect(checker.errors.toDisplayString()).toEqual(
