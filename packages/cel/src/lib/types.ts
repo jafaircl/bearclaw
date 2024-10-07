@@ -168,6 +168,13 @@ export function unwrapOptionalType(val: Type) {
   return null;
 }
 
+export function maybeUnwrapOptionalType(val: Type | null | undefined) {
+  if (isNil(val)) {
+    return null;
+  }
+  return unwrapOptionalType(val);
+}
+
 export function wrappedType(value: Type_PrimitiveType) {
   return create(TypeSchema, {
     typeKind: {
@@ -735,8 +742,25 @@ export function substitute(
 export function formatCELType(t: Type): string {
   switch (t.typeKind.case) {
     case 'primitive':
-      // TODO: implement
-      return enumToJson(Type_PrimitiveTypeSchema, t.typeKind.value) as string;
+      switch (t.typeKind.value) {
+        case Type_PrimitiveType.BOOL:
+          return 'bool';
+        case Type_PrimitiveType.BYTES:
+          return 'bytes';
+        case Type_PrimitiveType.DOUBLE:
+          return 'double';
+        case Type_PrimitiveType.INT64:
+          return 'int';
+        case Type_PrimitiveType.STRING:
+          return 'string';
+        case Type_PrimitiveType.UINT64:
+          return 'uint';
+        default:
+          return enumToJson(
+            Type_PrimitiveTypeSchema,
+            t.typeKind.value
+          ) as string;
+      }
     case 'wellKnown':
       // TODO: implement
       return enumToJson(Type_WellKnownTypeSchema, t.typeKind.value) as string;

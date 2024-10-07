@@ -1,5 +1,7 @@
 import { isNil } from '@bearclaw/is';
+import { TestAllTypesSchema } from '@buf/cel_spec.bufbuild_es/proto/test/v1/proto3/test_all_types_pb.js';
 import { Type } from '@buf/google_cel-spec.bufbuild_es/cel/expr/checked_pb.js';
+import { createMutableRegistry } from '@bufbuild/protobuf';
 import { CELChecker } from './checker';
 import { CELContainer } from './container';
 import { CELEnvironment, STANDARD_ENV } from './environment';
@@ -16,6 +18,7 @@ import {
   UINT64_TYPE,
   listType,
   mapType,
+  messageType,
 } from './types';
 import { functionDecl, identDecl } from './utils';
 
@@ -273,6 +276,145 @@ _+_(
     in: `{1:2u, 2u:3}`,
     outType: mapType({ keyType: DYN_TYPE, valueType: DYN_TYPE }),
     out: `{1~int : 2u~uint, 2u~uint : 3~int}~map(dyn, dyn)`,
+  },
+  {
+    // TODO: this test container is different than in cel-go because we have to import from a different package
+    in: `TestAllTypes{single_int32: 1, single_int64: 2}`,
+    container: 'google.api.expr.test.v1.proto3',
+    out: `
+  google.api.expr.test.v1.proto3TestAllTypes{
+      single_int32 : 1~int,
+      single_int64 : 2~int
+  }~google.api.expr.test.v1.proto3.TestAllTypes^google.api.expr.test.v1.proto3.TestAllTypes`,
+    outType: messageType('google.api.expr.test.v1.proto3.TestAllTypes'),
+    env: defaultEnv.extend({
+      container: new CELContainer('google.api.expr.test.v1.proto3'),
+      registry: createMutableRegistry(TestAllTypesSchema),
+    }),
+  },
+  {
+    // TODO: this test container is different than in cel-go because we have to import from a different package
+    in: `TestAllTypes{single_int32: 1u}`,
+    container: 'google.api.expr.test.v1.proto3',
+    err: `
+ERROR: <input>:1:26: expected type of field 'single_int32' is 'int' but provided type is 'uint'
+| TestAllTypes{single_int32: 1u}
+| .........................^`,
+    env: defaultEnv.extend({
+      container: new CELContainer('google.api.expr.test.v1.proto3'),
+      registry: createMutableRegistry(TestAllTypesSchema),
+    }),
+  },
+  {
+    // TODO: this test container is different than in cel-go because we have to import from a different package
+    in: `TestAllTypes{single_int32: 1, undefined: 2}`,
+    container: 'google.api.expr.test.v1.proto3',
+    err: `
+ERROR: <input>:1:40: undefined field 'undefined'
+| TestAllTypes{single_int32: 1, undefined: 2}
+| .......................................^`,
+    env: defaultEnv.extend({
+      container: new CELContainer('google.api.expr.test.v1.proto3'),
+      registry: createMutableRegistry(TestAllTypesSchema),
+    }),
+  },
+  {
+    in: `size(x) == x.size()`,
+    out: `
+_==_(size(x~list(int)^x)~int^size_list, x~list(int)^x.size()~int^list_size)
+~bool^equals`,
+    env: defaultEnv.extend({
+      declarations: [
+        identDecl('x', { type: listType({ elemType: INT64_TYPE }) }),
+      ],
+    }),
+    outType: BOOL_TYPE,
+  },
+  {
+    in: `int(1u) + int(uint("1"))`,
+    out: `
+_+_(int(1u~uint)~int^uint64_to_int64,
+int(uint("1"~string)~uint^string_to_uint64)~int^uint64_to_int64)
+~int^add_int64`,
+    outType: INT64_TYPE,
+  },
+  {
+    in: `false && !true || false ? 2 : 3`,
+    out: `
+_?_:_(_||_(_&&_(false~bool, !_(true~bool)~bool^logical_not)~bool^logical_and,
+      false~bool)
+  ~bool^logical_or,
+2~int,
+3~int)
+~int^conditional
+`,
+    outType: INT64_TYPE,
+  },
+  {
+    in: `b"abc" + b"def"`,
+    out: `_+_(b"abc"~bytes, b"def"~bytes)~bytes^add_bytes`,
+    outType: BYTES_TYPE,
+  },
+  {
+    in: `1.0 + 2.0 * 3.0 - 1.0 / 2.20202 != 66.6`,
+    out: `
+_!=_(_-_(_+_(1~double, _*_(2~double, 3~double)~double^multiply_double)
+     ~double^add_double,
+     _/_(1~double, 2.20202~double)~double^divide_double)
+ ~double^subtract_double,
+66.6~double)
+~bool^not_equals`,
+    outType: BOOL_TYPE,
+  },
+  {
+    in: `null == null && null != null`,
+    out: `
+  _&&_(
+      _==_(
+          null~null,
+          null~null
+      )~bool^equals,
+      _!=_(
+          null~null,
+          null~null
+      )~bool^not_equals
+  )~bool^logical_and`,
+    outType: BOOL_TYPE,
+  },
+  {
+    in: `1 == 1 && 2 != 1`,
+    out: `
+  _&&_(
+      _==_(
+          1~int,
+          1~int
+      )~bool^equals,
+      _!=_(
+          2~int,
+          1~int
+      )~bool^not_equals
+  )~bool^logical_and`,
+    outType: BOOL_TYPE,
+  },
+  {
+    in: `1 + 2 * 3 - 1 / 2 == 6 % 1`,
+    out: ` _==_(_-_(_+_(1~int, _*_(2~int, 3~int)~int^multiply_int64)~int^add_int64, _/_(1~int, 2~int)~int^divide_int64)~int^subtract_int64, _%_(6~int, 1~int)~int^modulo_int64)~bool^equals`,
+    outType: BOOL_TYPE,
+  },
+  {
+    in: `"abc" + "def"`,
+    out: `_+_("abc"~string, "def"~string)~string^add_string`,
+    outType: STRING_TYPE,
+  },
+  {
+    in: `1u + 2u * 3u - 1u / 2u == 6u % 1u`,
+    out: `_==_(_-_(_+_(1u~uint, _*_(2u~uint, 3u~uint)~uint^multiply_uint64)
+       ~uint^add_uint64,
+       _/_(1u~uint, 2u~uint)~uint^divide_uint64)
+   ~uint^subtract_uint64,
+  _%_(6u~uint, 1u~uint)~uint^modulo_uint64)
+~bool^equals`,
+    outType: BOOL_TYPE,
   },
 ];
 

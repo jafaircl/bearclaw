@@ -7,6 +7,7 @@ import {
   Decl_IdentDeclSchema,
   ReferenceSchema,
   Type_PrimitiveType,
+  Type_WellKnownType,
 } from '@buf/google_cel-spec.bufbuild_es/cel/expr/checked_pb.js';
 import {
   Constant,
@@ -636,5 +637,24 @@ export function scalarTypeToPrimitiveType(scalar: ScalarType) {
       return primitiveType(Type_PrimitiveType.UINT64);
     default:
       return DYN_TYPE;
+  }
+}
+
+/**
+ * Converts a CEL WellKnwonType to a string.
+ *
+ * @param type the WellKnownType
+ * @returns a string representation of the WellKnownType (or null if not found)
+ */
+export function getWellKNownTypeName(type: Type_WellKnownType): string | null {
+  switch (type) {
+    case Type_WellKnownType.ANY:
+      return 'google.protobuf.Any';
+    case Type_WellKnownType.DURATION:
+      return 'google.protobuf.Duration';
+    case Type_WellKnownType.TIMESTAMP:
+      return 'google.protobuf.Timestamp';
+    default:
+      return null;
   }
 }

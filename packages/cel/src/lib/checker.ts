@@ -4,6 +4,7 @@ import { isEmpty, isNil } from '@bearclaw/is';
 import {
   CheckedExprSchema,
   Decl,
+  Decl_IdentDecl,
   Reference,
   Type,
   Type_PrimitiveType,
@@ -41,6 +42,7 @@ import {
   isOptionalType,
   listType,
   mapType,
+  maybeUnwrapOptionalType,
   mostGeneral,
   optionalType,
   primitiveType,
@@ -53,6 +55,7 @@ import {
   extractIdent,
   functionReference,
   getLocationByOffset,
+  getWellKNownTypeName,
   identReference,
   mapToObject,
   toQualifiedName,
@@ -117,7 +120,7 @@ export class CELChecker {
         if (isMapExpr) {
           this.checkCreateMap(expr);
         } else {
-          // TODO: Implement checkCreateStruct
+          this.checkCreateStruct(expr);
         }
         break;
       default:
@@ -652,6 +655,109 @@ export class CELChecker {
         valueType: mapValueType,
       })
     );
+  }
+
+  checkCreateStruct(expr: Expr) {
+    if (expr.exprKind.case !== 'structExpr') {
+      // This should never happen but acts as a type guard.
+      throw new Error('expr.exprKind.case is not structExpr');
+    }
+    const msgVal = expr.exprKind.value;
+    // Determine the type of the message.
+    let resultType: Type = ERROR_TYPE;
+    const ident = this.env.lookupIdent(msgVal.messageName);
+    if (isNil(ident)) {
+      this.#errors.reportUndeclaredReference(
+        expr.id,
+        this.getLocationById(expr.id),
+        this.env.container,
+        msgVal.messageName
+      );
+      this.setType(expr.id, ERROR_TYPE);
+      return;
+    }
+    const identDecl = ident.declKind.value as Decl_IdentDecl;
+    let typeName = ident.name;
+    // Ensure the type name is fully qualified in the AST.
+    if (msgVal.messageName !== typeName) {
+      expr.exprKind.value.messageName = typeName;
+    }
+    this.setReference(expr.id, identReference(typeName, identDecl.value!));
+    const identKind = identDecl.type?.typeKind.case;
+    if (identKind !== 'error') {
+      if (identKind !== 'messageType' && identKind !== 'wellKnown') {
+        this.#errors.reportNotAType(
+          expr.id,
+          this.getLocationById(expr.id),
+          typeName
+        );
+      } else {
+        resultType = identDecl.type!;
+        // Backwards compatibility test between well-known types and message
+        // types. In this context, the type is being instantiated by it
+        // protobuf name which is not ideal or recommended, but some users
+        // expect this to work.
+        if (resultType.typeKind.case === 'wellKnown') {
+          typeName = getWellKNownTypeName(resultType.typeKind.value)!;
+        } else if (resultType.typeKind.case === 'messageType') {
+          typeName = resultType.typeKind.value;
+        } else {
+          this.#errors.reportNotAMessageType(
+            expr.id,
+            this.getLocationById(expr.id),
+            typeName
+          );
+          resultType = ERROR_TYPE;
+        }
+      }
+    }
+    this.setType(expr.id, resultType);
+
+    // Check the field initializers.
+    for (const field of msgVal.entries) {
+      if (field.keyKind.case !== 'fieldKey') {
+        // This should never happen but acts as a type guard.
+        throw new Error('field.keyKind.case is not fieldKey');
+      }
+
+      this.check(field.value);
+
+      let fieldType = ERROR_TYPE;
+      const ft = this.env.lookupFieldType(typeName, field.keyKind.value);
+      if (!isNil(ft)) {
+        fieldType = ft;
+      } else {
+        this.#errors.reportUndefinedField(
+          field.value!.id,
+          this.getLocationById(field.id),
+          field.keyKind.value
+        );
+      }
+
+      let valType = this.getType(field.value!.id);
+      if (field.optionalEntry) {
+        const vt = maybeUnwrapOptionalType(valType);
+        if (!isNil(vt)) {
+          valType = vt;
+        } else {
+          this.#errors.reportTypeMismatch(
+            field.value!.id,
+            this.getLocationById(field.value!.id),
+            optionalType(fieldType),
+            valType!
+          );
+        }
+      }
+      if (!this._isAssignable(fieldType, valType!)) {
+        this.#errors.reportFieldTypeMismatch(
+          field.value!.id,
+          this.getLocationById(field.id),
+          field.keyKind.value,
+          fieldType,
+          valType!
+        );
+      }
+    }
   }
 
   setType(id: bigint, type: Type) {

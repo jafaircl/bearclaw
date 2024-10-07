@@ -13,7 +13,7 @@ import { create, createRegistry } from '@bufbuild/protobuf';
 import { anyPack, anyUnpack } from '@bufbuild/protobuf/wkt';
 import { ErrorListener, RecognitionException, Recognizer, Token } from 'antlr4';
 import { CELContainer } from './container';
-import { Location } from './types';
+import { Location, formatCELType } from './types';
 
 export class Errors {
   public readonly errors = create(ErrorSetSchema);
@@ -131,6 +131,34 @@ export class Errors {
       id,
       location,
       `ound no matching overload for '${name}' applied to '${signature}'`
+    );
+  }
+
+  public reportNotAType(id: bigint, location: Location, name: string) {
+    return this.reportErrorAtId(id, location, `'${name}' is not a type`);
+  }
+
+  public reportNotAMessageType(id: bigint, location: Location, name: string) {
+    return this.reportErrorAtId(
+      id,
+      location,
+      `'${name}' is not a message type`
+    );
+  }
+
+  public reportFieldTypeMismatch(
+    id: bigint,
+    location: Location,
+    name: string,
+    field: Type,
+    value: Type
+  ) {
+    return this.reportErrorAtId(
+      id,
+      location,
+      `expected type of field '${name}' is '${formatCELType(
+        field
+      )}' but provided type is '${formatCELType(value)}'`
     );
   }
 
