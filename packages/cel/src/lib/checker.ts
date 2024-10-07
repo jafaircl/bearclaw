@@ -40,6 +40,7 @@ import {
   isExactType,
   isOptionalType,
   listType,
+  mapType,
   mostGeneral,
   optionalType,
   primitiveType,
@@ -108,6 +109,16 @@ export class CELChecker {
         break;
       case 'callExpr':
         this.checkCall(expr);
+        break;
+      case 'structExpr':
+        const isMapExpr = expr.exprKind.value.entries.some(
+          (entry) => entry.keyKind.case === 'mapKey'
+        );
+        if (isMapExpr) {
+          this.checkCreateMap(expr);
+        } else {
+          // TODO: Implement checkCreateStruct
+        }
         break;
       default:
         this.#errors.reportUnexpectedAstTypeError(
@@ -595,6 +606,54 @@ export class CELChecker {
     this.setType(expr.id, listType({ elemType: elemsType }));
   }
 
+  checkCreateMap(expr: Expr) {
+    if (expr.exprKind.case !== 'structExpr') {
+      // This should never happen but acts as a type guard.
+      throw new Error('expr.exprKind.case is not structExpr');
+    }
+    let mapKeyType: Type | undefined = undefined;
+    let mapValueType: Type | undefined = undefined;
+    for (let i = 0; i < expr.exprKind.value.entries.length; i++) {
+      const entry = expr.exprKind.value.entries[i];
+      if (entry.keyKind.case !== 'mapKey') {
+        // This should never happen
+        throw new Error('entry.keyKind.case is not mapKey');
+      }
+      const key = entry.keyKind.value;
+      this.check(key);
+      mapKeyType = this._joinTypes(key, mapKeyType, this.getType(key.id)!);
+
+      const val = entry.value!;
+      this.check(val);
+      let valType = this.getType(val.id)!;
+      if (isOptionalType(mapKeyType)) {
+        valType = unwrapOptionalType(valType)!;
+        if (!isOptionalType(valType) && !isDyn(valType)) {
+          this.#errors.reportTypeMismatch(
+            val.id,
+            this.getLocationById(val.id),
+            optionalType(valType),
+            valType
+          );
+        }
+      }
+      mapValueType = this._joinTypes(val, mapValueType, valType);
+    }
+    if (isNil(mapKeyType)) {
+      // If the map is empty, assign free type variables to typeKey and value
+      // type.
+      mapKeyType = this._newTypeVar();
+      mapValueType = this._newTypeVar();
+    }
+    this.setType(
+      expr.id,
+      mapType({
+        keyType: mapKeyType,
+        valueType: mapValueType,
+      })
+    );
+  }
+
   setType(id: bigint, type: Type) {
     this.#typeMap.set(id.toString(), type);
   }
@@ -618,7 +677,11 @@ export class CELChecker {
     );
   }
 
-  private _joinTypes(expr: Expr, previous: Type, current: Type) {
+  private _joinTypes(
+    expr: Expr,
+    previous: Type | null | undefined,
+    current: Type
+  ) {
     if (isNil(previous)) {
       return current;
     }

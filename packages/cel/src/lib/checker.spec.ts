@@ -259,6 +259,21 @@ _+_(
   )~list(dyn)^add_list`,
     outType: listType({ elemType: DYN_TYPE }),
   },
+  {
+    in: `{1:2u, 2:3u}`,
+    outType: mapType({ keyType: INT64_TYPE, valueType: UINT64_TYPE }),
+    out: `{1~int : 2u~uint, 2~int : 3u~uint}~map(int, uint)`,
+  },
+  {
+    in: `{"a":1, "b":2}.a`,
+    outType: INT64_TYPE,
+    out: `{"a"~string : 1~int, "b"~string : 2~int}~map(string, int).a~int`,
+  },
+  {
+    in: `{1:2u, 2u:3}`,
+    outType: mapType({ keyType: DYN_TYPE, valueType: DYN_TYPE }),
+    out: `{1~int : 2u~uint, 2u~uint : 3~int}~map(dyn, dyn)`,
+  },
 ];
 
 describe('CELChecker', () => {
