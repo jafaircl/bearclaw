@@ -48,35 +48,40 @@ interface TestInfo {
   // opts []Option
 }
 
-const defaultEnv = STANDARD_ENV.extend({
-  declarations: [
-    functionDecl('fg_s', {
-      overloads: [
-        {
-          overloadId: 'fg_s_0',
-          resultType: STRING_TYPE,
-        },
-      ],
-    }),
-    functionDecl('fi_s_s', {
-      overloads: [
-        {
-          overloadId: 'fi_s_s_0',
-          params: [STRING_TYPE],
-          resultType: STRING_TYPE,
-          isInstanceFunction: true,
-        },
-      ],
-    }),
-    identDecl('is', { type: STRING_TYPE }),
-    identDecl('ii', { type: INT64_TYPE }),
-    identDecl('iu', { type: UINT64_TYPE }),
-    identDecl('iz', { type: BOOL_TYPE }),
-    identDecl('ib', { type: BYTES_TYPE }),
-    identDecl('id', { type: DOUBLE_TYPE }),
-    identDecl('ix', { type: NULL_TYPE }),
-  ],
-});
+// TODO: The package name for TestAllTypes is different in cel-go because we have to import from a different package.
+
+function getDefaultEnv() {
+  return STANDARD_ENV().extend({
+    registry: createMutableRegistry(TestAllTypesSchema),
+    declarations: [
+      functionDecl('fg_s', {
+        overloads: [
+          {
+            overloadId: 'fg_s_0',
+            resultType: STRING_TYPE,
+          },
+        ],
+      }),
+      functionDecl('fi_s_s', {
+        overloads: [
+          {
+            overloadId: 'fi_s_s_0',
+            params: [STRING_TYPE],
+            resultType: STRING_TYPE,
+            isInstanceFunction: true,
+          },
+        ],
+      }),
+      identDecl('is', { type: STRING_TYPE }),
+      identDecl('ii', { type: INT64_TYPE }),
+      identDecl('iu', { type: UINT64_TYPE }),
+      identDecl('iz', { type: BOOL_TYPE }),
+      identDecl('ib', { type: BYTES_TYPE }),
+      identDecl('id', { type: DOUBLE_TYPE }),
+      identDecl('ix', { type: NULL_TYPE }),
+    ],
+  });
+}
 
 const testCases: TestInfo[] = [
   // Development tests
@@ -141,49 +146,49 @@ const testCases: TestInfo[] = [
     in: `is`,
     out: `is~string^is`,
     outType: STRING_TYPE,
-    env: defaultEnv,
+    env: getDefaultEnv(),
   },
   {
     in: `ii`,
     out: `ii~int^ii`,
     outType: INT64_TYPE,
-    env: defaultEnv,
+    env: getDefaultEnv(),
   },
   {
     in: `iu`,
     out: `iu~uint^iu`,
     outType: UINT64_TYPE,
-    env: defaultEnv,
+    env: getDefaultEnv(),
   },
   {
     in: `iz`,
     out: `iz~bool^iz`,
     outType: BOOL_TYPE,
-    env: defaultEnv,
+    env: getDefaultEnv(),
   },
   {
     in: `id`,
     out: `id~double^id`,
     outType: DOUBLE_TYPE,
-    env: defaultEnv,
+    env: getDefaultEnv(),
   },
   {
     in: `ix`,
     out: `ix~null^ix`,
     outType: NULL_TYPE,
-    env: defaultEnv,
+    env: getDefaultEnv(),
   },
   {
     in: `ib`,
     out: `ib~bytes^ib`,
     outType: BYTES_TYPE,
-    env: defaultEnv,
+    env: getDefaultEnv(),
   },
   {
     in: `id`,
     out: `id~double^id`,
     outType: DOUBLE_TYPE,
-    env: defaultEnv,
+    env: getDefaultEnv(),
   },
   {
     in: `[]`,
@@ -213,31 +218,31 @@ const testCases: TestInfo[] = [
     in: `fg_s()`,
     out: `fg_s()~string^fg_s_0`,
     outType: STRING_TYPE,
-    env: defaultEnv,
+    env: getDefaultEnv(),
   },
   {
     in: `is.fi_s_s()`,
     out: `is~string^is.fi_s_s()~string^fi_s_s_0`,
     outType: STRING_TYPE,
-    env: defaultEnv,
+    env: getDefaultEnv(),
   },
   {
     in: `1 + 2`,
     out: `_+_(1~int, 2~int)~int^add_int64`,
     outType: INT64_TYPE,
-    env: defaultEnv,
+    env: getDefaultEnv(),
   },
   {
     in: `1 + ii`,
     out: `_+_(1~int, ii~int^ii)~int^add_int64`,
     outType: INT64_TYPE,
-    env: defaultEnv,
+    env: getDefaultEnv(),
   },
   {
     in: `[1] + [2]`,
     out: `_+_([1~int]~list(int), [2~int]~list(int))~list(int)^add_list`,
     outType: listType({ elemType: INT64_TYPE }),
-    env: defaultEnv,
+    env: getDefaultEnv(),
   },
   {
     in: `[] + [1,2,3,] + [4]`,
@@ -287,9 +292,8 @@ _+_(
       single_int64 : 2~int
   }~google.api.expr.test.v1.proto3.TestAllTypes^google.api.expr.test.v1.proto3.TestAllTypes`,
     outType: messageType('google.api.expr.test.v1.proto3.TestAllTypes'),
-    env: defaultEnv.extend({
+    env: getDefaultEnv().extend({
       container: new CELContainer('google.api.expr.test.v1.proto3'),
-      registry: createMutableRegistry(TestAllTypesSchema),
     }),
   },
   {
@@ -300,9 +304,8 @@ _+_(
 ERROR: <input>:1:26: expected type of field 'single_int32' is 'int' but provided type is 'uint'
 | TestAllTypes{single_int32: 1u}
 | .........................^`,
-    env: defaultEnv.extend({
+    env: getDefaultEnv().extend({
       container: new CELContainer('google.api.expr.test.v1.proto3'),
-      registry: createMutableRegistry(TestAllTypesSchema),
     }),
   },
   {
@@ -313,9 +316,8 @@ ERROR: <input>:1:26: expected type of field 'single_int32' is 'int' but provided
 ERROR: <input>:1:40: undefined field 'undefined'
 | TestAllTypes{single_int32: 1, undefined: 2}
 | .......................................^`,
-    env: defaultEnv.extend({
+    env: getDefaultEnv().extend({
       container: new CELContainer('google.api.expr.test.v1.proto3'),
-      registry: createMutableRegistry(TestAllTypesSchema),
     }),
   },
   {
@@ -323,7 +325,7 @@ ERROR: <input>:1:40: undefined field 'undefined'
     out: `
 _==_(size(x~list(int)^x)~int^size_list, x~list(int)^x.size()~int^list_size)
 ~bool^equals`,
-    env: defaultEnv.extend({
+    env: getDefaultEnv().extend({
       declarations: [
         identDecl('x', { type: listType({ elemType: INT64_TYPE }) }),
       ],
@@ -416,13 +418,244 @@ _!=_(_-_(_+_(1~double, _*_(2~double, 3~double)~double^multiply_double)
 ~bool^equals`,
     outType: BOOL_TYPE,
   },
+  {
+    in: `x.single_int32 != null`,
+    env: getDefaultEnv().extend({
+      declarations: [
+        identDecl('x', {
+          type: messageType('google.api.expr.test.v1.proto3.Proto2Message'),
+        }),
+      ],
+    }),
+    err: `
+ERROR: <input>:1:2: unexpected failed resolution of 'google.api.expr.test.v1.proto3.Proto2Message'
+| x.single_int32 != null
+| .^
+`,
+  },
+  // TODO: these 2 tests fail with "found no matching overload for '_[_]' applied to '(google.protobuf.Struct, string) -> unknown'"
+  {
+    // TODO: this test container is different than in cel-go because we have to import from a different package
+    in: `x.single_value + 1 / x.single_struct.y == 23`,
+    env: getDefaultEnv().extend({
+      declarations: [
+        identDecl('x', {
+          type: messageType('google.api.expr.test.v1.proto3.TestAllTypes'),
+        }),
+      ],
+    }),
+    out: `_==_(
+        _+_(
+          x~google.api.expr.test.v1.proto3.TestAllTypes^x.single_value~dyn,
+          _/_(
+            1~int,
+            x~google.api.expr.test.v1.proto3.TestAllTypes^x.single_struct~map(string, dyn).y~dyn
+          )~int^divide_int64
+        )~int^add_int64,
+        23~int
+      )~bool^equals`,
+    outType: BOOL_TYPE,
+  },
+  {
+    // TODO: this test container is different than in cel-go because we have to import from a different package
+    in: `x.single_value[23] + x.single_struct['y']`,
+    env: getDefaultEnv().extend({
+      declarations: [
+        identDecl('x', {
+          type: messageType('google.api.expr.test.v1.proto3.TestAllTypes'),
+        }),
+      ],
+    }),
+    out: `_+_(
+        _[_](
+          x~google.api.expr.test.v1.proto3.TestAllTypes^x.single_value~dyn,
+          23~int
+        )~dyn^index_list|index_map,
+        _[_](
+          x~google.api.expr.test.v1.proto3.TestAllTypes^x.single_struct~map(string, dyn),
+          "y"~string
+        )~dyn^index_map
+      )~dyn^add_bytes|add_double|add_duration_duration|add_duration_timestamp|add_int64|add_list|add_string|add_timestamp_duration|add_uint64
+      `,
+    outType: DYN_TYPE,
+  },
+  //   { // TODO: calling the enum like this doesn't work
+  //     in: `TestAllTypes.NestedEnum.BAR != 99`,
+  //     container: 'google.api.expr.test.v1.proto3',
+  //     env: getDefaultEnv().extend({
+  //       container: new CELContainer('google.api.expr.test.v1.proto3'),
+  //     }),
+  //     out: `_!=_(google.api.expr.test.v1.proto3.TestAllTypes.NestedEnum.BAR
+  //  ~int^google.api.expr.test.v1.proto3.TestAllTypes.NestedEnum.BAR,
+  // 99~int)
+  // ~bool^not_equals`,
+  //     outType: BOOL_TYPE,
+  //   },
+  {
+    in: `size([] + [1])`,
+    out: `size(_+_([]~list(int), [1~int]~list(int))~list(int)^add_list)~int^size_list`,
+    outType: INT64_TYPE,
+  },
+  {
+    in: `x["claims"]["groups"][0].name == "dummy"
+&& x.claims["exp"] == y[1].time
+&& x.claims.structured == {'key': z}
+&& z == 1.0`,
+    out: `_&&_(
+    _&&_(
+        _==_(
+            _[_](
+                _[_](
+                    _[_](
+                        x~map(string, dyn)^x,
+                        "claims"~string
+                    )~dyn^index_map,
+                    "groups"~string
+                )~list(dyn)^index_map,
+                0~int
+            )~dyn^index_list.name~dyn,
+            "dummy"~string
+        )~bool^equals,
+        _==_(
+            _[_](
+                x~map(string, dyn)^x.claims~dyn,
+                "exp"~string
+            )~dyn^index_map,
+            _[_](
+                y~list(dyn)^y,
+                1~int
+            )~dyn^index_list.time~dyn
+        )~bool^equals
+    )~bool^logical_and,
+    _&&_(
+        _==_(
+            x~map(string, dyn)^x.claims~dyn.structured~dyn,
+            {
+                "key"~string:z~dyn^z
+            }~map(string, dyn)
+        )~bool^equals,
+        _==_(
+            z~dyn^z,
+            1~double
+        )~bool^equals
+    )~bool^logical_and
+)~bool^logical_and`,
+    env: getDefaultEnv().extend({
+      declarations: [
+        identDecl('x', { type: messageType('google.protobuf.Struct') }),
+        identDecl('y', { type: messageType('google.protobuf.ListValue') }),
+        identDecl('z', { type: messageType('google.protobuf.Value') }),
+      ],
+    }),
+    outType: BOOL_TYPE,
+  },
+  //   { // TODO: this doesn't work
+  //     in: `x + y`,
+  //     env: getDefaultEnv().extend({
+  //       declarations: [
+  //         identDecl('x', {
+  //           type: listType({
+  //             elemType: messageType('google.api.expr.test.v1.proto3.TestAllTypes'),
+  //           }),
+  //         }),
+  //         identDecl('y', { type: listType({ elemType: INT64_TYPE }) }),
+  //       ],
+  //     }),
+  //     err: `
+  // ERROR: <input>:1:3: found no matching overload for '_+_' applied to '(list(google.api.expr.test.v1.proto3.TestAllTypes), list(int))'
+  // | x + y
+  // | ..^
+  //   `,
+  //   },
+  {
+    in: `x[1u]`,
+    env: getDefaultEnv().extend({
+      declarations: [
+        identDecl('x', {
+          type: listType({
+            elemType: messageType(
+              'google.api.expr.test.v1.proto3.TestAllTypes'
+            ),
+          }),
+        }),
+      ],
+    }),
+    err: `
+ERROR: <input>:1:2: found no matching overload for '_[_]' applied to '(list(google.api.expr.test.v1.proto3.TestAllTypes), uint)'
+  | x[1u]
+  | .^
+`,
+  },
+  {
+    in: `(x + x)[1].single_int32 == size(x)`,
+    env: getDefaultEnv().extend({
+      declarations: [
+        identDecl('x', {
+          type: listType({
+            elemType: messageType(
+              'google.api.expr.test.v1.proto3.TestAllTypes'
+            ),
+          }),
+        }),
+      ],
+    }),
+    out: `
+_==_(_[_](_+_(x~list(google.api.expr.test.v1.proto3.TestAllTypes)^x,
+          x~list(google.api.expr.test.v1.proto3.TestAllTypes)^x)
+      ~list(google.api.expr.test.v1.proto3.TestAllTypes)^add_list,
+     1~int)
+ ~google.api.expr.test.v1.proto3.TestAllTypes^index_list
+ .
+ single_int32
+ ~int,
+size(x~list(google.api.expr.test.v1.proto3.TestAllTypes)^x)~int^size_list)
+~bool^equals
+`,
+    outType: BOOL_TYPE,
+  },
+  {
+    in: `x.repeated_int64[x.single_int32] == 23`,
+    env: getDefaultEnv().extend({
+      declarations: [
+        identDecl('x', {
+          type: messageType('google.api.expr.test.v1.proto3.TestAllTypes'),
+        }),
+      ],
+    }),
+    out: `
+_==_(_[_](x~google.api.expr.test.v1.proto3.TestAllTypes^x.repeated_int64~list(int),
+   x~google.api.expr.test.v1.proto3.TestAllTypes^x.single_int32~int)
+~int^index_list,
+23~int)
+~bool^equals`,
+    outType: BOOL_TYPE,
+  },
+
+  {
+    in: `size(x.map_int64_nested_type) == 0`,
+    env: getDefaultEnv().extend({
+      declarations: [
+        identDecl('x', {
+          type: messageType('google.api.expr.test.v1.proto3.TestAllTypes'),
+        }),
+      ],
+    }),
+    out: `
+_==_(size(x~google.api.expr.test.v1.proto3.TestAllTypes^x.map_int64_nested_type
+    ~map(int, google.api.expr.test.v1.proto3.NestedTestAllTypes))
+~int^size_map,
+0~int)
+~bool^equals
+`,
+    outType: BOOL_TYPE,
+  },
 ];
 
 describe('CELChecker', () => {
   for (const testCase of testCases) {
-    it(`should parse ${testCase.in}`, () => {
+    it(`should check ${testCase.in}`, () => {
       const container = new CELContainer(testCase.container ?? '');
-      const env = testCase.env ?? STANDARD_ENV.extend({ container });
+      const env = testCase.env ?? getDefaultEnv().extend({ container });
       const parser = new CELParser(testCase.in);
       const parsed = parser.parse();
       if (isNil(parsed.expr)) {
@@ -435,6 +668,15 @@ describe('CELChecker', () => {
           expect(result.typeMap[parsed.expr.id.toString()]).toEqual(
             testCase.outType
           );
+          if (
+            testCase.outType !== ERROR_TYPE &&
+            !testCase.err &&
+            checker.errors.errors.errors.length > 0
+          ) {
+            throw new Error(
+              'Unexpected errors: ' + checker.errors.toDisplayString()
+            );
+          }
         } catch (e) {
           console.log(checker.errors.toDisplayString());
           throw e;

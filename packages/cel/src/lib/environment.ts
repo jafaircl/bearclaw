@@ -316,6 +316,23 @@ export class CELEnvironment {
   }
 
   /**
+   * Look up a message descriptor by name.
+   *
+   * @param name the name of the message to look up.
+   * @returns the message descriptor, or null if not found.
+   */
+  lookupStructType(name: string): DescMessage | null {
+    const candidateNames = this.container.resolveCandidateNames(name);
+    for (const candidateName of candidateNames) {
+      const message = this.findMessage(candidateName);
+      if (!isNil(message)) {
+        return message;
+      }
+    }
+    return null;
+  }
+
+  /**
    * Look up the type of a field in a message.
    *
    * @param message the message name
@@ -323,6 +340,11 @@ export class CELEnvironment {
    * @returns the field type, or null if not found.
    */
   lookupFieldType(message: string, field: string) {
+    // Make sure the message exists
+    const m = this.lookupStructType(message);
+    if (isNil(m)) {
+      return null;
+    }
     const candidateNames = this.container.resolveCandidateNames(message);
     for (const candidateName of candidateNames) {
       const fieldType = this.findMessageFieldType(candidateName, field);
@@ -344,8 +366,10 @@ export class CELEnvironment {
   }
 }
 
-export const STANDARD_ENV = new CELEnvironment({
-  container: new CELContainer(),
-  registry: createMutableRegistry(...standardTypes),
-  declarations: [...STANDARD_FUNCTION_DECLARATIONS],
-});
+export function STANDARD_ENV() {
+  return new CELEnvironment({
+    container: new CELContainer(),
+    registry: createMutableRegistry(...standardTypes),
+    declarations: [...STANDARD_FUNCTION_DECLARATIONS],
+  });
+}

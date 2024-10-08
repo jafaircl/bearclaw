@@ -13,7 +13,7 @@ import { create, createRegistry } from '@bufbuild/protobuf';
 import { anyPack, anyUnpack } from '@bufbuild/protobuf/wkt';
 import { ErrorListener, RecognitionException, Recognizer, Token } from 'antlr4';
 import { CELContainer } from './container';
-import { Location, formatCELType } from './types';
+import { Location, formatCELType, formatFunctionDeclType } from './types';
 
 export class Errors {
   public readonly errors = create(ErrorSetSchema);
@@ -124,13 +124,11 @@ export class Errors {
     args: Type[],
     isInstance: boolean
   ) {
-    // TODO
-    // signature := formatFunctionDeclType(nil, args, isInstance)
-    const signature = '';
+    const signature = formatFunctionDeclType(null, args, isInstance);
     return this.reportErrorAtId(
       id,
       location,
-      `ound no matching overload for '${name}' applied to '${signature}'`
+      `found no matching overload for '${name}' applied to '${signature}'`
     );
   }
 
@@ -159,6 +157,28 @@ export class Errors {
       `expected type of field '${name}' is '${formatCELType(
         field
       )}' but provided type is '${formatCELType(value)}'`
+    );
+  }
+
+  public reportUnexpectedFailedResolution(
+    id: bigint,
+    location: Location,
+    name: string
+  ) {
+    return this.reportErrorAtId(
+      id,
+      location,
+      `unexpected failed resolution of '${name}'`
+    );
+  }
+
+  public reportNotAComprehensionRange(id: bigint, location: Location, t: Type) {
+    return this.reportErrorAtId(
+      id,
+      location,
+      `expression of type '${formatCELType(
+        t
+      )}' cannot be range of a comprehension (must be list, map, or dynamic)`
     );
   }
 

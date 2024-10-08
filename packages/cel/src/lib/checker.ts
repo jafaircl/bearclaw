@@ -48,6 +48,7 @@ import {
   primitiveType,
   substitute,
   typeParamType,
+  unwrapFunctionType,
   unwrapOptionalType,
   wellKnownType,
 } from './types';
@@ -56,6 +57,7 @@ import {
   functionReference,
   getLocationByOffset,
   getWellKNownTypeName,
+  identDecl,
   identReference,
   mapToObject,
   toQualifiedName,
@@ -122,6 +124,9 @@ export class CELChecker {
         } else {
           this.checkCreateStruct(expr);
         }
+        break;
+      case 'comprehensionExpr':
+        this.checkComprehension(expr);
         break;
       default:
         this.#errors.reportUnexpectedAstTypeError(
@@ -204,6 +209,8 @@ export class CELChecker {
         expr.id,
         identReference(ident.name, ident.declKind.value.value!)
       );
+      // Overwrite the identifier with its fully qualified name.
+      expr.exprKind.value.name = toQualifiedName(expr);
       return;
     }
     this.setType(expr.id, ERROR_TYPE);
@@ -305,12 +312,22 @@ export class CELChecker {
         if (!isNil(fieldType)) {
           resultType = fieldType;
           break;
+        } else {
+          const msg = this.env.lookupStructType(targetType.typeKind.value);
+          if (isNil(msg)) {
+            this.#errors.reportUnexpectedFailedResolution(
+              expr.id,
+              this.getLocationById(expr.id),
+              targetType.typeKind.value
+            );
+          } else {
+            this.#errors.reportUndefinedField(
+              expr.id,
+              this.getLocationById(expr.id),
+              field
+            );
+          }
         }
-        this.#errors.reportUndefinedField(
-          expr.id,
-          this.getLocationById(expr.id),
-          field
-        );
         break;
       case 'typeParam':
         // Set the operand type to DYN to prevent assignment to a potentially
@@ -542,7 +559,7 @@ export class CELChecker {
         // First matching overload, determines result type.
         const fnResultType = substitute(
           this.#mapping,
-          overload.resultType!,
+          unwrapFunctionType(overloadType)!.resultType!,
           false
         );
         if (isNil(resultType)) {
@@ -727,11 +744,20 @@ export class CELChecker {
       if (!isNil(ft)) {
         fieldType = ft;
       } else {
-        this.#errors.reportUndefinedField(
-          field.value!.id,
-          this.getLocationById(field.id),
-          field.keyKind.value
-        );
+        const msg = this.env.lookupStructType(typeName);
+        if (isNil(msg)) {
+          this.#errors.reportUnexpectedFailedResolution(
+            field.value!.id,
+            this.getLocationById(field.id),
+            typeName
+          );
+        } else {
+          this.#errors.reportUndefinedField(
+            field.value!.id,
+            this.getLocationById(field.id),
+            field.keyKind.value
+          );
+        }
       }
 
       let valType = this.getType(field.value!.id);
@@ -758,6 +784,75 @@ export class CELChecker {
         );
       }
     }
+  }
+
+  checkComprehension(expr: Expr) {
+    if (expr.exprKind.case !== 'comprehensionExpr') {
+      // This should never happen
+      throw new Error('expr.exprKind.case is not comprehensionExpr');
+    }
+    const comp = expr.exprKind.value;
+    this.check(comp.iterRange);
+    this.check(comp.accuInit);
+    const accuType = this.getType(comp.accuInit!.id);
+    const rangeType = substitute(
+      this.#mapping,
+      this.getType(comp.iterRange!.id)!,
+      false
+    );
+    let varType: Type | undefined = undefined;
+    switch (rangeType.typeKind.case) {
+      case 'listType':
+        varType = rangeType.typeKind.value.elemType;
+        break;
+      case 'mapType':
+        // Ranges over the keys.
+        varType = rangeType.typeKind.value.keyType;
+        break;
+      case 'dyn':
+      case 'error':
+      case 'typeParam':
+        // Set the range type to DYN to prevent assignment to a potentially
+        // incorrect type at a later point in type-checking. The isAssignable
+        // call will update the type substitutions for the type param under the
+        // covers.
+        this._isAssignable(DYN_TYPE, rangeType);
+        // Set the range iteration variable to type DYN as well.
+        varType = DYN_TYPE;
+        break;
+      default:
+        this.#errors.reportNotAComprehensionRange(
+          comp.iterRange!.id,
+          this.getLocationById(comp.iterRange!.id),
+          rangeType
+        );
+        varType = ERROR_TYPE;
+    }
+    // Create a scope for the comprehension since it has a local accumulation
+    // variable. This scope will contain the accumulation variable used to
+    // compute the result.
+    // TODO: scopes
+    // c.env = c.env.enterScope();
+    this.env.addIdent(identDecl(comp.accuVar, { type: accuType }));
+    // Create a block scope for the loop.
+    // TODO: scopes
+    // c.env = c.env.enterScope();
+    this.env.addIdent(identDecl(comp.iterVar, { type: varType }));
+    // Check the variable references in the condition and step.
+    this.check(comp.loopCondition);
+    this._assertType(comp.loopCondition!, BOOL_TYPE);
+    this.check(comp.loopStep);
+    this._assertType(comp.loopStep!, accuType!);
+    // Exit the loop's block scope before checking the result.
+    // TODO: scopes
+    // c.env = c.env.exitScope();
+    this.check(comp.result);
+    // Exit the comprehension scope.
+    // c.env = c.env.exitScope();
+    this.setType(
+      expr.id,
+      substitute(this.#mapping, this.getType(comp.result!.id)!, false)
+    );
   }
 
   setType(id: bigint, type: Type) {
@@ -831,5 +926,16 @@ export class CELChecker {
       return true;
     }
     return false;
+  }
+
+  private _assertType(e: Expr, t: Type) {
+    if (!this._isAssignable(t, this.getType(e.id)!)) {
+      this.#errors.reportTypeMismatch(
+        e.id,
+        this.getLocationById(e.id),
+        t,
+        this.getType(e.id)!
+      );
+    }
   }
 }

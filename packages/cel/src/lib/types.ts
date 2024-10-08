@@ -75,6 +75,10 @@ export function wellKnownType(value: Type_WellKnownType) {
   });
 }
 
+export const ANY_TYPE = wellKnownType(Type_WellKnownType.ANY);
+export const DURATION_TYPE = wellKnownType(Type_WellKnownType.DURATION);
+export const TIMESTAMP_TYPE = wellKnownType(Type_WellKnownType.TIMESTAMP);
+
 export function listType(value: MessageInitShape<typeof Type_ListTypeSchema>) {
   return create(TypeSchema, {
     typeKind: {
@@ -104,6 +108,13 @@ export function functionType(
   });
 }
 
+export function unwrapFunctionType(val: Type) {
+  if (val.typeKind.case === 'function') {
+    return val.typeKind.value;
+  }
+  return null;
+}
+
 export function messageType(value: string) {
   return create(TypeSchema, {
     typeKind: {
@@ -111,6 +122,13 @@ export function messageType(value: string) {
       value,
     },
   });
+}
+
+export function unwrapMessageType(val: Type) {
+  if (val.typeKind.case === 'messageType') {
+    return val.typeKind.value;
+  }
+  return null;
 }
 
 export function typeParamType(value: string) {
@@ -734,13 +752,29 @@ export function substitute(
         return substitute(mapping, sub, typeParamToDyn);
       }
       return t;
+    case 'messageType':
+      // Handle special cases for certain message types.
+      switch (t.typeKind.value) {
+        case 'google.protobuf.Struct':
+          return mapType({
+            keyType: STRING_TYPE,
+            valueType: DYN_TYPE,
+          });
+        case 'google.protobuf.Value':
+          return DYN_TYPE;
+        case 'google.protobuf.ListValue':
+          return listType({ elemType: DYN_TYPE });
+        default:
+          break;
+      }
+      return t;
     default:
       return t;
   }
 }
 
-export function formatCELType(t: Type): string {
-  switch (t.typeKind.case) {
+export function formatCELType(t: Type | null): string {
+  switch (t?.typeKind.case) {
     case 'primitive':
       switch (t.typeKind.value) {
         case Type_PrimitiveType.BOOL:
@@ -762,8 +796,19 @@ export function formatCELType(t: Type): string {
           ) as string;
       }
     case 'wellKnown':
-      // TODO: implement
-      return enumToJson(Type_WellKnownTypeSchema, t.typeKind.value) as string;
+      switch (t.typeKind.value) {
+        case Type_WellKnownType.ANY:
+          return 'any';
+        case Type_WellKnownType.DURATION:
+          return 'duration';
+        case Type_WellKnownType.TIMESTAMP:
+          return 'timestamp';
+        default:
+          return enumToJson(
+            Type_WellKnownTypeSchema,
+            t.typeKind.value
+          ) as string;
+      }
     case 'error':
       return '!error!';
     case 'null':
@@ -777,9 +822,16 @@ export function formatCELType(t: Type): string {
       break;
     case 'listType':
       return `list(${formatCELType(t.typeKind.value.elemType!)})`;
+    case 'type':
+      return formatCELType(t.typeKind.value);
+    case 'messageType':
+      return t.typeKind.value;
+    case 'mapType':
+      const keyType = formatCELType(t.typeKind.value.keyType!);
+      const valueType = formatCELType(t.typeKind.value.valueType!);
+      return `map(${keyType}, ${valueType})`;
   }
-  // TODO: implement
-  return t.typeKind.case ?? 'unknown';
+  return '';
 }
 
 export function findTypeInMapping(mapping: Map<string, Type>, t: Type) {
@@ -885,4 +937,46 @@ export function isExactTypeList(t1: Type[], t2: Type[]) {
     }
   }
   return true;
+}
+
+export function formatFunctionDeclType(
+  resultType: Type | null,
+  argTypes: Type[],
+  isInstance: boolean
+): string {
+  return formatFunctionInternal(
+    resultType,
+    argTypes,
+    isInstance,
+    formatCELType
+  );
+}
+
+function formatFunctionInternal<T>(
+  resultType: T | null,
+  argTypes: T[],
+  isInstance: boolean,
+  format: (value: T | null) => string
+): string {
+  let result = '';
+  if (isInstance) {
+    const target = argTypes[0];
+    argTypes = argTypes.slice(1);
+    result += format(target);
+    result += '.';
+  }
+  result += '(';
+  for (let i = 0; i < argTypes.length; i++) {
+    if (i > 0) {
+      result += ', ';
+    }
+    result += format(argTypes[i]);
+  }
+  result += ')';
+  const rt = format(resultType);
+  if (rt !== '') {
+    result += ' -> ';
+    result += rt;
+  }
+  return result;
 }
