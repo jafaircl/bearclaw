@@ -9,28 +9,31 @@ import {
   DescMessage,
   DescService,
   MutableRegistry,
-  Registry,
   createMutableRegistry,
 } from '@bufbuild/protobuf';
 import { CELContainer } from './container';
 import { CELParser } from './parser';
-import { STANDARD_FUNCTION_DECLARATIONS, standardTypes } from './standard';
-import { DYN_TYPE, messageType } from './types';
-import { getFieldDescriptorType, identDecl } from './utils';
+import {
+  STANDARD_DESCRIPTORS,
+  STANDARD_FUNCTION_DECLARATIONS,
+  STANDARD_IDENTS,
+} from './standard';
+import { DYN_TYPE, INT64_TYPE, messageType } from './types';
+import { getFieldDescriptorType, identDecl, int64Constant } from './utils';
 
 export interface CELEnvironmentOptions {
   container?: CELContainer;
   registry?: MutableRegistry;
-  declarations?: Decl[];
+  idents?: Decl[];
+  functions?: Decl[];
   aggLitElemType?: Type;
 }
 
 export class CELEnvironment {
   public readonly container: CELContainer = new CELContainer();
   public readonly registry: MutableRegistry = createMutableRegistry();
-  public readonly declarations: Decl[] = [];
+  public readonly scopes: DeclGroup[] = [new DeclGroup(new Map(), new Map())];
   public readonly aggLitElemType = DYN_TYPE;
-  readonly #declMap = new Map<string, Decl>();
 
   constructor(options?: CELEnvironmentOptions) {
     if (options?.container) {
@@ -39,9 +42,15 @@ export class CELEnvironment {
     if (options?.registry) {
       this.registry = options.registry;
     }
-    if (options?.declarations) {
-      this.declarations = options.declarations;
-      this._syncDecls();
+    if (options?.idents) {
+      for (const decl of options.idents) {
+        this.addIdent(decl);
+      }
+    }
+    if (options?.functions) {
+      for (const decl of options.functions) {
+        this.addFunction(decl);
+      }
     }
   }
 
@@ -50,55 +59,36 @@ export class CELEnvironment {
   }
 
   extend(options?: CELEnvironmentOptions) {
-    let container = this.container;
+    let container = new CELContainer(
+      this.container.name,
+      new Map(this.container.aliases)
+    );
     if (options?.container) {
-      container = this.container.extend(
+      container = container.extend(
         options.container.name,
         options.container.aliases
       );
     }
-    const registry = this.registry;
+    const registry = createMutableRegistry(this.registry);
     if (options?.registry) {
       for (const descriptor of options.registry) {
         registry.add(descriptor);
       }
     }
-    let declarations = this.declarations;
-    if (options?.declarations) {
-      declarations = [...this.declarations, ...options.declarations];
+    const env = new CELEnvironment({
+      container,
+      registry,
+    });
+    for (const scope of this.scopes) {
+      env.scopes.push(new DeclGroup(scope.idents, scope.functions));
     }
-    return new CELEnvironment({ container, registry, declarations });
-  }
-
-  /**
-   * Finds the declaration by name in the environment's declarations.
-   *
-   * @param name the name of the declaration to look up.
-   * @returns the declaration, or undefined if not found.
-   */
-  findDeclaration(name: string) {
-    return this.#declMap.get(name);
-  }
-
-  /**
-   * Adds a declaration to the environment.
-   *
-   * @param decl the declaration to add to the environment.
-   */
-  addDeclaration(decl: Decl) {
-    const existing = this.findIdent(decl.name);
-    if (!isNil(existing)) {
-      switch (decl.declKind.case) {
-        case 'ident':
-          throw new Error(`overlapping identifier for name '${decl.name}'`);
-        case 'function':
-          throw new Error(`overlapping function for name '${decl.name}'`);
-        default:
-          throw new Error(`overlapping declaration for name '${decl.name}'`);
-      }
+    for (const ident of options?.idents || []) {
+      env.addIdent(ident);
     }
-    this.declarations.push(decl);
-    this.#declMap.set(decl.name, decl);
+    for (const func of options?.functions || []) {
+      env.addFunction(func);
+    }
+    return env;
   }
 
   /**
@@ -164,37 +154,17 @@ export class CELEnvironment {
   }
 
   /**
-   * Merge the declarations into the environment's declarations.
-   *
-   * @param decls the declarations to merge into the environment's declarations.
-   */
-  mergeDeclarations(decls: Decl[]) {
-    for (const decl of decls) {
-      this.addDeclaration(decl);
-    }
-  }
-
-  /**
-   * Merge the registry into the environment's registry.
-   *
-   * @param registry the registry to merge into the environment's registry.
-   */
-  mergeRegistry(registry: Registry) {
-    for (const descriptor of registry) {
-      this.addDescriptor(descriptor);
-    }
-  }
-
-  /**
    * Finds the identifier declaration by name in the environment's registry.
    *
    * @param name the name of the identifier to look up.
    * @returns the identifier declaration, or null if not found.
    */
   findIdent(name: string) {
-    const decl = this.findDeclaration(name);
-    if (decl?.declKind.case === 'ident') {
-      return decl;
+    for (let i = this.scopes.length - 1; i >= 0; i--) {
+      const decl = this.scopes[i].findIdent(name);
+      if (!isNil(decl)) {
+        return decl;
+      }
     }
     return null;
   }
@@ -205,10 +175,8 @@ export class CELEnvironment {
    * @param decl the identifier declaration to add to the environment.
    */
   addIdent(decl: Decl) {
-    if (decl.declKind.case !== 'ident') {
-      throw new Error('Expected ident declaration');
-    }
-    this.addDeclaration(decl);
+    const scope = this._getScope();
+    scope.addIdent(decl);
   }
 
   /**
@@ -244,9 +212,11 @@ export class CELEnvironment {
    * @returns the function declaration, or null if not found.
    */
   findFunction(name: string) {
-    const decl = this.findDeclaration(name);
-    if (decl?.declKind.case === 'function') {
-      return decl;
+    for (let i = this.scopes.length - 1; i >= 0; i--) {
+      const decl = this.scopes[i].findFunction(name);
+      if (!isNil(decl)) {
+        return decl;
+      }
     }
     return null;
   }
@@ -257,14 +227,8 @@ export class CELEnvironment {
    * @param decl the function declaration to add to the environment.
    */
   addFunction(decl: Decl) {
-    if (decl.declKind.case !== 'function') {
-      throw new Error('Expected function declaration');
-    }
-    const existing = this.findFunction(decl.name);
-    if (!isNil(existing)) {
-      throw new Error(`overlapping function for name '${decl.name}'`);
-    }
-    this.addDeclaration(decl);
+    const scope = this._getScope();
+    scope.addFunction(decl);
   }
 
   /**
@@ -285,10 +249,22 @@ export class CELEnvironment {
       // Next try to import the name as a reference to a message type. If found,
       // the declaration is added to the outest (global) scope of the
       // environment, so next time we can access it faster.
-      const type = this.registry.get(candidateName);
+      const type = this.registry.getMessage(candidateName);
       if (!isNil(type)) {
         const decl = identDecl(candidateName, {
           type: messageType(candidateName),
+        });
+        this.addIdent(decl);
+        return decl;
+      }
+
+      // Next try to import this as an enum value by splitting the name in a
+      // type prefix and the enum inside.
+      const enumValue = this.registry.getEnum(candidateName);
+      if (!isNil(enumValue)) {
+        const decl = identDecl(candidateName, {
+          type: INT64_TYPE,
+          value: int64Constant(BigInt(enumValue.value[0].number)),
         });
         this.addIdent(decl);
         return decl;
@@ -355,21 +331,55 @@ export class CELEnvironment {
     return null;
   }
 
-  /**
-   * Syncs the declarations array with the declaration map.
-   */
-  private _syncDecls() {
-    this.#declMap.clear();
-    for (const decl of this.declarations) {
-      this.#declMap.set(decl.name, decl);
-    }
+  enterScope() {
+    const scope = this._getScope();
+    this.scopes.push(new DeclGroup(scope.idents, scope.functions));
+  }
+
+  exitScope() {
+    this.scopes.pop();
+  }
+
+  private _getScope() {
+    return this.scopes[this.scopes.length - 1];
   }
 }
 
 export function STANDARD_ENV() {
   return new CELEnvironment({
     container: new CELContainer(),
-    registry: createMutableRegistry(...standardTypes),
-    declarations: [...STANDARD_FUNCTION_DECLARATIONS],
+    registry: createMutableRegistry(...STANDARD_DESCRIPTORS),
+    functions: STANDARD_FUNCTION_DECLARATIONS,
+    idents: STANDARD_IDENTS,
   });
+}
+
+export class DeclGroup {
+  public readonly idents = new Map<string, Decl>();
+  public readonly functions = new Map<string, Decl>();
+
+  constructor(idents: Map<string, Decl>, functions: Map<string, Decl>) {
+    for (const decl of idents.values()) {
+      this.addIdent(decl);
+    }
+    for (const decl of functions.values()) {
+      this.addFunction(decl);
+    }
+  }
+
+  addIdent(decl: Decl): void {
+    this.idents.set(decl.name, decl);
+  }
+
+  findIdent(name: string): Decl | null {
+    return this.idents.get(name) || null;
+  }
+
+  addFunction(decl: Decl): void {
+    this.functions.set(decl.name, decl);
+  }
+
+  findFunction(name: string): Decl | null {
+    return this.functions.get(name) || null;
+  }
 }

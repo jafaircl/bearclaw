@@ -5,10 +5,10 @@ import {
   CheckedExprSchema,
   Decl,
   Decl_IdentDecl,
+  Decl_IdentDeclSchema,
   Reference,
   Type,
   Type_PrimitiveType,
-  Type_WellKnownType,
 } from '@buf/google_cel-spec.bufbuild_es/cel/expr/checked_pb';
 import {
   Expr,
@@ -26,13 +26,16 @@ import {
   BOOL_TYPE,
   BYTES_TYPE,
   DOUBLE_TYPE,
+  DURATION_TYPE,
   DYN_TYPE,
   ERROR_TYPE,
   INT64_TYPE,
   NULL_TYPE,
   STRING_TYPE,
+  TIMESTAMP_TYPE,
   UINT64_TYPE,
   functionType,
+  getCheckedWellKnownType,
   isAssignable,
   isAssignableList,
   isDyn,
@@ -49,8 +52,8 @@ import {
   substitute,
   typeParamType,
   unwrapFunctionType,
+  unwrapIdentDeclType,
   unwrapOptionalType,
-  wellKnownType,
 } from './types';
 import {
   extractIdent,
@@ -59,6 +62,7 @@ import {
   getWellKNownTypeName,
   identDecl,
   identReference,
+  isMapExpr,
   mapToObject,
   toQualifiedName,
 } from './utils';
@@ -78,7 +82,7 @@ export class CELChecker {
   constructor(
     public readonly parsed: ParsedExpr,
     public readonly source: string,
-    public readonly env: CELEnvironment
+    public env: CELEnvironment
   ) {
     this.#errors = new Errors(source);
   }
@@ -99,43 +103,7 @@ export class CELChecker {
     if (isNil(sourceInfo)) {
       throw new Error('ParsedExpr.sourceInfo is nil');
     }
-    switch (expr.exprKind.case) {
-      case 'constExpr':
-        this.setType(expr.id, this.checkConstExpr(expr));
-        break;
-      case 'identExpr':
-        this.checkIdentExpr(expr);
-        break;
-      case 'listExpr':
-        this.checkListExpr(expr);
-        break;
-      case 'selectExpr':
-        this.checkSelect(expr);
-        break;
-      case 'callExpr':
-        this.checkCall(expr);
-        break;
-      case 'structExpr':
-        const isMapExpr = expr.exprKind.value.entries.some(
-          (entry) => entry.keyKind.case === 'mapKey'
-        );
-        if (isMapExpr) {
-          this.checkCreateMap(expr);
-        } else {
-          this.checkCreateStruct(expr);
-        }
-        break;
-      case 'comprehensionExpr':
-        this.checkComprehension(expr);
-        break;
-      default:
-        this.#errors.reportUnexpectedAstTypeError(
-          expr.id,
-          this.getLocationById(expr.id),
-          'unspecified',
-          expr.exprKind.case ?? ''
-        );
-    }
+    this.checkExpr(expr);
     // Walk over the final type map substituting any type parameters either by
     // their bound value or by DYN.
     for (const [id, t] of this.#typeMap) {
@@ -149,7 +117,40 @@ export class CELChecker {
     });
   }
 
-  checkConstExpr(expr: Expr): Type {
+  checkExpr(expr?: Expr) {
+    if (isNil(expr)) {
+      return expr;
+    }
+    switch (expr.exprKind.case) {
+      case 'constExpr':
+        return this.checkConstExpr(expr);
+      case 'identExpr':
+        return this.checkIdentExpr(expr);
+      case 'listExpr':
+        return this.checkListExpr(expr);
+      case 'selectExpr':
+        return this.checkSelect(expr);
+      case 'callExpr':
+        return this.checkCall(expr);
+      case 'structExpr':
+        if (isMapExpr(expr)) {
+          return this.checkCreateMap(expr);
+        }
+        return this.checkCreateStruct(expr);
+      case 'comprehensionExpr':
+        return this.checkComprehension(expr);
+      default:
+        this.#errors.reportUnexpectedAstTypeError(
+          expr.id,
+          this.getLocationById(expr.id),
+          'unspecified',
+          expr.exprKind.case ?? ''
+        );
+    }
+    return expr;
+  }
+
+  checkConstExpr(expr: Expr) {
     if (expr.exprKind.case !== 'constExpr') {
       this.#errors.reportUnexpectedAstTypeError(
         expr.id,
@@ -157,27 +158,37 @@ export class CELChecker {
         'constExpr',
         expr.exprKind.case!
       );
-      return ERROR_TYPE;
+      this.setType(expr.id, ERROR_TYPE);
+      return expr;
     }
     switch (expr.exprKind.value.constantKind.case) {
       case 'boolValue':
-        return BOOL_TYPE;
+        this.setType(expr.id, BOOL_TYPE);
+        break;
       case 'bytesValue':
-        return BYTES_TYPE;
+        this.setType(expr.id, BYTES_TYPE);
+        break;
       case 'doubleValue':
-        return DOUBLE_TYPE;
+        this.setType(expr.id, DOUBLE_TYPE);
+        break;
       case 'int64Value':
-        return INT64_TYPE;
+        this.setType(expr.id, INT64_TYPE);
+        break;
       case 'nullValue':
-        return NULL_TYPE;
+        this.setType(expr.id, NULL_TYPE);
+        break;
       case 'stringValue':
-        return STRING_TYPE;
+        this.setType(expr.id, STRING_TYPE);
+        break;
       case 'uint64Value':
-        return UINT64_TYPE;
+        this.setType(expr.id, UINT64_TYPE);
+        break;
       case 'durationValue':
-        return wellKnownType(Type_WellKnownType.DURATION);
+        this.setType(expr.id, DURATION_TYPE);
+        break;
       case 'timestampValue':
-        return wellKnownType(Type_WellKnownType.TIMESTAMP);
+        this.setType(expr.id, TIMESTAMP_TYPE);
+        break;
       default:
         this.#errors.reportUnexpectedAstTypeError(
           expr.id,
@@ -185,8 +196,10 @@ export class CELChecker {
           'constExpr',
           expr.exprKind.value.constantKind.case!
         );
-        return ERROR_TYPE;
+        this.setType(expr.id, ERROR_TYPE);
+        break;
     }
+    return expr;
   }
 
   checkIdentExpr(expr: Expr) {
@@ -199,27 +212,38 @@ export class CELChecker {
       throw new Error('identName is nil');
     }
     const ident = this.env.lookupIdent(identName);
-    if (!isNil(ident)) {
-      if (ident.declKind.case !== 'ident') {
-        // This should never happen
-        throw new Error('ident.declKind.case is not ident');
-      }
-      this.setType(expr.id, ident.declKind.value.type!);
-      this.setReference(
+    if (isNil(ident)) {
+      this.setType(expr.id, ERROR_TYPE);
+      this.#errors.reportUndeclaredReference(
         expr.id,
-        identReference(ident.name, ident.declKind.value.value!)
+        this.getLocationById(expr.id),
+        this.env.container,
+        identName
       );
-      // Overwrite the identifier with its fully qualified name.
-      expr.exprKind.value.name = toQualifiedName(expr);
-      return;
+      return expr;
     }
-    this.setType(expr.id, ERROR_TYPE);
-    this.#errors.reportUndeclaredReference(
-      expr.id,
-      this.getLocationById(expr.id),
-      this.env.container,
-      identName
-    );
+    if (ident.declKind.case !== 'ident') {
+      // This should never happen
+      throw new Error('ident.declKind.case is not ident');
+    }
+    // Overwrite the identifier with its fully qualified name.
+    const qn = toQualifiedName(expr);
+    expr.exprKind.value.name = qn;
+    let identType = unwrapIdentDeclType(ident)!;
+    // Handle special cases for well-known types.
+    if (identType.type?.typeKind.case === 'messageType') {
+      const checkedType = getCheckedWellKnownType(
+        identType.type.typeKind.value
+      );
+      if (!isNil(checkedType)) {
+        identType = create(Decl_IdentDeclSchema, {
+          type: checkedType,
+        });
+      }
+    }
+    this.setType(expr.id, identType.type!);
+    this.setReference(expr.id, identReference(ident.name, identType.value!));
+    return expr;
   }
 
   checkSelect(expr: Expr) {
@@ -229,21 +253,26 @@ export class CELChecker {
     }
     // Before traversing down the tree, try to interpret as qualified name.
     const qname = toQualifiedName(expr);
-    if (qname !== '') {
-      const ident = this.env.lookupIdent(qname);
+    if (!isEmpty(qname)) {
+      const decl = this.env.lookupIdent(qname);
+      const ident = !isNil(decl) ? unwrapIdentDeclType(decl) : null;
       if (!isNil(ident)) {
-        if (ident.declKind.case !== 'ident') {
-          // This should never happen
-          throw new Error('ident.declKind.case is not ident');
+        if (expr.exprKind.value.testOnly) {
+          this.#errors.reportErrorAtId(
+            expr.id,
+            this.getLocationById(expr.id),
+            'expression does not select a field'
+          );
+          this.setType(expr.id, BOOL_TYPE);
+        } else {
+          this.setType(expr.id, ident.type!);
+          this.setReference(expr.id, identReference(decl!.name, ident.value!));
         }
-        this.setType(expr.id, ident.declKind.value.type!);
-        this.setReference(
-          expr.id,
-          identReference(ident.name, ident.declKind.value.value!)
-        );
-        return;
+        return expr;
       }
     }
+
+    // Interpret as field selection, first traversing down the operand.
     let resultType = this.checkSelectField(
       expr,
       expr.exprKind.value.operand!,
@@ -251,9 +280,10 @@ export class CELChecker {
       false
     );
     if (expr.exprKind.value.testOnly) {
-      resultType = primitiveType(Type_PrimitiveType.BOOL);
+      resultType = BOOL_TYPE;
     }
     this.setType(expr.id, substitute(this.#mapping, resultType, false));
+    return expr;
   }
 
   checkOptSelect(expr: Expr) {
@@ -269,6 +299,7 @@ export class CELChecker {
     const resultType = this.checkSelectField(expr, operand, field, true);
     this.setType(expr.id, substitute(this.#mapping, resultType, false));
     this.setReference(expr.id, functionReference(['select_optional_field']));
+    return expr;
   }
 
   checkSelectField(
@@ -278,10 +309,10 @@ export class CELChecker {
     optional: boolean
   ) {
     // Interpret as field selection, first traversing down the operand.
-    this.check(operand);
+    const checkedOperand = this.checkExpr(operand);
     const operandType = substitute(
       this.#mapping,
-      this.getType(operand.id)!,
+      this.getType(checkedOperand!.id)!,
       false
     );
 
@@ -362,13 +393,12 @@ export class CELChecker {
     const call = expr.exprKind.value;
     const fnName = call.function;
     if (fnName === OPT_SELECT_OPERATOR) {
-      this.checkOptSelect(expr);
-      return;
+      return this.checkOptSelect(expr);
     }
     const args = call.args;
     // Traverse arguments.
     for (const arg of args) {
-      this.check(arg);
+      this.checkExpr(arg);
     }
 
     // Regular static call with simple name.
@@ -383,13 +413,13 @@ export class CELChecker {
           fnName
         );
         this.setType(expr.id, ERROR_TYPE);
-        return;
+        return expr;
       }
       // Overwrite the function name with its fully qualified resolved name.
-      expr.exprKind.value.function = toQualifiedName(expr);
+      expr.exprKind.value.function = fn.name;
       // Check to see whether the overload resolves.
       this.resolveOverloadOrError(expr, fn, null, args);
-      return;
+      return expr;
     }
 
     // If a receiver 'target' is present, it may either be a receiver function,
@@ -407,19 +437,19 @@ export class CELChecker {
         // behavior.
         // Overwrite with fully-qualified resolved function name sans receiver
         // target.
-        expr.exprKind.value.function = qualifiedName;
-        this.resolveOverloadOrError(expr, fn, call.target, args);
-        return;
+        expr.exprKind.value.function = fn.name;
+        this.resolveOverloadOrError(expr, fn, null, args);
+        return expr;
       }
     }
 
     // Regular instance call.
-    this.check(call.target);
+    const checkedTarget = this.checkExpr(call.target)!;
     const fn = this.env.lookupFunction(fnName);
     // Function found, attempt overload resolution.
     if (!isNil(fn)) {
-      this.resolveOverloadOrError(expr, fn, call.target, args);
-      return;
+      this.resolveOverloadOrError(expr, fn, checkedTarget, args);
+      return expr;
     }
     // Function name not declared, record error.
     this.setType(expr.id, ERROR_TYPE);
@@ -429,6 +459,7 @@ export class CELChecker {
       this.env.container,
       fnName
     );
+    return expr;
   }
 
   resolveOverloadOrError(
@@ -451,11 +482,12 @@ export class CELChecker {
     // here.
     if (isNil(resolution)) {
       this.setType(expr.id, ERROR_TYPE);
-      return;
+      return resolution;
     }
     // Overload found
     this.setType(expr.id, resolution.resultType!);
     this.setReference(expr.id, resolution.checkedRef!);
+    return resolution;
   }
 
   resolveOverload(
@@ -473,21 +505,11 @@ export class CELChecker {
       throw new Error('fn.declKind.case is not a function');
     }
     const argTypes: Type[] = [];
-    if (!isNil(expr.exprKind.value.target)) {
-      const targetType = isNil(target) ? null : this.getType(target.id);
-      if (isNil(targetType)) {
-        // This should never happen but acts as a type guard.
-        throw new Error('targetType is nil');
-      }
-      argTypes.push(targetType);
+    if (!isNil(target)) {
+      argTypes.push(this.getType(target.id)!);
     }
     for (const arg of args) {
-      const argType = this.getType(arg.id);
-      if (isNil(argType)) {
-        // This should never happen but acts as a type guard.
-        throw new Error('argType is nil');
-      }
-      argTypes.push(argType);
+      argTypes.push(this.getType(arg.id)!);
     }
 
     let resultType: Type | undefined = undefined;
@@ -514,13 +536,11 @@ export class CELChecker {
         checkedRef = functionReference([overload.overloadId]);
         for (let i = 0; i < argTypes.length; i++) {
           const argType = argTypes[i];
-          if (
-            !this._isAssignable(argType, primitiveType(Type_PrimitiveType.BOOL))
-          ) {
+          if (!this._isAssignable(argType, BOOL_TYPE)) {
             this.#errors.reportTypeMismatch(
               args[i].id,
               this.getLocationById(args[i].id),
-              primitiveType(Type_PrimitiveType.BOOL),
+              BOOL_TYPE,
               argType
             );
             resultType = ERROR_TYPE;
@@ -549,7 +569,8 @@ export class CELChecker {
         overloadType = substitute(substitutions, overloadType, false);
       }
 
-      const candidateArgTypes = overload.params;
+      const unwrappedOverload = unwrapFunctionType(overloadType)!;
+      const candidateArgTypes = unwrappedOverload.argTypes;
       if (this._isAssignableList(argTypes, candidateArgTypes)) {
         if (isNil(checkedRef)) {
           checkedRef = functionReference([overload.overloadId]);
@@ -559,7 +580,7 @@ export class CELChecker {
         // First matching overload, determines result type.
         const fnResultType = substitute(
           this.#mapping,
-          unwrapFunctionType(overloadType)!.resultType!,
+          unwrappedOverload.resultType!,
           false
         );
         if (isNil(resultType)) {
@@ -603,7 +624,7 @@ export class CELChecker {
     }
     for (let i = 0; i < createList.elements.length; i++) {
       const e = createList.elements[i];
-      this.check(e);
+      this.checkExpr(e);
       const elemType = this.getType(e.id);
       if (isNil(elemType)) {
         continue;
@@ -624,6 +645,7 @@ export class CELChecker {
       elemsType = this._newTypeVar();
     }
     this.setType(expr.id, listType({ elemType: elemsType }));
+    return expr;
   }
 
   checkCreateMap(expr: Expr) {
@@ -639,25 +661,27 @@ export class CELChecker {
         // This should never happen
         throw new Error('entry.keyKind.case is not mapKey');
       }
-      const key = entry.keyKind.value;
-      this.check(key);
-      mapKeyType = this._joinTypes(key, mapKeyType, this.getType(key.id)!);
+      const checkedKey = this.checkExpr(entry.keyKind.value)!;
+      mapKeyType = this._joinTypes(
+        checkedKey,
+        mapKeyType,
+        this.getType(checkedKey.id)!
+      );
 
-      const val = entry.value!;
-      this.check(val);
-      let valType = this.getType(val.id)!;
+      const checkedVal = this.checkExpr(entry.value)!;
+      let valType = this.getType(checkedVal.id)!;
       if (isOptionalType(mapKeyType)) {
         valType = unwrapOptionalType(valType)!;
         if (!isOptionalType(valType) && !isDyn(valType)) {
           this.#errors.reportTypeMismatch(
-            val.id,
-            this.getLocationById(val.id),
+            checkedVal.id,
+            this.getLocationById(checkedVal.id),
             optionalType(valType),
             valType
           );
         }
       }
-      mapValueType = this._joinTypes(val, mapValueType, valType);
+      mapValueType = this._joinTypes(checkedVal, mapValueType, valType);
     }
     if (isNil(mapKeyType)) {
       // If the map is empty, assign free type variables to typeKey and value
@@ -672,6 +696,7 @@ export class CELChecker {
         valueType: mapValueType,
       })
     );
+    return expr;
   }
 
   checkCreateStruct(expr: Expr) {
@@ -691,7 +716,7 @@ export class CELChecker {
         msgVal.messageName
       );
       this.setType(expr.id, ERROR_TYPE);
-      return;
+      return expr;
     }
     const identDecl = ident.declKind.value as Decl_IdentDecl;
     let typeName = ident.name;
@@ -702,14 +727,26 @@ export class CELChecker {
     this.setReference(expr.id, identReference(typeName, identDecl.value!));
     const identKind = identDecl.type?.typeKind.case;
     if (identKind !== 'error') {
-      if (identKind !== 'messageType' && identKind !== 'wellKnown') {
+      if (
+        identKind !== 'type' &&
+        identKind !== 'wellKnown' &&
+        identKind !== 'messageType'
+      ) {
         this.#errors.reportNotAType(
           expr.id,
           this.getLocationById(expr.id),
           typeName
         );
       } else {
-        resultType = identDecl.type!;
+        switch (identKind) {
+          case 'type':
+            resultType = identDecl.type!.typeKind.value;
+            break;
+          case 'wellKnown':
+          case 'messageType':
+            resultType = identDecl.type!;
+            break;
+        }
         // Backwards compatibility test between well-known types and message
         // types. In this context, the type is being instantiated by it
         // protobuf name which is not ideal or recommended, but some users
@@ -737,7 +774,7 @@ export class CELChecker {
         throw new Error('field.keyKind.case is not fieldKey');
       }
 
-      this.check(field.value);
+      const checkedValue = this.checkExpr(field.value)!;
 
       let fieldType = ERROR_TYPE;
       const ft = this.env.lookupFieldType(typeName, field.keyKind.value);
@@ -760,7 +797,7 @@ export class CELChecker {
         }
       }
 
-      let valType = this.getType(field.value!.id);
+      let valType = this.getType(checkedValue.id);
       if (field.optionalEntry) {
         const vt = maybeUnwrapOptionalType(valType);
         if (!isNil(vt)) {
@@ -784,6 +821,7 @@ export class CELChecker {
         );
       }
     }
+    return expr;
   }
 
   checkComprehension(expr: Expr) {
@@ -792,12 +830,12 @@ export class CELChecker {
       throw new Error('expr.exprKind.case is not comprehensionExpr');
     }
     const comp = expr.exprKind.value;
-    this.check(comp.iterRange);
-    this.check(comp.accuInit);
-    const accuType = this.getType(comp.accuInit!.id);
+    const checkedRange = this.checkExpr(comp.iterRange);
+    const checkedInit = this.checkExpr(comp.accuInit);
+    const accuType = this.getType(checkedInit!.id);
     const rangeType = substitute(
       this.#mapping,
-      this.getType(comp.iterRange!.id)!,
+      this.getType(checkedRange!.id)!,
       false
     );
     let varType: Type | undefined = undefined;
@@ -811,6 +849,8 @@ export class CELChecker {
         break;
       case 'dyn':
       case 'error':
+        varType = DYN_TYPE;
+        break;
       case 'typeParam':
         // Set the range type to DYN to prevent assignment to a potentially
         // incorrect type at a later point in type-checking. The isAssignable
@@ -831,28 +871,26 @@ export class CELChecker {
     // Create a scope for the comprehension since it has a local accumulation
     // variable. This scope will contain the accumulation variable used to
     // compute the result.
-    // TODO: scopes
-    // c.env = c.env.enterScope();
+    this.env.enterScope();
     this.env.addIdent(identDecl(comp.accuVar, { type: accuType }));
     // Create a block scope for the loop.
-    // TODO: scopes
-    // c.env = c.env.enterScope();
+    this.env.enterScope();
     this.env.addIdent(identDecl(comp.iterVar, { type: varType }));
     // Check the variable references in the condition and step.
-    this.check(comp.loopCondition);
-    this._assertType(comp.loopCondition!, BOOL_TYPE);
-    this.check(comp.loopStep);
-    this._assertType(comp.loopStep!, accuType!);
+    const checkedCondition = this.checkExpr(comp.loopCondition);
+    this._assertType(checkedCondition!, BOOL_TYPE);
+    const checkedStep = this.checkExpr(comp.loopStep);
+    this._assertType(checkedStep!, accuType!);
     // Exit the loop's block scope before checking the result.
-    // TODO: scopes
-    // c.env = c.env.exitScope();
-    this.check(comp.result);
+    this.env.exitScope();
+    const checkedResult = this.checkExpr(comp.result);
     // Exit the comprehension scope.
-    // c.env = c.env.exitScope();
+    this.env.exitScope();
     this.setType(
       expr.id,
-      substitute(this.#mapping, this.getType(comp.result!.id)!, false)
+      substitute(this.#mapping, this.getType(checkedResult!.id)!, false)
     );
+    return expr;
   }
 
   setType(id: bigint, type: Type) {

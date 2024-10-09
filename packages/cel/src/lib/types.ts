@@ -3,6 +3,7 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { isNil } from '@bearclaw/is';
 import {
+  Decl,
   Type,
   TypeSchema,
   Type_AbstractTypeSchema,
@@ -78,6 +79,39 @@ export function wellKnownType(value: Type_WellKnownType) {
 export const ANY_TYPE = wellKnownType(Type_WellKnownType.ANY);
 export const DURATION_TYPE = wellKnownType(Type_WellKnownType.DURATION);
 export const TIMESTAMP_TYPE = wellKnownType(Type_WellKnownType.TIMESTAMP);
+
+export function getCheckedWellKnownType(value: string) {
+  switch (value) {
+    // // Wrapper types.
+    // 	case "google.protobuf.BoolValue":   checkedWrap(checkedBool),
+    // 	case "google.protobuf.BytesValue":  checkedWrap(checkedBytes),
+    // 	case "google.protobuf.DoubleValue": checkedWrap(checkedDouble),
+    // 	case "google.protobuf.FloatValue":  checkedWrap(checkedDouble),
+    // 	case "google.protobuf.Int64Value":  checkedWrap(checkedInt),
+    // 	case "google.protobuf.Int32Value":  checkedWrap(checkedInt),
+    // 	case "google.protobuf.UInt64Value": checkedWrap(checkedUint),
+    // 	case "google.protobuf.UInt32Value": checkedWrap(checkedUint),
+    // 	case "google.protobuf.StringValue": checkedWrap(checkedString),
+    // Well-known types.
+    case 'google.protobuf.Any':
+      return ANY_TYPE;
+    case 'google.protobuf.Duration':
+      return DURATION_TYPE;
+    case 'google.protobuf.Timestamp':
+      return TIMESTAMP_TYPE;
+    // Json types.
+    case 'google.protobuf.ListValue':
+      return listType({ elemType: DYN_TYPE });
+    case 'google.protobuf.NullValue':
+      return NULL_TYPE;
+    case 'google.protobuf.Struct':
+      return mapType({ keyType: STRING_TYPE, valueType: DYN_TYPE });
+    case 'google.protobuf.Value':
+      return DYN_TYPE;
+    default:
+      return null;
+  }
+}
 
 export function listType(value: MessageInitShape<typeof Type_ListTypeSchema>) {
   return create(TypeSchema, {
@@ -217,6 +251,20 @@ export function unwrapNullableType(val: Type) {
   if (isNullableType(val)) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return (val.typeKind.value as any).parameterTypes[0] as Type;
+  }
+  return null;
+}
+
+export function unwrapIdentDeclType(val: Decl) {
+  if (val.declKind.case === 'ident') {
+    return val.declKind.value ?? null;
+  }
+  return null;
+}
+
+export function unwrapFunctionDeclType(val: Decl) {
+  if (val.declKind.case === 'function') {
+    return val.declKind.value ?? null;
   }
   return null;
 }
@@ -366,12 +414,10 @@ export function isAssignableList(
   l2: Type[]
 ) {
   const copy = new Map(mapping);
-  for (let i = 0; i < l1.length; i++) {
-    if (!internalIsAssignable(copy, l1[i], l2[i])) {
-      return null;
-    }
+  if (internalIsAssignableList(copy, l1, l2)) {
+    return copy;
   }
-  return copy;
+  return null;
 }
 
 /**
@@ -746,28 +792,38 @@ export function substitute(
       });
     case 'type':
       return substitute(mapping, t.typeKind.value, typeParamToDyn);
-    case 'typeParam':
-      const sub = mapping.get(t.typeKind.value);
-      if (!isNil(sub)) {
-        return substitute(mapping, sub, typeParamToDyn);
-      }
-      return t;
-    case 'messageType':
-      // Handle special cases for certain message types.
-      switch (t.typeKind.value) {
-        case 'google.protobuf.Struct':
-          return mapType({
-            keyType: STRING_TYPE,
-            valueType: DYN_TYPE,
-          });
-        case 'google.protobuf.Value':
-          return DYN_TYPE;
-        case 'google.protobuf.ListValue':
-          return listType({ elemType: DYN_TYPE });
-        default:
-          break;
-      }
-      return t;
+    // case 'typeParam':
+    //   const sub = mapping.get(t.typeKind.value);
+    //   if (!isNil(sub)) {
+    //     return substitute(mapping, sub, typeParamToDyn);
+    //   }
+    //   return t;
+    // case 'messageType':
+    //   // Handle special cases for certain message types.
+    //   switch (t.typeKind.value) {
+    //     case 'google.protobuf.Struct':
+    //       return mapType({
+    //         keyType: STRING_TYPE,
+    //         valueType:
+    //           typeParamToDyn === true
+    //             ? DYN_TYPE
+    //             : substitute(mapping, typeParamType('B'), typeParamToDyn),
+    //       });
+    //     case 'google.protobuf.Value':
+    //       return typeParamToDyn === true
+    //         ? DYN_TYPE
+    //         : substitute(mapping, typeParamType('A'), typeParamToDyn);
+    //     case 'google.protobuf.ListValue':
+    //       return listType({
+    //         elemType:
+    //           typeParamToDyn === true
+    //             ? DYN_TYPE
+    //             : substitute(mapping, typeParamType('A'), typeParamToDyn),
+    //       });
+    //     default:
+    //       break;
+    //   }
+    //   return t;
     default:
       return t;
   }

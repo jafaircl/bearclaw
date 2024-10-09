@@ -1,3 +1,4 @@
+import { Decl } from '@buf/google_cel-spec.bufbuild_es/cel/expr/checked_pb';
 import {
   DescEnum,
   DescExtension,
@@ -245,7 +246,7 @@ import {
 } from './types';
 import { functionDecl } from './utils';
 
-export const standardTypes: (
+export const STANDARD_DESCRIPTORS: (
   | DescMessage
   | DescEnum
   | Registry
@@ -267,6 +268,8 @@ export const standardTypes: (
   UInt32ValueSchema,
   UInt64ValueSchema,
 ];
+
+export const STANDARD_IDENTS: Decl[] = [];
 
 const paramA = typeParamType('A');
 const paramB = typeParamType('B');
@@ -1396,7 +1399,7 @@ export const TIME_GET_MILLISECONDS_FUNCTION_DECL = functionDecl(
   }
 );
 
-export const STANDARD_FUNCTION_DECLARATIONS = [
+export const STANDARD_FUNCTION_DECLARATIONS: Decl[] = [
   CONDITIONAL_FUNCTION_DECL,
   LOGICAL_AND_FUNCTION_DECL,
   LOGICAL_OR_FUNCTION_DECL,

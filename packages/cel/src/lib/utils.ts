@@ -34,6 +34,7 @@ import { NullValue } from '@bufbuild/protobuf/wkt';
 import {
   DYN_TYPE,
   Location,
+  getCheckedWellKnownType,
   listType,
   mapType,
   messageType,
@@ -391,6 +392,15 @@ export function createStructMapEntry(
   });
 }
 
+export function isMapExpr(expr: Expr) {
+  if (expr.exprKind.case !== 'structExpr') {
+    return false;
+  }
+  return expr.exprKind.value.entries.some(
+    (entry) => entry.keyKind.case === 'mapKey'
+  );
+}
+
 export function comprehensionExpr(
   id: bigint,
   init: MessageInitShape<typeof Expr_ComprehensionSchema>
@@ -558,6 +568,10 @@ export function toQualifiedName(expr: Expr): string {
 export function getFieldDescriptorType(field: DescField) {
   switch (field.fieldKind) {
     case 'message':
+      const checkedType = getCheckedWellKnownType(field.message.typeName);
+      if (!isNil(checkedType)) {
+        return checkedType;
+      }
       return messageType(field.message.typeName);
     case 'enum':
       return messageType(field.enum.typeName);
