@@ -12,6 +12,7 @@ import {
   BoolValueSchema,
   BytesValueSchema,
   DoubleValueSchema,
+  DurationSchema,
   FloatValueSchema,
   Int32ValueSchema,
   Int64ValueSchema,
@@ -19,6 +20,7 @@ import {
   ValueSchema as ProtobufValueSchema,
   StringValueSchema,
   StructSchema,
+  TimestampSchema,
   UInt32ValueSchema,
   UInt64ValueSchema,
 } from '@bufbuild/protobuf/wkt';
@@ -244,7 +246,7 @@ import {
   typeParamType,
   typeType,
 } from './types';
-import { functionDecl } from './utils';
+import { functionDecl, identDecl } from './utils';
 
 export const STANDARD_DESCRIPTORS: (
   | DescMessage
@@ -267,14 +269,32 @@ export const STANDARD_DESCRIPTORS: (
   StringValueSchema,
   UInt32ValueSchema,
   UInt64ValueSchema,
+  TimestampSchema,
+  DurationSchema,
 ];
 
-export const STANDARD_IDENTS: Decl[] = [];
+export const STANDARD_IDENTS: Decl[] = [
+  identDecl('bool', { type: typeType(BOOL_TYPE) }),
+  identDecl('bytes', { type: typeType(BYTES_TYPE) }),
+  identDecl('double', { type: typeType(DOUBLE_TYPE) }),
+  identDecl('duration', { type: typeType(DURATION_TYPE) }),
+  identDecl('dyn', { type: typeType(DYN_TYPE) }),
+  identDecl('int', { type: typeType(INT64_TYPE) }),
+  identDecl('string', { type: typeType(STRING_TYPE) }),
+  identDecl('timestamp', { type: typeType(TIMESTAMP_TYPE) }),
+  identDecl('uint', { type: typeType(UINT64_TYPE) }),
+  identDecl('list', { type: typeType(listType({ elemType: DYN_TYPE })) }),
+  identDecl('map', {
+    type: typeType(mapType({ keyType: DYN_TYPE, valueType: DYN_TYPE })),
+  }),
+];
 
 const paramA = typeParamType('A');
+const typeParamAList = ['A'];
 const paramB = typeParamType('B');
 const listOfA = listType({ elemType: paramA });
 const mapOfAB = mapType({ keyType: paramA, valueType: paramB });
+const typeParamABList = ['A', 'B'];
 
 // Logical operators. Special-cased within the interpreter.
 // Note, the singleton binding prevents extensions from overriding the operator
@@ -285,6 +305,7 @@ export const CONDITIONAL_FUNCTION_DECL = functionDecl(CONDITIONAL_OPERATOR, {
       overloadId: CONDITIONAL_OVERLOAD,
       params: [BOOL_TYPE, paramA, paramA],
       resultType: paramA,
+      typeParams: typeParamAList,
     },
   ],
 });
@@ -335,8 +356,9 @@ export const EQUALS_FUNCTION_DECL = functionDecl(EQUALS_OPERATOR, {
   overloads: [
     {
       overloadId: EQUALS_OVERLOAD,
-      params: [paramA, paramA],
+      params: [paramA, paramB],
       resultType: BOOL_TYPE,
+      typeParams: typeParamABList,
     },
   ],
 });
@@ -346,6 +368,7 @@ export const NOT_EQUALS_FUNCTION_DECL = functionDecl(NOT_EQUALS_OPERATOR, {
       overloadId: NOT_EQUALS_OVERLOAD,
       params: [paramA, paramA],
       resultType: BOOL_TYPE,
+      typeParams: typeParamABList,
     },
   ],
 });
@@ -387,6 +410,7 @@ export const ADD_FUNCTION_DECL = functionDecl(ADD_OPERATOR, {
       overloadId: ADD_LIST_OVERLOAD,
       params: [listOfA, listOfA],
       resultType: listOfA,
+      typeParams: typeParamAList,
     },
     {
       overloadId: ADD_STRING_OVERLOAD,
@@ -804,11 +828,13 @@ export const INDEX_FUNCTION_DECL = functionDecl(INDEX_OPERATOR, {
       overloadId: INDEX_MAP_OVERLOAD,
       params: [mapOfAB, paramA],
       resultType: paramB,
+      typeParams: typeParamABList,
     },
     {
       overloadId: INDEX_LIST_OVERLOAD,
       params: [listOfA, INT64_TYPE],
       resultType: paramA,
+      typeParams: typeParamAList,
     },
   ],
 });
@@ -820,11 +846,13 @@ export const IN_FUNCTION_DECL = functionDecl(IN_OPERATOR, {
       overloadId: IN_LIST_OVERLOAD,
       params: [paramA, listOfA],
       resultType: BOOL_TYPE,
+      typeParams: typeParamAList,
     },
     {
       overloadId: IN_MAP_OVERLOAD,
       params: [paramA, mapOfAB],
       resultType: BOOL_TYPE,
+      typeParams: typeParamABList,
     },
   ],
 });
@@ -845,22 +873,26 @@ export const SIZE_FUNCTION_DECL = functionDecl(SIZE_OVERLOAD, {
       overloadId: SIZE_LIST_OVERLOAD,
       params: [listOfA],
       resultType: INT64_TYPE,
+      typeParams: typeParamAList,
     },
     {
       overloadId: SIZE_LIST_INST_OVERLOAD,
       params: [listOfA],
       resultType: INT64_TYPE,
+      typeParams: typeParamAList,
       isInstanceFunction: true,
     },
     {
       overloadId: SIZE_MAP_OVERLOAD,
       params: [mapOfAB],
       resultType: INT64_TYPE,
+      typeParams: typeParamABList,
     },
     {
       overloadId: SIZE_MAP_INST_OVERLOAD,
       params: [mapOfAB],
       resultType: INT64_TYPE,
+      typeParams: typeParamABList,
       isInstanceFunction: true,
     },
     {
@@ -886,6 +918,7 @@ export const TYPE_CONVERT_TYPE_FUNCTION_DECL = functionDecl(
         overloadId: TYPE_CONVERT_TYPE_OVERLOAD,
         params: [paramA],
         resultType: typeType(paramA),
+        typeParams: typeParamAList,
       },
     ],
   }
@@ -991,6 +1024,7 @@ export const TYPE_CONVERT_DYN_FUNCTION_DECL = functionDecl(
         overloadId: TYPE_CONVERT_TYPE_OVERLOAD,
         params: [paramA],
         resultType: DYN_TYPE,
+        typeParams: typeParamAList,
       },
     ],
   }

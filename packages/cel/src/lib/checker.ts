@@ -4,24 +4,25 @@ import { isEmpty, isNil } from '@bearclaw/is';
 import {
   CheckedExprSchema,
   Decl,
+  Decl_FunctionDecl,
   Decl_IdentDecl,
-  Decl_IdentDeclSchema,
   Reference,
   Type,
-  Type_PrimitiveType,
+  Type_FunctionType,
 } from '@buf/google_cel-spec.bufbuild_es/cel/expr/checked_pb';
 import {
   Expr,
+  Expr_Call,
+  Expr_Comprehension,
+  Expr_CreateList,
+  Expr_CreateStruct,
+  Expr_Ident,
+  Expr_Select,
   ParsedExpr,
 } from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb.js';
 import { create } from '@bufbuild/protobuf';
 import { CELEnvironment } from './environment';
 import { Errors } from './errors';
-import {
-  LOGICAL_AND_OPERATOR,
-  LOGICAL_OR_OPERATOR,
-  OPT_SELECT_OPERATOR,
-} from './operators';
 import {
   BOOL_TYPE,
   BYTES_TYPE,
@@ -34,35 +35,27 @@ import {
   STRING_TYPE,
   TIMESTAMP_TYPE,
   UINT64_TYPE,
+  formatCELType,
   functionType,
   getCheckedWellKnownType,
   isAssignable,
   isAssignableList,
   isDyn,
   isDynOrError,
-  isError,
   isExactType,
-  isOptionalType,
   listType,
   mapType,
-  maybeUnwrapOptionalType,
   mostGeneral,
-  optionalType,
-  primitiveType,
   substitute,
   typeParamType,
-  unwrapFunctionType,
   unwrapIdentDeclType,
-  unwrapOptionalType,
+  wellKnownType,
 } from './types';
 import {
-  extractIdent,
   functionReference,
   getLocationByOffset,
-  getWellKNownTypeName,
   identDecl,
   identReference,
-  isMapExpr,
   mapToObject,
   toQualifiedName,
 } from './utils';
@@ -127,15 +120,12 @@ export class CELChecker {
       case 'identExpr':
         return this.checkIdentExpr(expr);
       case 'listExpr':
-        return this.checkListExpr(expr);
+        return this.checkCreateList(expr);
       case 'selectExpr':
         return this.checkSelect(expr);
       case 'callExpr':
         return this.checkCall(expr);
       case 'structExpr':
-        if (isMapExpr(expr)) {
-          return this.checkCreateMap(expr);
-        }
         return this.checkCreateStruct(expr);
       case 'comprehensionExpr':
         return this.checkComprehension(expr);
@@ -203,146 +193,65 @@ export class CELChecker {
   }
 
   checkIdentExpr(expr: Expr) {
-    if (expr.exprKind.case !== 'identExpr') {
-      // This should never happen
-      throw new Error('expr.exprKind.case is not identExpr');
-    }
-    const identName = extractIdent(expr);
-    if (isNil(identName)) {
-      throw new Error('identName is nil');
-    }
-    const ident = this.env.lookupIdent(identName);
-    if (isNil(ident)) {
-      this.setType(expr.id, ERROR_TYPE);
-      this.#errors.reportUndeclaredReference(
-        expr.id,
-        this.getLocationById(expr.id),
-        this.env.container,
-        identName
-      );
+    const identExpr = expr.exprKind.value as Expr_Ident;
+    const ident = this.env.lookupIdent(identExpr.name);
+    if (!isNil(ident)) {
+      const unwrapped = unwrapIdentDeclType(ident)!;
+      this.setType(expr.id, unwrapped.type!);
+      this.setReference(expr.id, identReference(ident.name, unwrapped.value!));
+      // Overwrite the identifier with its fully qualified name.
+      identExpr.name = ident.name;
       return expr;
     }
-    if (ident.declKind.case !== 'ident') {
-      // This should never happen
-      throw new Error('ident.declKind.case is not ident');
-    }
-    // Overwrite the identifier with its fully qualified name.
-    const qn = toQualifiedName(expr);
-    expr.exprKind.value.name = qn;
-    let identType = unwrapIdentDeclType(ident)!;
-    // Handle special cases for well-known types.
-    if (identType.type?.typeKind.case === 'messageType') {
-      const checkedType = getCheckedWellKnownType(
-        identType.type.typeKind.value
-      );
-      if (!isNil(checkedType)) {
-        identType = create(Decl_IdentDeclSchema, {
-          type: checkedType,
-        });
-      }
-    }
-    this.setType(expr.id, identType.type!);
-    this.setReference(expr.id, identReference(ident.name, identType.value!));
+    this.setType(expr.id, ERROR_TYPE);
+    this.#errors.reportUndeclaredReference(
+      expr.id,
+      this.getLocationById(expr.id),
+      this.env.container,
+      identExpr.name
+    );
     return expr;
   }
 
   checkSelect(expr: Expr) {
-    if (expr.exprKind.case !== 'selectExpr') {
-      // This should never happen
-      throw new Error('expr.exprKind.case is not selectExpr');
-    }
+    const sel = expr.exprKind.value as Expr_Select;
     // Before traversing down the tree, try to interpret as qualified name.
     const qname = toQualifiedName(expr);
-    if (!isEmpty(qname)) {
-      const decl = this.env.lookupIdent(qname);
-      const ident = !isNil(decl) ? unwrapIdentDeclType(decl) : null;
+    if (!isNil(qname)) {
+      const ident = this.env.lookupIdent(qname);
       if (!isNil(ident)) {
-        if (expr.exprKind.value.testOnly) {
-          this.#errors.reportErrorAtId(
-            expr.id,
-            this.getLocationById(expr.id),
-            'expression does not select a field'
-          );
-          this.setType(expr.id, BOOL_TYPE);
-        } else {
-          this.setType(expr.id, ident.type!);
-          this.setReference(expr.id, identReference(decl!.name, ident.value!));
-        }
+        const identDecl = ident.declKind.value as Decl_IdentDecl;
+        // Rewrite the node to be a variable reference to the resolved
+        // fully-qualified variable name.
+        this.setType(expr.id, identDecl.type!);
+        this.setReference(
+          expr.id,
+          identReference(ident.name, identDecl.value!)
+        );
         return expr;
       }
     }
 
     // Interpret as field selection, first traversing down the operand.
-    let resultType = this.checkSelectField(
-      expr,
-      expr.exprKind.value.operand!,
-      expr.exprKind.value.field,
-      false
-    );
-    if (expr.exprKind.value.testOnly) {
-      resultType = BOOL_TYPE;
-    }
-    this.setType(expr.id, substitute(this.#mapping, resultType, false));
-    return expr;
-  }
-
-  checkOptSelect(expr: Expr) {
-    if (expr.exprKind.case !== 'selectExpr') {
-      // This should never happen
-      throw new Error('expr.exprKind.case is not identExpr');
-    }
-    // Collect metadata related to the opt select call packaged by the parser.
-    const operand = expr.exprKind.value.operand!;
-    const field = expr.exprKind.value.field;
-
-    // Perform type-checking using the field selection logic.
-    const resultType = this.checkSelectField(expr, operand, field, true);
-    this.setType(expr.id, substitute(this.#mapping, resultType, false));
-    this.setReference(expr.id, functionReference(['select_optional_field']));
-    return expr;
-  }
-
-  checkSelectField(
-    expr: Expr,
-    operand: Expr,
-    field: string,
-    optional: boolean
-  ) {
-    // Interpret as field selection, first traversing down the operand.
-    const checkedOperand = this.checkExpr(operand);
-    const operandType = substitute(
-      this.#mapping,
-      this.getType(checkedOperand!.id)!,
-      false
-    );
-
-    // If the target type is 'optional', unwrap it for the sake of this check.
-    const targetType = isOptionalType(operandType)
-      ? unwrapOptionalType(operandType)
-      : operandType;
-    if (isNil(targetType)) {
-      // This should never happen
-      throw new Error('targetType is nil');
-    }
-
+    const checkedOperand = this.checkExpr(sel.operand);
+    const targetType = this.getType(checkedOperand!.id)!;
     // Assume error type by default as most types do not support field
     // selection.
-    let resultType = ERROR_TYPE;
+    let resultType: Type = ERROR_TYPE;
     switch (targetType.typeKind.case) {
       case 'mapType':
         // Maps yield their value type as the selection result type.
         resultType = targetType.typeKind.value.valueType!;
         break;
       case 'messageType':
-        // Objects yield their field type declaration as the selection result
-        // type, but only if the field is defined.
+        // Objects yield their field type declaration as the selection result type, but only if
+        // the field is defined.
         const fieldType = this.env.lookupFieldType(
           targetType.typeKind.value,
-          field
+          sel.field
         );
         if (!isNil(fieldType)) {
           resultType = fieldType;
-          break;
         } else {
           const msg = this.env.lookupStructType(targetType.typeKind.value);
           if (isNil(msg)) {
@@ -355,13 +264,16 @@ export class CELChecker {
             this.#errors.reportUndefinedField(
               expr.id,
               this.getLocationById(expr.id),
-              field
+              sel.field
             );
           }
         }
         break;
+      case 'wellKnown':
+        resultType = wellKnownType(targetType.typeKind.value);
+        break;
       case 'typeParam':
-        // Set the operand type to DYN to prevent assignment to a potentially
+        // Set the operand type to DYN to prevent assignment to a potentionally
         // incorrect type at a later point in type-checking. The isAssignable
         // call will update the type substitutions for the type param under the
         // covers.
@@ -370,32 +282,34 @@ export class CELChecker {
         resultType = DYN_TYPE;
         break;
       default:
-        if (!isDynOrError(targetType)) {
+        // Dynamic / error values are treated as DYN type. Errors are handled this way as well
+        // in order to allow forward progress on the check.
+        if (isDynOrError(targetType)) {
+          resultType = DYN_TYPE;
+        } else {
           this.#errors.reportTypeDoesNotSupportFieldSelection(
             expr.id,
             this.getLocationById(expr.id),
             targetType
           );
         }
-        resultType = DYN_TYPE;
+        break;
     }
-    if (isOptionalType(operandType) || optional) {
-      return optionalType(resultType);
+    if (sel.testOnly) {
+      resultType = BOOL_TYPE;
     }
-    return resultType;
+    this.setType(expr.id, resultType);
+    return expr;
   }
 
   checkCall(expr: Expr) {
-    if (expr.exprKind.case !== 'callExpr') {
-      // This should never happen
-      throw new Error('expr.exprKind.case is not callExpr');
-    }
-    const call = expr.exprKind.value;
-    const fnName = call.function;
-    if (fnName === OPT_SELECT_OPERATOR) {
-      return this.checkOptSelect(expr);
-    }
+    // Note: similar logic exists within the `interpreter/planner.go`. If
+    // making changes here please consider the impact on planner.go and
+    // consolidate implementations or mirror code as appropriate.
+    const call = expr.exprKind.value as Expr_Call;
     const args = call.args;
+    const fnName = call.function;
+
     // Traverse arguments.
     for (const arg of args) {
       this.checkExpr(arg);
@@ -416,7 +330,7 @@ export class CELChecker {
         return expr;
       }
       // Overwrite the function name with its fully qualified resolved name.
-      expr.exprKind.value.function = fn.name;
+      call.function = fn.name;
       // Check to see whether the overload resolves.
       this.resolveOverloadOrError(expr, fn, null, args);
       return expr;
@@ -427,32 +341,33 @@ export class CELChecker {
     // function or c is a function with target a.b.
     //
     // Check whether the target is a namespaced function name.
-    const qualifiedPrefix = toQualifiedName(call.target);
-    if (!isEmpty(qualifiedPrefix)) {
-      const qualifiedName = `${qualifiedPrefix}.${fnName}`;
-      const fn = this.env.lookupFunction(qualifiedName);
+    const target = call.target;
+    const qualifiedPrefix = toQualifiedName(target);
+    if (!isNil(qualifiedPrefix)) {
+      const maybeQualifiedName = `${qualifiedPrefix}.${fnName}`;
+      const fn = this.env.lookupFunction(maybeQualifiedName);
       if (!isNil(fn)) {
         // The function name is namespaced and so preserving the target operand
         // would be an inaccurate representation of the desired evaluation
-        // behavior.
-        // Overwrite with fully-qualified resolved function name sans receiver
-        // target.
-        expr.exprKind.value.function = fn.name;
+        // behavior. Overwrite with fully-qualified resolved function name sans
+        // receiver target.
+        call.function = fn.name;
         this.resolveOverloadOrError(expr, fn, null, args);
         return expr;
       }
     }
 
     // Regular instance call.
-    const checkedTarget = this.checkExpr(call.target)!;
+    this.checkExpr(target);
+    // Overwrite with fully-qualified resolved function name sans receiver
+    // target.
     const fn = this.env.lookupFunction(fnName);
     // Function found, attempt overload resolution.
     if (!isNil(fn)) {
-      this.resolveOverloadOrError(expr, fn, checkedTarget, args);
+      this.resolveOverloadOrError(expr, fn, target, args);
       return expr;
     }
     // Function name not declared, record error.
-    this.setType(expr.id, ERROR_TYPE);
     this.#errors.reportUndeclaredReference(
       expr.id,
       this.getLocationById(expr.id),
@@ -468,14 +383,6 @@ export class CELChecker {
     target: Expr | null,
     args: Expr[]
   ) {
-    if (expr.exprKind.case !== 'callExpr') {
-      // This should never happen but acts as a type guard.
-      throw new Error('expr.exprKind.case is not callExpr');
-    }
-    if (fn.declKind.case !== 'function') {
-      // This should never happen but acts as a type guard.
-      throw new Error('fn.declKind.case is not a function');
-    }
     // Attempt to resolve the overload.
     const resolution = this.resolveOverload(expr, fn, target, args);
     // No such overload, error noted in the resolveOverload call, type recorded
@@ -492,36 +399,30 @@ export class CELChecker {
 
   resolveOverload(
     expr: Expr,
-    fn: Decl,
+    fnDecl: Decl,
     target: Expr | null,
     args: Expr[]
   ): OverloadResolution | null {
-    if (expr.exprKind.case !== 'callExpr') {
-      // This should never happen but acts as a type guard.
-      throw new Error('expr.exprKind.case is not callExpr');
-    }
-    if (fn.declKind.case !== 'function') {
-      // This should never happen but acts as a type guard.
-      throw new Error('fn.declKind.case is not a function');
-    }
+    const fn = fnDecl.declKind.value as Decl_FunctionDecl;
     const argTypes: Type[] = [];
     if (!isNil(target)) {
-      argTypes.push(this.getType(target.id)!);
+      const argType = this.getType(target.id);
+      if (isNil(argType)) {
+        throw new Error(`Could not resolve type for target '${target}'`);
+      }
+      argTypes.push(argType);
     }
-    for (const arg of args) {
-      argTypes.push(this.getType(arg.id)!);
+    for (let i = 0; i < args.length; i++) {
+      const argType = this.getType(args[i].id);
+      if (isNil(argType)) {
+        throw new Error(`Could not resolve type for argument '${target}'`);
+      }
+      argTypes.push(argType);
     }
 
     let resultType: Type | undefined = undefined;
     let checkedRef: Reference | undefined = undefined;
-    for (const overload of fn.declKind.value.overloads) {
-      // TODO: implement disabled overloads
-      // // Determine whether the overload is currently considered.
-      // if c.env.isOverloadDisabled(overload.ID()) {
-      // 	continue
-      // }
-
-      // Ensure the call style for the overload matches.
+    for (const overload of fn.overloads) {
       if (
         (isNil(target) && overload.isInstanceFunction) ||
         (!isNil(target) && !overload.isInstanceFunction)
@@ -530,57 +431,35 @@ export class CELChecker {
         continue;
       }
 
-      // Alternative type-checking behavior when the logical operators are
-      // compacted into variadic AST representations.
-      if (fn.name === LOGICAL_AND_OPERATOR || fn.name === LOGICAL_OR_OPERATOR) {
-        checkedRef = functionReference([overload.overloadId]);
-        for (let i = 0; i < argTypes.length; i++) {
-          const argType = argTypes[i];
-          if (!this._isAssignable(argType, BOOL_TYPE)) {
-            this.#errors.reportTypeMismatch(
-              args[i].id,
-              this.getLocationById(args[i].id),
-              BOOL_TYPE,
-              argType
-            );
-            resultType = ERROR_TYPE;
-          }
-        }
-        if (!isNil(resultType) && isError(resultType)) {
-          return null;
-        }
-        return {
-          checkedRef,
-          resultType: primitiveType(Type_PrimitiveType.BOOL),
-        };
-      }
-
       let overloadType = functionType({
         resultType: overload.resultType,
         argTypes: overload.params,
       });
-      const typeParams = overload.typeParams;
-      if (typeParams.length > 0) {
+      if (overload.typeParams.length > 0) {
         // Instantiate overload's type with fresh type variables.
         const substitutions = new Map<string, Type>();
-        for (const typeParam of typeParams) {
-          substitutions.set(typeParam, this._newTypeVar());
+        for (const typeParam of overload.typeParams) {
+          substitutions.set(
+            formatCELType(typeParamType(typeParam)),
+            this._newTypeVar()
+          );
         }
         overloadType = substitute(substitutions, overloadType, false);
       }
 
-      const unwrappedOverload = unwrapFunctionType(overloadType)!;
-      const candidateArgTypes = unwrappedOverload.argTypes;
+      const overloadTypeFn = overloadType.typeKind.value as Type_FunctionType;
+      const candidateArgTypes = overloadTypeFn.argTypes;
       if (this._isAssignableList(argTypes, candidateArgTypes)) {
         if (isNil(checkedRef)) {
           checkedRef = functionReference([overload.overloadId]);
         } else {
           checkedRef.overloadId.push(overload.overloadId);
         }
+
         // First matching overload, determines result type.
         const fnResultType = substitute(
           this.#mapping,
-          unwrappedOverload.resultType!,
+          overloadTypeFn.resultType!,
           false
         );
         if (isNil(resultType)) {
@@ -595,229 +474,145 @@ export class CELChecker {
     }
 
     if (isNil(resultType)) {
-      for (let i = 0; i < argTypes.length; i++) {
-        argTypes[i] = substitute(this.#mapping, argTypes[i], false);
-      }
       this.#errors.reportNoMatchingOverload(
         expr.id,
         this.getLocationById(expr.id),
-        fn.name,
+        fnDecl.name,
         argTypes,
         !isNil(target)
       );
       return null;
     }
-
-    return { checkedRef, resultType };
+    return { resultType, checkedRef };
   }
 
-  checkListExpr(expr: Expr) {
-    if (expr.exprKind.case !== 'listExpr') {
-      // This should never happen
-      throw new Error('expr.exprKind.case is not listExpr');
-    }
-    const createList = expr.exprKind.value;
-    let elemsType: Type | undefined = undefined;
-    const optionals = {} as Record<number, boolean>;
-    for (const optInd of createList.optionalIndices) {
-      optionals[optInd] = true;
-    }
-    for (let i = 0; i < createList.elements.length; i++) {
-      const e = createList.elements[i];
+  checkCreateList(expr: Expr) {
+    const create = expr.exprKind.value as Expr_CreateList;
+    let elemType: Type | undefined = undefined;
+    for (let i = 0; i < create.elements.length; i++) {
+      const e = create.elements[i];
       this.checkExpr(e);
-      const elemType = this.getType(e.id);
-      if (isNil(elemType)) {
-        continue;
-      }
-      if (optionals[i]) {
-        if (!isOptionalType(elemType) && !isDyn(elemType)) {
-          this.#errors.reportTypeMismatch(
-            e.id,
-            this.getLocationById(e.id),
-            optionalType(elemType),
-            elemType
-          );
-        }
-      }
-      elemsType = this._joinTypes(e, elemsType!, elemType!);
+      elemType = this._joinTypes(e, elemType!, this.getType(e.id)!);
     }
-    if (isNil(elemsType)) {
-      elemsType = this._newTypeVar();
+    if (isNil(elemType)) {
+      // If the list is empty, assign free type var to elem type.
+      elemType = this._newTypeVar();
     }
-    this.setType(expr.id, listType({ elemType: elemsType }));
-    return expr;
-  }
-
-  checkCreateMap(expr: Expr) {
-    if (expr.exprKind.case !== 'structExpr') {
-      // This should never happen but acts as a type guard.
-      throw new Error('expr.exprKind.case is not structExpr');
-    }
-    let mapKeyType: Type | undefined = undefined;
-    let mapValueType: Type | undefined = undefined;
-    for (let i = 0; i < expr.exprKind.value.entries.length; i++) {
-      const entry = expr.exprKind.value.entries[i];
-      if (entry.keyKind.case !== 'mapKey') {
-        // This should never happen
-        throw new Error('entry.keyKind.case is not mapKey');
-      }
-      const checkedKey = this.checkExpr(entry.keyKind.value)!;
-      mapKeyType = this._joinTypes(
-        checkedKey,
-        mapKeyType,
-        this.getType(checkedKey.id)!
-      );
-
-      const checkedVal = this.checkExpr(entry.value)!;
-      let valType = this.getType(checkedVal.id)!;
-      if (isOptionalType(mapKeyType)) {
-        valType = unwrapOptionalType(valType)!;
-        if (!isOptionalType(valType) && !isDyn(valType)) {
-          this.#errors.reportTypeMismatch(
-            checkedVal.id,
-            this.getLocationById(checkedVal.id),
-            optionalType(valType),
-            valType
-          );
-        }
-      }
-      mapValueType = this._joinTypes(checkedVal, mapValueType, valType);
-    }
-    if (isNil(mapKeyType)) {
-      // If the map is empty, assign free type variables to typeKey and value
-      // type.
-      mapKeyType = this._newTypeVar();
-      mapValueType = this._newTypeVar();
-    }
-    this.setType(
-      expr.id,
-      mapType({
-        keyType: mapKeyType,
-        valueType: mapValueType,
-      })
-    );
+    this.setType(expr.id, listType({ elemType }));
     return expr;
   }
 
   checkCreateStruct(expr: Expr) {
-    if (expr.exprKind.case !== 'structExpr') {
-      // This should never happen but acts as a type guard.
-      throw new Error('expr.exprKind.case is not structExpr');
+    const struct = expr.exprKind.value as Expr_CreateStruct;
+    if (!isEmpty(struct.messageName)) {
+      return this.checkCreateMessage(expr);
     }
-    const msgVal = expr.exprKind.value;
+    return this.checkCreateMap(expr);
+  }
+
+  checkCreateMap(expr: Expr) {
+    const mapVal = expr.exprKind.value as Expr_CreateStruct;
+    let keyType: Type | undefined = undefined;
+    let valueType: Type | undefined = undefined;
+    for (let i = 0; i < mapVal.entries.length; i++) {
+      const key = mapVal.entries[i].keyKind.value as Expr;
+      this.checkExpr(key);
+      keyType = this._joinTypes(key, keyType, this.getType(key.id)!);
+
+      const val = mapVal.entries[i].value as Expr;
+      this.checkExpr(val);
+      valueType = this._joinTypes(val, valueType, this.getType(val.id)!);
+    }
+    if (isNil(keyType)) {
+      // If the map is empty, assign free type variables to typeKey and value
+      // type.
+      keyType = this._newTypeVar();
+      valueType = this._newTypeVar();
+    }
+    this.setType(expr.id, mapType({ keyType, valueType }));
+    return expr;
+  }
+
+  checkCreateMessage(expr: Expr) {
+    const mapVal = expr.exprKind.value as Expr_CreateStruct;
     // Determine the type of the message.
-    let resultType: Type = ERROR_TYPE;
-    const ident = this.env.lookupIdent(msgVal.messageName);
-    if (isNil(ident)) {
+    let messageType: Type = ERROR_TYPE;
+    const decl = this.env.lookupIdent(mapVal.messageName);
+    if (isNil(decl)) {
       this.#errors.reportUndeclaredReference(
         expr.id,
         this.getLocationById(expr.id),
         this.env.container,
-        msgVal.messageName
+        mapVal.messageName
       );
-      this.setType(expr.id, ERROR_TYPE);
       return expr;
     }
-    const identDecl = ident.declKind.value as Decl_IdentDecl;
-    let typeName = ident.name;
     // Ensure the type name is fully qualified in the AST.
-    if (msgVal.messageName !== typeName) {
-      expr.exprKind.value.messageName = typeName;
-    }
-    this.setReference(expr.id, identReference(typeName, identDecl.value!));
-    const identKind = identDecl.type?.typeKind.case;
-    if (identKind !== 'error') {
-      if (
-        identKind !== 'type' &&
-        identKind !== 'wellKnown' &&
-        identKind !== 'messageType'
-      ) {
-        this.#errors.reportNotAType(
+    mapVal.messageName = decl.name;
+    const ident = decl.declKind.value as Decl_IdentDecl;
+    this.setReference(expr.id, identReference(decl.name, ident.value!));
+    const identKind = ident.type!.typeKind.case;
+    if (identKind === 'type') {
+      messageType = ident.type!;
+      if (messageType.typeKind.case !== 'messageType') {
+        this.#errors.reportNotAMessageType(
           expr.id,
           this.getLocationById(expr.id),
-          typeName
+          decl.name
         );
-      } else {
-        switch (identKind) {
-          case 'type':
-            resultType = identDecl.type!.typeKind.value;
-            break;
-          case 'wellKnown':
-          case 'messageType':
-            resultType = identDecl.type!;
-            break;
-        }
-        // Backwards compatibility test between well-known types and message
-        // types. In this context, the type is being instantiated by it
-        // protobuf name which is not ideal or recommended, but some users
-        // expect this to work.
-        if (resultType.typeKind.case === 'wellKnown') {
-          typeName = getWellKNownTypeName(resultType.typeKind.value)!;
-        } else if (resultType.typeKind.case === 'messageType') {
-          typeName = resultType.typeKind.value;
-        } else {
-          this.#errors.reportNotAMessageType(
-            expr.id,
-            this.getLocationById(expr.id),
-            typeName
-          );
-          resultType = ERROR_TYPE;
-        }
+        messageType = ERROR_TYPE;
       }
     }
-    this.setType(expr.id, resultType);
+    if (identKind === 'messageType') {
+      messageType = ident.type!;
+    }
+    const checkedType = getCheckedWellKnownType(mapVal.messageName);
+    if (!isNil(checkedType)) {
+      messageType = checkedType;
+    }
+    this.setType(expr.id, messageType);
 
     // Check the field initializers.
-    for (const field of msgVal.entries) {
-      if (field.keyKind.case !== 'fieldKey') {
-        // This should never happen but acts as a type guard.
-        throw new Error('field.keyKind.case is not fieldKey');
+    for (const entry of mapVal.entries) {
+      const field = entry.keyKind.value as string;
+      const value = entry.value;
+      if (isNil(value)) {
+        this.#errors.reportUndefinedField(
+          entry.id,
+          this.getLocationById(entry.id),
+          field
+        );
+        continue;
       }
+      this.checkExpr(value);
 
-      const checkedValue = this.checkExpr(field.value)!;
-
-      let fieldType = ERROR_TYPE;
-      const ft = this.env.lookupFieldType(typeName, field.keyKind.value);
-      if (!isNil(ft)) {
-        fieldType = ft;
+      let fieldType: Type = ERROR_TYPE;
+      const t = this.env.lookupFieldType(mapVal.messageName, field);
+      if (!isNil(t)) {
+        fieldType = t;
       } else {
-        const msg = this.env.lookupStructType(typeName);
+        const msg = this.env.lookupStructType(mapVal.messageName);
         if (isNil(msg)) {
           this.#errors.reportUnexpectedFailedResolution(
-            field.value!.id,
-            this.getLocationById(field.id),
-            typeName
+            expr.id,
+            this.getLocationById(expr.id),
+            mapVal.messageName
           );
         } else {
           this.#errors.reportUndefinedField(
-            field.value!.id,
-            this.getLocationById(field.id),
-            field.keyKind.value
+            entry.id,
+            this.getLocationById(entry.id),
+            field
           );
         }
       }
-
-      let valType = this.getType(checkedValue.id);
-      if (field.optionalEntry) {
-        const vt = maybeUnwrapOptionalType(valType);
-        if (!isNil(vt)) {
-          valType = vt;
-        } else {
-          this.#errors.reportTypeMismatch(
-            field.value!.id,
-            this.getLocationById(field.value!.id),
-            optionalType(fieldType),
-            valType!
-          );
-        }
-      }
-      if (!this._isAssignable(fieldType, valType!)) {
+      if (!this._isAssignable(fieldType, this.getType(value.id)!)) {
         this.#errors.reportFieldTypeMismatch(
-          field.value!.id,
-          this.getLocationById(field.id),
-          field.keyKind.value,
+          entry.id,
+          this.getLocationById(entry.id),
+          field,
           fieldType,
-          valType!
+          this.getType(value.id)!
         );
       }
     }
@@ -825,20 +620,13 @@ export class CELChecker {
   }
 
   checkComprehension(expr: Expr) {
-    if (expr.exprKind.case !== 'comprehensionExpr') {
-      // This should never happen
-      throw new Error('expr.exprKind.case is not comprehensionExpr');
-    }
-    const comp = expr.exprKind.value;
-    const checkedRange = this.checkExpr(comp.iterRange);
-    const checkedInit = this.checkExpr(comp.accuInit);
-    const accuType = this.getType(checkedInit!.id);
-    const rangeType = substitute(
-      this.#mapping,
-      this.getType(checkedRange!.id)!,
-      false
-    );
+    const comp = expr.exprKind.value as Expr_Comprehension;
+    this.checkExpr(comp.iterRange);
+    this.checkExpr(comp.accuInit);
+    const accuType = this.getType(comp.accuInit!.id);
+    const rangeType = this.getType(comp.iterRange!.id)!;
     let varType: Type | undefined = undefined;
+
     switch (rangeType.typeKind.case) {
       case 'listType':
         varType = rangeType.typeKind.value.elemType;
@@ -849,8 +637,6 @@ export class CELChecker {
         break;
       case 'dyn':
       case 'error':
-        varType = DYN_TYPE;
-        break;
       case 'typeParam':
         // Set the range type to DYN to prevent assignment to a potentially
         // incorrect type at a later point in type-checking. The isAssignable
@@ -877,19 +663,16 @@ export class CELChecker {
     this.env.enterScope();
     this.env.addIdent(identDecl(comp.iterVar, { type: varType }));
     // Check the variable references in the condition and step.
-    const checkedCondition = this.checkExpr(comp.loopCondition);
-    this._assertType(checkedCondition!, BOOL_TYPE);
-    const checkedStep = this.checkExpr(comp.loopStep);
-    this._assertType(checkedStep!, accuType!);
+    this.checkExpr(comp.loopCondition);
+    this._assertType(comp.loopCondition!, BOOL_TYPE);
+    this.checkExpr(comp.loopStep);
+    this._assertType(comp.loopStep!, accuType!);
     // Exit the loop's block scope before checking the result.
     this.env.exitScope();
-    const checkedResult = this.checkExpr(comp.result);
+    this.checkExpr(comp.result);
     // Exit the comprehension scope.
     this.env.exitScope();
-    this.setType(
-      expr.id,
-      substitute(this.#mapping, this.getType(checkedResult!.id)!, false)
-    );
+    this.setType(expr.id, this.getType(comp.result!.id)!);
     return expr;
   }
 

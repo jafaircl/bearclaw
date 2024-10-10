@@ -6,9 +6,13 @@ import {
   Decl,
   Type,
   TypeSchema,
+  Type_AbstractType,
   Type_AbstractTypeSchema,
+  Type_FunctionType,
   Type_FunctionTypeSchema,
+  Type_ListType,
   Type_ListTypeSchema,
+  Type_MapType,
   Type_MapTypeSchema,
   Type_PrimitiveType,
   Type_PrimitiveTypeSchema,
@@ -80,18 +84,51 @@ export const ANY_TYPE = wellKnownType(Type_WellKnownType.ANY);
 export const DURATION_TYPE = wellKnownType(Type_WellKnownType.DURATION);
 export const TIMESTAMP_TYPE = wellKnownType(Type_WellKnownType.TIMESTAMP);
 
+export function isCheckedWellKnownType(type: Type) {
+  if (type.typeKind.case !== 'messageType') {
+    return false;
+  }
+  switch (type.typeKind.value) {
+    case 'google.protobuf.BoolValue': // Wrapper types.
+    case 'google.protobuf.BytesValue':
+    case 'google.protobuf.DoubleValue':
+    case 'google.protobuf.FloatValue':
+    case 'google.protobuf.Int64Value':
+    case 'google.protobuf.Int32Value':
+    case 'google.protobuf.UInt64Value':
+    case 'google.protobuf.UInt32Value':
+    case 'google.protobuf.StringValue':
+    case 'google.protobuf.Any': // Well-known types.
+    case 'google.protobuf.Duration':
+    case 'google.protobuf.Timestamp':
+    case 'google.protobuf.ListValue': // Json types.
+    case 'google.protobuf.NullValue':
+    case 'google.protobuf.Struct':
+    case 'google.protobuf.Value':
+      return true;
+    default:
+      return false;
+  }
+}
+
 export function getCheckedWellKnownType(value: string) {
   switch (value) {
-    // // Wrapper types.
-    // 	case "google.protobuf.BoolValue":   checkedWrap(checkedBool),
-    // 	case "google.protobuf.BytesValue":  checkedWrap(checkedBytes),
-    // 	case "google.protobuf.DoubleValue": checkedWrap(checkedDouble),
-    // 	case "google.protobuf.FloatValue":  checkedWrap(checkedDouble),
-    // 	case "google.protobuf.Int64Value":  checkedWrap(checkedInt),
-    // 	case "google.protobuf.Int32Value":  checkedWrap(checkedInt),
-    // 	case "google.protobuf.UInt64Value": checkedWrap(checkedUint),
-    // 	case "google.protobuf.UInt32Value": checkedWrap(checkedUint),
-    // 	case "google.protobuf.StringValue": checkedWrap(checkedString),
+    // Wrapper types.
+    case 'google.protobuf.BoolValue':
+      return BOOL_TYPE;
+    case 'google.protobuf.BytesValue':
+      return BYTES_TYPE;
+    case 'google.protobuf.DoubleValue':
+    case 'google.protobuf.FloatValue':
+      return DOUBLE_TYPE;
+    case 'google.protobuf.Int64Value':
+    case 'google.protobuf.Int32Value':
+      return INT64_TYPE;
+    case 'google.protobuf.UInt64Value':
+    case 'google.protobuf.UInt32Value':
+      return UINT64_TYPE;
+    case 'google.protobuf.StringValue':
+      return STRING_TYPE;
     // Well-known types.
     case 'google.protobuf.Any':
       return ANY_TYPE;
@@ -315,7 +352,7 @@ export function isEqualOrLessSpecific(t1: Type, t2: Type): boolean {
         throw new Error('kinds must be equal');
       }
       if (
-        t1.$typeName !== t2.$typeName ||
+        t1.typeKind.value.name !== t2.typeKind.value.name ||
         t1.typeKind.value.parameterTypes.length !==
           t2.typeKind.value.parameterTypes.length
       ) {
@@ -326,6 +363,35 @@ export function isEqualOrLessSpecific(t1: Type, t2: Type): boolean {
           isEqualOrLessSpecific(
             t1.typeKind.value.parameterTypes[i],
             t2.typeKind.value.parameterTypes[i]
+          )
+        ) {
+          return false;
+        }
+      }
+      return true;
+    case 'function':
+      if (t1.typeKind.case !== t2.typeKind.case) {
+        // We will never get here
+        throw new Error('kinds must be equal');
+      }
+      if (
+        !isEqualOrLessSpecific(
+          t1.typeKind.value.resultType!,
+          t2.typeKind.value.resultType!
+        )
+      ) {
+        return false;
+      }
+      if (
+        t1.typeKind.value.argTypes.length !== t2.typeKind.value.argTypes.length
+      ) {
+        return false;
+      }
+      for (let i = 0; i < t1.typeKind.value.argTypes.length; i++) {
+        if (
+          isEqualOrLessSpecific(
+            t1.typeKind.value.argTypes[i],
+            t2.typeKind.value.argTypes[i]
           )
         ) {
           return false;
@@ -433,88 +499,207 @@ export function internalIsAssignable(
   t1: Type,
   t2: Type
 ): boolean {
+  // A type is always assignable to itself.
+  // Early terminate the call to avoid cases of infinite recursion.
+  if (t1 === t2) {
+    return true;
+  }
   // Process type parameters
   const kind1 = t1.typeKind.case;
   const kind2 = t2.typeKind.case;
   if (kind2 === 'typeParam') {
-    // If t2 is a valid type substitution for t1, return true.
-    const [valid, t2HasSub] = isValidTypeSubstitution(mapping, t1, t2);
-    if (valid) {
-      return true;
-    }
-    // If t2 is not a valid type sub for t1, and already has a known
-    // substitution return false since it is not possible for t1 to be
-    // substitution for t2.
-    if (!valid && t2HasSub) {
+    const t2Sub = mapping.get(formatCELType(t2));
+    if (!isNil(t2Sub)) {
+      // If the types are compatible, pick the more general type and return true
+      if (internalIsAssignable(mapping, t1, t2Sub)) {
+        mapping.set(formatCELType(t2), mostGeneral(t1, t2Sub));
+        return true;
+      }
       return false;
     }
-    // Otherwise, fall through to check whether t1 is a possible substitution
-    // for t2.
+    if (notReferencedIn(mapping, t2, t1)) {
+      mapping.set(formatCELType(t2), t1);
+      return true;
+    }
   }
   if (kind1 === 'typeParam') {
-    // Return whether t1 is a valid substitution for t2. If not, do no
-    // additional checks as the possible type substitutions have been searched
-    // in both directions.
-    const [valid, _] = isValidTypeSubstitution(mapping, t2, t1);
-    return valid;
+    // For the lower type bound, we currently do not perform adjustment. The restricted
+    // way we use type parameters in lower type bounds, it is not necessary, but may
+    // become if we generalize type unification.
+    const t1Sub = mapping.get(formatCELType(t1));
+    if (!isNil(t1Sub)) {
+      // If the types are compatible, pick the more general type and return true
+      if (internalIsAssignable(mapping, t1Sub, t2)) {
+        mapping.set(formatCELType(t1), mostGeneral(t1Sub, t2));
+        return true;
+      }
+      return false;
+    }
+    if (notReferencedIn(mapping, t1, t2)) {
+      mapping.set(formatCELType(t1), t2);
+      return true;
+    }
   }
   // Next check for wildcard types.
   if (isDynOrError(t1) || isDynOrError(t2)) {
     return true;
   }
-  // Preserve the nullness checks of the legacy type-checker.
-  if (kind1 == 'null') {
-    return internalIsAssignableNull(t2);
-  }
-  if (kind2 == 'null') {
-    return internalIsAssignableNull(t1);
-  }
-  // Test for when the types do not need to agree, but are more specific than
-  // dyn.
+
+  // Test for when the types do not need to agree, but are more specific than dyn.
   switch (kind1) {
+    case 'null':
+      return internalIsAssignableNull(t2);
     case 'primitive':
-    case 'wellKnown':
-    case 'messageType':
+      return internalIsAssignablePrimitive(t1.typeKind.value, t2);
     case 'wrapper':
-    case 'error':
-      return isAssignableType(t1, t2);
-    case 'type':
-      return kind2 === 'type';
+      return internalIsAssignable(
+        mapping,
+        primitiveType(t1.typeKind.value),
+        t2
+      );
+    default:
+      if (kind1 != kind2) {
+        return false;
+      }
+  }
+
+  // Test for when the types must agree.
+  switch (kind1) {
+    // ERROR, TYPE_PARAM, and DYN handled above.
     case 'abstractType':
-      return (
-        t2.typeKind.case === 'abstractType' &&
-        internalIsAssignableList(
-          mapping,
-          t1.typeKind.value.parameterTypes,
-          t2.typeKind.value.parameterTypes
-        )
+      return internalIsAssignableAbstractType(
+        mapping,
+        t1.typeKind.value,
+        t2.typeKind.value as Type_AbstractType
+      );
+    case 'function':
+      return internalIsAssignableFunction(
+        mapping,
+        t1.typeKind.value,
+        t2.typeKind.value as Type_FunctionType
       );
     case 'listType':
-      return (
-        t2.typeKind.case === 'listType' &&
-        internalIsAssignable(
-          mapping,
-          t1.typeKind.value.elemType!,
-          t2.typeKind.value.elemType!
-        )
+      return internalIsAssignable(
+        mapping,
+        t1.typeKind.value.elemType!,
+        (t2.typeKind.value as Type_ListType).elemType!
       );
     case 'mapType':
-      return (
-        t2.typeKind.case === 'mapType' &&
-        internalIsAssignable(
-          mapping,
-          t1.typeKind.value.keyType!,
-          t2.typeKind.value.keyType!
-        ) &&
-        internalIsAssignable(
-          mapping,
-          t1.typeKind.value.valueType!,
-          t2.typeKind.value.valueType!
-        )
+      return internalIsAssignableMap(
+        mapping,
+        t1.typeKind.value,
+        t2.typeKind.value as Type_MapType
       );
+    case 'messageType':
+      return t1.typeKind.value === t2.typeKind.value;
+    case 'type':
+      // A type is a type is a type, any additional parameterization of the
+      // type cannot affect method resolution or assignability.
+      return true;
+    case 'wellKnown':
+      return t1.typeKind.value === t2.typeKind.value;
     default:
       return false;
   }
+}
+
+/**
+ * Returns true if the target type is the same or if it is a wrapper
+ * for the primitive type.
+ *
+ * @param p1 the primitive type
+ * @param t2 the target type
+ * @returns whether the primitive type is assignable to the target type
+ */
+export function internalIsAssignablePrimitive(
+  p1: Type_PrimitiveType,
+  t2: Type
+): boolean {
+  switch (t2.typeKind.case) {
+    case 'primitive':
+      return p1 === t2.typeKind.value;
+    case 'wrapper':
+      return p1 === t2.typeKind.value;
+    default:
+      return false;
+  }
+}
+
+/**
+ * Returns true if the abstract type names agree and all type
+ * parameters are assignable.
+ *
+ * @param mapping the type map to use for checking references
+ * @param a1 the first abstract type
+ * @param a2 the second abstract type
+ * @returns whether the abstract types are assignable
+ */
+export function internalIsAssignableAbstractType(
+  mapping: Map<string, Type>,
+  a1: Type_AbstractType,
+  a2: Type_AbstractType
+): boolean {
+  if (a1.name !== a2.name) {
+    return false;
+  }
+  return internalIsAssignableList(
+    mapping,
+    a1.parameterTypes,
+    a2.parameterTypes
+  );
+}
+
+/**
+ * Returns true if the function return type and arg types are
+ * assignable.
+ */
+export function internalIsAssignableFunction(
+  mapping: Map<string, Type>,
+  f1: Type_FunctionType,
+  f2: Type_FunctionType
+) {
+  const f1Args = flattenFunctionTypes(f1);
+  const f2Args = flattenFunctionTypes(f2);
+  return internalIsAssignableList(mapping, f1Args, f2Args);
+}
+
+/**
+ * Takes a function with arg types T1, T2, ..., TN and result type TR and
+ * returns a slice containing {T1, T2, ..., TN, TR}.
+ *
+ * @param f the function type
+ * @returns the list of types for the function
+ */
+export function flattenFunctionTypes(f: Type_FunctionType) {
+  const argTypes = f.argTypes;
+  if (argTypes.length === 0) {
+    return [f.resultType!];
+  }
+  for (let i = 0; i < argTypes.length; i++) {
+    argTypes.push(argTypes[i]);
+  }
+  argTypes.push(f.resultType!);
+  return argTypes;
+}
+
+/**
+ * Returns true if map m1 may be assigned to map m2.
+ *
+ * @param mapping the type map to use for checking references
+ * @param m1 the first map type
+ * @param m2 the second map type
+ * @returns whether the map types are assignable
+ */
+export function internalIsAssignableMap(
+  mapping: Map<string, Type>,
+  m1: Type_MapType,
+  m2: Type_MapType
+) {
+  return internalIsAssignableList(
+    mapping,
+    [m1.keyType!, m1.valueType!],
+    [m2.keyType!, m2.valueType!]
+  );
 }
 
 /**
@@ -548,62 +733,16 @@ export function internalIsAssignableList(
  * @returns whether the type is nullable
  */
 export function internalIsAssignableNull(t: Type) {
-  return isAssignableType(t, NULL_TYPE);
-}
-
-/**
- * Returns whether t2 (or its type substitution) is a valid type substitution
- * for t1, and whether t2 has a type substitution in mapping m.
- * The type t2 is a valid substitution for t1 if any of the following
- * statements is true
- * - t2 has a type substitution (t2sub) equal to t1
- * - t2 has a type substitution (t2sub) assignable to t1
- * - t2 does not occur within t1.
- *
- * @param mapping the type map to use for checking references
- * @param t1 the first type
- * @param t2 the second type
- * @returns a tuple where the first element is whether t2 is a valid type
- * substitution for t1, and the second element is whether t2 has a type
- * substitution in the mapping
- */
-export function isValidTypeSubstitution(
-  mapping: Map<string, Type>,
-  t1: Type,
-  t2: Type
-): [boolean, boolean] {
-  // Early return if the t1 and t2 are the same instance.
-  const kind1 = t1.typeKind.case;
-  const kind2 = t2.typeKind.case;
-  if (kind1 === kind2 && t1 === t2) {
-    return [true, true];
+  switch (t.typeKind.case) {
+    case 'abstractType':
+    case 'messageType':
+    case 'null':
+    case 'wellKnown':
+    case 'wrapper':
+      return true;
+    default:
+      return false;
   }
-  const t2sub = Array.from(mapping).find(([_, v]) => v === t2)?.[1];
-  if (!isNil(t2sub)) {
-    // Early return if t1 and t2Sub are the same instance as otherwise the
-    // mapping might mark a type as being a subtitution for itself.
-    if (kind1 === t2sub.typeKind.case && t1 === t2sub) {
-      return [true, true];
-    }
-    // If the types are compatible, pick the more general type and return true
-    if (internalIsAssignable(mapping, t1, t2sub)) {
-      const t2New = mostGeneral(t1, t2sub);
-      // only update the type reference map if the target type does not occur
-      // within it.
-      if (notReferencedIn(mapping, t2New, t2)) {
-        mapping.set(formatCELType(t2New), t2New);
-      }
-      // acknowledge the type agreement, and that the substitution is already
-      // tracked.
-      return [true, true];
-    }
-    return [false, true];
-  }
-  if (notReferencedIn(mapping, t2, t1)) {
-    mapping.set(formatCELType(t2), t1);
-    return [true, false];
-  }
-  return [false, false];
 }
 
 /**
@@ -620,19 +759,28 @@ export function notReferencedIn(
   t: Type,
   withinType: Type
 ): boolean {
-  if (t === withinType) {
+  if (isExactType(t, withinType)) {
     return false;
   }
-  const withinKind = withinType.typeKind.case;
-  switch (withinKind) {
+  switch (withinType.typeKind.case) {
     case 'typeParam':
-      const wtSub = Array.from(m).find(([_, v]) => v === withinType)?.[1];
+      const wtSub = m.get(formatCELType(withinType));
       if (isNil(wtSub)) {
         return true;
       }
       return notReferencedIn(m, t, wtSub);
     case 'abstractType':
       for (const pt of withinType.typeKind.value.parameterTypes) {
+        if (!notReferencedIn(m, t, pt)) {
+          return false;
+        }
+      }
+      return true;
+    case 'function':
+      if (!notReferencedIn(m, t, withinType.typeKind.value.resultType!)) {
+        return false;
+      }
+      for (const pt of withinType.typeKind.value.argTypes) {
         if (!notReferencedIn(m, t, pt)) {
           return false;
         }
@@ -645,8 +793,8 @@ export function notReferencedIn(
         notReferencedIn(m, t, withinType.typeKind.value.keyType!) &&
         notReferencedIn(m, t, withinType.typeKind.value.valueType!)
       );
-    case 'type':
-      return t.typeKind.value !== withinType;
+    case 'wrapper':
+      return notReferencedIn(m, t, wrappedType(withinType.typeKind.value));
     default:
       return true;
   }
@@ -688,9 +836,6 @@ export function defaultIsAssignableType(
   if (isNullableType(current) && isNullType(fromType)) {
     return true;
   }
-  if (current.typeKind.case === 'typeParam') {
-    return true;
-  }
   const unwrappedCurrent = unwrapNullableType(current);
   if (
     !isNil(unwrappedCurrent) &&
@@ -699,15 +844,27 @@ export function defaultIsAssignableType(
   ) {
     return true;
   }
-  if (
-    current.typeKind.case !== fromType.typeKind.case ||
-    current.$typeName !== fromType.$typeName
-  ) {
-    return false;
-  }
   switch (current.typeKind.case) {
+    case 'primitive':
+    case 'wellKnown':
+    case 'wrapper':
+      return current.typeKind.value === fromType.typeKind.value;
+    case 'messageType':
+      const checkedType = getCheckedWellKnownType(current.typeKind.value);
+      if (!isNil(checkedType)) {
+        return defaultIsAssignableType(checkedType, fromType);
+      }
+      return current.typeKind.value === fromType.typeKind.value;
+    case 'type':
+      return fromType.typeKind.case === 'type';
     case 'abstractType':
-      if (fromType.typeKind.case !== current.typeKind.case) {
+      if (current.typeKind.case !== fromType.typeKind.case) {
+        return false;
+      }
+      if (
+        current.typeKind.value.parameterTypes.length !==
+        fromType.typeKind.value.parameterTypes.length
+      ) {
         return false;
       }
       for (let i = 0; i < current.typeKind.value.parameterTypes.length; i++) {
@@ -722,7 +879,7 @@ export function defaultIsAssignableType(
       }
       return true;
     case 'listType':
-      if (fromType.typeKind.case !== current.typeKind.case) {
+      if (fromType.typeKind.case !== 'listType') {
         return false;
       }
       return defaultIsAssignableType(
@@ -730,7 +887,7 @@ export function defaultIsAssignableType(
         fromType.typeKind.value.elemType!
       );
     case 'mapType':
-      if (fromType.typeKind.case !== current.typeKind.case) {
+      if (fromType.typeKind.case !== 'mapType') {
         return false;
       }
       return (
@@ -744,9 +901,8 @@ export function defaultIsAssignableType(
         )
       );
     default:
-      break;
+      return true;
   }
-  return isExactType(current, fromType);
 }
 
 /**
@@ -758,7 +914,7 @@ export function substitute(
   t: Type,
   typeParamToDyn: boolean
 ): Type {
-  const tSub = findTypeInMapping(mapping, t);
+  const tSub = mapping.get(formatCELType(t));
   if (!isNil(tSub)) {
     return substitute(mapping, tSub, typeParamToDyn);
   }
@@ -766,6 +922,17 @@ export function substitute(
     return DYN_TYPE;
   }
   switch (t.typeKind.case) {
+    case 'function':
+      return functionType({
+        argTypes: t.typeKind.value.argTypes.map((_t) =>
+          substitute(mapping, _t, typeParamToDyn)
+        ),
+        resultType: substitute(
+          mapping,
+          t.typeKind.value.resultType!,
+          typeParamToDyn
+        ),
+      });
     case 'abstractType':
       return abstractType({
         name: t.typeKind.value.name,
@@ -791,39 +958,7 @@ export function substitute(
         ),
       });
     case 'type':
-      return substitute(mapping, t.typeKind.value, typeParamToDyn);
-    // case 'typeParam':
-    //   const sub = mapping.get(t.typeKind.value);
-    //   if (!isNil(sub)) {
-    //     return substitute(mapping, sub, typeParamToDyn);
-    //   }
-    //   return t;
-    // case 'messageType':
-    //   // Handle special cases for certain message types.
-    //   switch (t.typeKind.value) {
-    //     case 'google.protobuf.Struct':
-    //       return mapType({
-    //         keyType: STRING_TYPE,
-    //         valueType:
-    //           typeParamToDyn === true
-    //             ? DYN_TYPE
-    //             : substitute(mapping, typeParamType('B'), typeParamToDyn),
-    //       });
-    //     case 'google.protobuf.Value':
-    //       return typeParamToDyn === true
-    //         ? DYN_TYPE
-    //         : substitute(mapping, typeParamType('A'), typeParamToDyn);
-    //     case 'google.protobuf.ListValue':
-    //       return listType({
-    //         elemType:
-    //           typeParamToDyn === true
-    //             ? DYN_TYPE
-    //             : substitute(mapping, typeParamType('A'), typeParamToDyn),
-    //       });
-    //     default:
-    //       break;
-    //   }
-    //   return t;
+      return typeType(substitute(mapping, t.typeKind.value, typeParamToDyn));
     default:
       return t;
   }
@@ -872,13 +1007,14 @@ export function formatCELType(t: Type | null): string {
     case 'typeParam':
       return t.typeKind.value;
     case 'abstractType':
-      if (t.typeKind.value.name === 'function') {
-        // TODO: implement
-      }
-      break;
+      const at = t.typeKind.value;
+      return `${at.name}(${at.parameterTypes.map(formatCELType).join(', ')})`;
     case 'listType':
       return `list(${formatCELType(t.typeKind.value.elemType!)})`;
     case 'type':
+      if (isNil(t.typeKind.value) || isNil(t.typeKind.value.typeKind.value)) {
+        return 'type';
+      }
       return formatCELType(t.typeKind.value);
     case 'messageType':
       return t.typeKind.value;
@@ -886,6 +1022,16 @@ export function formatCELType(t: Type | null): string {
       const keyType = formatCELType(t.typeKind.value.keyType!);
       const valueType = formatCELType(t.typeKind.value.valueType!);
       return `map(${keyType}, ${valueType})`;
+    case 'dyn':
+      return 'dyn';
+    case 'function':
+      return formatFunctionDeclType(
+        t.typeKind.value.resultType!,
+        t.typeKind.value.argTypes,
+        false
+      );
+    case 'wrapper':
+      return `wrapper(${formatCELType(primitiveType(t.typeKind.value))})`;
   }
   return '';
 }

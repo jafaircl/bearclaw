@@ -10,6 +10,7 @@ import {
   ERROR_TYPE,
   NULL_TYPE,
   abstractType,
+  formatCELType,
   functionType,
   isAssignableType,
   isExactType,
@@ -325,7 +326,7 @@ describe('types', () => {
     }
   });
 
-  it('isAssignable', () => {
+  describe('isAssignable', () => {
     const testCases = [
       {
         t1: nullableType(primitiveType(Type_PrimitiveType.STRING)),
@@ -474,10 +475,44 @@ describe('types', () => {
         }),
         isAssignable: false,
       },
+      {
+        t1: listType({
+          elemType: primitiveType(Type_PrimitiveType.INT64),
+        }),
+        t2: listType({
+          elemType: primitiveType(Type_PrimitiveType.STRING),
+        }),
+        isAssignable: false,
+      },
+      {
+        t1: listType({
+          elemType: primitiveType(Type_PrimitiveType.STRING),
+        }),
+        t2: listType({
+          elemType: primitiveType(Type_PrimitiveType.INT64),
+        }),
+        isAssignable: false,
+      },
+      {
+        t1: listType({
+          elemType: messageType('test.TestMessage'),
+        }),
+        t2: listType({
+          elemType: primitiveType(Type_PrimitiveType.INT64),
+        }),
+        isAssignable: false,
+      },
     ];
     for (const testCase of testCases) {
-      expect(isAssignableType(testCase.t1, testCase.t2)).toEqual(
-        testCase.isAssignable
+      it(
+        formatCELType(testCase.t2) +
+          ' is assignable to ' +
+          formatCELType(testCase.t1),
+        () => {
+          expect(isAssignableType(testCase.t1, testCase.t2)).toEqual(
+            testCase.isAssignable
+          );
+        }
       );
     }
   });

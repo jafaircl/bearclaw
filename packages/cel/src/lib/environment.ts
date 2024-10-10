@@ -1,6 +1,7 @@
 import { isNil } from '@bearclaw/is';
 import {
   Decl,
+  Decl_IdentDecl,
   Type,
 } from '@buf/google_cel-spec.bufbuild_es/cel/expr/checked_pb.js';
 import {
@@ -18,8 +19,16 @@ import {
   STANDARD_FUNCTION_DECLARATIONS,
   STANDARD_IDENTS,
 } from './standard';
-import { DYN_TYPE, INT64_TYPE, messageType } from './types';
-import { getFieldDescriptorType, identDecl, int64Constant } from './utils';
+import {
+  DYN_TYPE,
+  INT64_TYPE,
+  STRING_TYPE,
+  getCheckedWellKnownType,
+  isCheckedWellKnownType,
+  mapType,
+  messageType,
+} from './types';
+import { getFieldDescriptorType, identDecl } from './utils';
 
 export interface CELEnvironmentOptions {
   container?: CELContainer;
@@ -249,8 +258,8 @@ export class CELEnvironment {
       // Next try to import the name as a reference to a message type. If found,
       // the declaration is added to the outest (global) scope of the
       // environment, so next time we can access it faster.
-      const type = this.registry.getMessage(candidateName);
-      if (!isNil(type)) {
+      const messageDesc = this.registry.getMessage(candidateName);
+      if (!isNil(messageDesc)) {
         const decl = identDecl(candidateName, {
           type: messageType(candidateName),
         });
@@ -260,11 +269,13 @@ export class CELEnvironment {
 
       // Next try to import this as an enum value by splitting the name in a
       // type prefix and the enum inside.
-      const enumValue = this.registry.getEnum(candidateName);
-      if (!isNil(enumValue)) {
+      const enumDesc = this.registry.getEnum(candidateName);
+      if (!isNil(enumDesc)) {
         const decl = identDecl(candidateName, {
-          type: INT64_TYPE,
-          value: int64Constant(BigInt(enumValue.value[0].number)),
+          type: mapType({
+            keyType: STRING_TYPE,
+            valueType: INT64_TYPE,
+          }),
         });
         this.addIdent(decl);
         return decl;
@@ -368,11 +379,23 @@ export class DeclGroup {
   }
 
   addIdent(decl: Decl): void {
-    this.idents.set(decl.name, decl);
+    this.idents.set(decl.name, this.sanitizeIdent(decl));
   }
 
   findIdent(name: string): Decl | null {
     return this.idents.get(name) || null;
+  }
+
+  sanitizeIdent(decl: Decl) {
+    const ident = decl.declKind.value as Decl_IdentDecl;
+    if (!isNil(ident.type) && isCheckedWellKnownType(ident.type)) {
+      return identDecl(decl.name, {
+        type: getCheckedWellKnownType(
+          ident.type.typeKind.value as string
+        ) as Type,
+      });
+    }
+    return decl;
   }
 
   addFunction(decl: Decl): void {

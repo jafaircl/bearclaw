@@ -1,9 +1,11 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable no-case-declarations */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { isNil } from '@bearclaw/is';
 import {
   DeclSchema,
   Decl_FunctionDeclSchema,
+  Decl_FunctionDecl_OverloadSchema,
   Decl_IdentDeclSchema,
   ReferenceSchema,
   Type_PrimitiveType,
@@ -427,6 +429,12 @@ export function functionDecl(
   });
 }
 
+export function overloadDecl(
+  init: MessageInitShape<typeof Decl_FunctionDecl_OverloadSchema>
+) {
+  return create(Decl_FunctionDecl_OverloadSchema, init);
+}
+
 export function identDecl(
   name: string,
   init: MessageInitShape<typeof Decl_IdentDeclSchema>
@@ -539,24 +547,25 @@ export function mapToObject<K extends string | number | symbol, V>(
  * @param expr the expression AST
  * @returns a qualified name or an empty string
  */
-export function toQualifiedName(expr: Expr): string {
+export function toQualifiedName(expr: Expr): string | null {
   switch (expr.exprKind.case) {
     case 'identExpr':
       return expr.exprKind.value.name;
     case 'selectExpr':
+      const sel = expr.exprKind.value;
       // Test only expressions are not valid as qualified names.
-      if (expr.exprKind.value.testOnly) {
-        return '';
+      if (sel.testOnly) {
+        return null;
       }
-      if (isNil(expr.exprKind.value.operand)) {
-        return '';
+      const qual = toQualifiedName(sel.operand!);
+      if (!isNil(qual)) {
+        return `${qual}.${sel.field}`;
       }
-      return `${toQualifiedName(expr.exprKind.value.operand)}.${
-        expr.exprKind.value.field
-      }`;
+      break;
     default:
-      return '';
+      break;
   }
+  return null;
 }
 
 /**

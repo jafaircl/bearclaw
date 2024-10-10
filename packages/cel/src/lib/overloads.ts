@@ -109,6 +109,7 @@ export const NEGATE_DOUBLE_OVERLOAD = 'negate_double';
 // Index overloads
 export const INDEX_LIST_OVERLOAD = 'index_list';
 export const INDEX_MAP_OVERLOAD = 'index_map';
+export const INDEX_STRUCT_OVERLOAD = 'index_struct';
 export const INDEX_MESSAGE_OVERLOAD = 'index_message'; // TODO: introduce concept of types.Message
 
 // In operators

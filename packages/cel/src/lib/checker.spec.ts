@@ -1,5 +1,9 @@
 import { isNil } from '@bearclaw/is';
-import { TestAllTypesSchema } from '@buf/cel_spec.bufbuild_es/proto/test/v1/proto3/test_all_types_pb.js';
+import {
+  TestAllTypesSchema,
+  TestAllTypes_NestedEnumSchema,
+  TestAllTypes_NestedMessageSchema,
+} from '@buf/cel_spec.bufbuild_es/proto/test/v1/proto3/test_all_types_pb.js';
 import { Type } from '@buf/google_cel-spec.bufbuild_es/cel/expr/checked_pb.js';
 import { createMutableRegistry } from '@bufbuild/protobuf';
 import { CELChecker } from './checker';
@@ -20,7 +24,7 @@ import {
   mapType,
   messageType,
 } from './types';
-import { functionDecl, identDecl } from './utils';
+import { functionDecl, identDecl, overloadDecl } from './utils';
 
 interface TestInfo {
   // in contains the expression to be parsed.
@@ -52,7 +56,11 @@ interface TestInfo {
 
 function getDefaultEnv() {
   return STANDARD_ENV().extend({
-    registry: createMutableRegistry(TestAllTypesSchema),
+    registry: createMutableRegistry(
+      TestAllTypesSchema,
+      TestAllTypes_NestedMessageSchema,
+      TestAllTypes_NestedEnumSchema
+    ),
     idents: [
       identDecl('is', { type: STRING_TYPE }),
       identDecl('ii', { type: INT64_TYPE }),
@@ -433,7 +441,6 @@ ERROR: <input>:1:2: unexpected failed resolution of 'google.api.expr.test.v1.pro
 | .^
 `,
   },
-  // TODO: these 2 tests fail with "found no matching overload for '_[_]' applied to '(google.protobuf.Struct, string) -> unknown'"
   {
     // TODO: this test container is different than in cel-go because we have to import from a different package
     in: `x.single_value + 1 / x.single_struct.y == 23`,
@@ -467,30 +474,30 @@ ERROR: <input>:1:2: unexpected failed resolution of 'google.api.expr.test.v1.pro
       ],
     }),
     out: `_+_(
-        _[_](
-          x~google.api.expr.test.v1.proto3.TestAllTypes^x.single_value~dyn,
-          23~int
-        )~dyn^index_list|index_map,
-        _[_](
-          x~google.api.expr.test.v1.proto3.TestAllTypes^x.single_struct~map(string, dyn),
-          "y"~string
-        )~dyn^index_map
-      )~dyn^add_bytes|add_double|add_duration_duration|add_duration_timestamp|add_int64|add_list|add_string|add_timestamp_duration|add_uint64
-      `,
+          _[_](
+            x~google.api.expr.test.v1.proto3.TestAllTypes^x.single_value~dyn,
+            23~int
+          )~dyn^index_list|index_map,
+          _[_](
+            x~google.api.expr.test.v1.proto3.TestAllTypes^x.single_struct~map(string, dyn),
+            "y"~string
+          )~dyn^index_map
+        )~dyn^add_bytes|add_double|add_duration_duration|add_duration_timestamp|add_int64|add_list|add_string|add_timestamp_duration|add_uint64
+        `,
     outType: DYN_TYPE,
   },
-  //   { // TODO: calling the enum like this doesn't work
-  //     in: `TestAllTypes.NestedEnum.BAR != 99`,
-  //     container: 'google.api.expr.test.v1.proto3',
-  //     env: getDefaultEnv().extend({
-  //       container: new CELContainer('google.api.expr.test.v1.proto3'),
-  //     }),
-  //     out: `_!=_(google.api.expr.test.v1.proto3.TestAllTypes.NestedEnum.BAR
-  //  ~int^google.api.expr.test.v1.proto3.TestAllTypes.NestedEnum.BAR,
-  // 99~int)
-  // ~bool^not_equals`,
-  //     outType: BOOL_TYPE,
-  //   },
+  {
+    in: `TestAllTypes.NestedEnum.BAR != 99`,
+    container: 'google.api.expr.test.v1.proto3',
+    env: getDefaultEnv().extend({
+      container: new CELContainer('google.api.expr.test.v1.proto3'),
+    }),
+    out: `_!=_(google.api.expr.test.v1.proto3.TestAllTypes.NestedEnum.BAR
+   ~int^google.api.expr.test.v1.proto3.TestAllTypes.NestedEnum.BAR,
+  99~int)
+  ~bool^not_equals`,
+    outType: BOOL_TYPE,
+  },
   {
     in: `size([] + [1])`,
     out: `size(_+_([]~list(int), [1~int]~list(int))~list(int)^add_list)~int^size_list`,
@@ -498,48 +505,48 @@ ERROR: <input>:1:2: unexpected failed resolution of 'google.api.expr.test.v1.pro
   },
   {
     in: `x["claims"]["groups"][0].name == "dummy"
-&& x.claims["exp"] == y[1].time
-&& x.claims.structured == {'key': z}
-&& z == 1.0`,
+  && x.claims["exp"] == y[1].time
+  && x.claims.structured == {'key': z}
+  && z == 1.0`,
     out: `_&&_(
-    _&&_(
-        _==_(
-            _[_](
-                _[_](
-                    _[_](
-                        x~map(string, dyn)^x,
-                        "claims"~string
-                    )~dyn^index_map,
-                    "groups"~string
-                )~list(dyn)^index_map,
-                0~int
-            )~dyn^index_list.name~dyn,
-            "dummy"~string
-        )~bool^equals,
-        _==_(
-            _[_](
-                x~map(string, dyn)^x.claims~dyn,
-                "exp"~string
-            )~dyn^index_map,
-            _[_](
-                y~list(dyn)^y,
-                1~int
-            )~dyn^index_list.time~dyn
-        )~bool^equals
-    )~bool^logical_and,
-    _&&_(
-        _==_(
-            x~map(string, dyn)^x.claims~dyn.structured~dyn,
-            {
-                "key"~string:z~dyn^z
-            }~map(string, dyn)
-        )~bool^equals,
-        _==_(
-            z~dyn^z,
-            1~double
-        )~bool^equals
-    )~bool^logical_and
-)~bool^logical_and`,
+      _&&_(
+          _==_(
+              _[_](
+                  _[_](
+                      _[_](
+                          x~map(string, dyn)^x,
+                          "claims"~string
+                      )~dyn^index_map,
+                      "groups"~string
+                  )~list(dyn)^index_map,
+                  0~int
+              )~dyn^index_list.name~dyn,
+              "dummy"~string
+          )~bool^equals,
+          _==_(
+              _[_](
+                  x~map(string, dyn)^x.claims~dyn,
+                  "exp"~string
+              )~dyn^index_map,
+              _[_](
+                  y~list(dyn)^y,
+                  1~int
+              )~dyn^index_list.time~dyn
+          )~bool^equals
+      )~bool^logical_and,
+      _&&_(
+          _==_(
+              x~map(string, dyn)^x.claims~dyn.structured~dyn,
+              {
+                  "key"~string:z~dyn^z
+              }~map(string, dyn)
+          )~bool^equals,
+          _==_(
+              z~dyn^z,
+              1~double
+          )~bool^equals
+      )~bool^logical_and
+  )~bool^logical_and`,
     env: getDefaultEnv().extend({
       idents: [
         identDecl('x', { type: messageType('google.protobuf.Struct') }),
@@ -549,27 +556,26 @@ ERROR: <input>:1:2: unexpected failed resolution of 'google.api.expr.test.v1.pro
     }),
     outType: BOOL_TYPE,
   },
-  // TODO: this test does not throw an error when it should
-  //   {
-  //     in: `x + y`,
-  //     env: getDefaultEnv().extend({
-  //       idents: [
-  //         identDecl('x', {
-  //           type: listType({
-  //             elemType: messageType(
-  //               'google.api.expr.test.v1.proto3.TestAllTypes'
-  //             ),
-  //           }),
-  //         }),
-  //         identDecl('y', { type: listType({ elemType: INT64_TYPE }) }),
-  //       ],
-  //     }),
-  //     err: `
-  //   ERROR: <input>:1:3: found no matching overload for '_+_' applied to '(list(google.api.expr.test.v1.proto3.TestAllTypes), list(int))'
-  //   | x + y
-  //   | ..^
-  //     `,
-  //   },
+  {
+    in: `x + y`,
+    env: getDefaultEnv().extend({
+      idents: [
+        identDecl('x', {
+          type: listType({
+            elemType: messageType(
+              'google.api.expr.test.v1.proto3.TestAllTypes'
+            ),
+          }),
+        }),
+        identDecl('y', { type: listType({ elemType: INT64_TYPE }) }),
+      ],
+    }),
+    err: `
+    ERROR: <input>:1:3: found no matching overload for '_+_' applied to '(list(google.api.expr.test.v1.proto3.TestAllTypes), list(int))'
+    | x + y
+    | ..^
+      `,
+  },
   {
     in: `x[1u]`,
     env: getDefaultEnv().extend({
@@ -603,17 +609,17 @@ ERROR: <input>:1:2: found no matching overload for '_[_]' applied to '(list(goog
       ],
     }),
     out: `
-_==_(_[_](_+_(x~list(google.api.expr.test.v1.proto3.TestAllTypes)^x,
-          x~list(google.api.expr.test.v1.proto3.TestAllTypes)^x)
-      ~list(google.api.expr.test.v1.proto3.TestAllTypes)^add_list,
-     1~int)
- ~google.api.expr.test.v1.proto3.TestAllTypes^index_list
- .
- single_int32
- ~int,
-size(x~list(google.api.expr.test.v1.proto3.TestAllTypes)^x)~int^size_list)
-~bool^equals
-`,
+    _==_(_[_](_+_(x~list(google.api.expr.test.v1.proto3.TestAllTypes)^x,
+              x~list(google.api.expr.test.v1.proto3.TestAllTypes)^x)
+          ~list(google.api.expr.test.v1.proto3.TestAllTypes)^add_list,
+         1~int)
+     ~google.api.expr.test.v1.proto3.TestAllTypes^index_list
+     .
+     single_int32
+     ~int,
+    size(x~list(google.api.expr.test.v1.proto3.TestAllTypes)^x)~int^size_list)
+    ~bool^equals
+    `,
     outType: BOOL_TYPE,
   },
   {
@@ -626,11 +632,11 @@ size(x~list(google.api.expr.test.v1.proto3.TestAllTypes)^x)~int^size_list)
       ],
     }),
     out: `
-_==_(_[_](x~google.api.expr.test.v1.proto3.TestAllTypes^x.repeated_int64~list(int),
-   x~google.api.expr.test.v1.proto3.TestAllTypes^x.single_int32~int)
-~int^index_list,
-23~int)
-~bool^equals`,
+  _==_(_[_](x~google.api.expr.test.v1.proto3.TestAllTypes^x.repeated_int64~list(int),
+     x~google.api.expr.test.v1.proto3.TestAllTypes^x.single_int32~int)
+  ~int^index_list,
+  23~int)
+  ~bool^equals`,
     outType: BOOL_TYPE,
   },
   {
@@ -643,12 +649,12 @@ _==_(_[_](x~google.api.expr.test.v1.proto3.TestAllTypes^x.repeated_int64~list(in
       ],
     }),
     out: `
-_==_(size(x~google.api.expr.test.v1.proto3.TestAllTypes^x.map_int64_nested_type
-    ~map(int, google.api.expr.test.v1.proto3.NestedTestAllTypes))
-~int^size_map,
-0~int)
-~bool^equals
-`,
+  _==_(size(x~google.api.expr.test.v1.proto3.TestAllTypes^x.map_int64_nested_type
+      ~map(int, google.api.expr.test.v1.proto3.NestedTestAllTypes))
+  ~int^size_map,
+  0~int)
+  ~bool^equals
+  `,
     outType: BOOL_TYPE,
   },
   {
@@ -686,7 +692,6 @@ _==_(size(x~google.api.expr.test.v1.proto3.TestAllTypes^x.map_int64_nested_type
   | ^`,
   },
   {
-    // TODO: this test fails
     in: `x.repeated_int64.map(x, double(x))`,
     env: getDefaultEnv().extend({
       idents: [
@@ -721,29 +726,594 @@ _==_(size(x~google.api.expr.test.v1.proto3.TestAllTypes^x.map_int64_nested_type
       `,
     outType: listType({ elemType: DOUBLE_TYPE }),
   },
-  // TODO: this test does not throw an error when it should
+  {
+    in: `x[2].single_int32 == 23`,
+    env: getDefaultEnv().extend({
+      idents: [
+        identDecl('x', {
+          type: mapType({
+            keyType: STRING_TYPE,
+            valueType: messageType(
+              'google.api.expr.test.v1.proto3.TestAllTypes'
+            ),
+          }),
+        }),
+      ],
+    }),
+    err: `
+  ERROR: <input>:1:2: found no matching overload for '_[_]' applied to '(map(string, google.api.expr.test.v1.proto3.TestAllTypes), int)'
+    | x[2].single_int32 == 23
+    | .^
+  		`,
+  },
+  // TODO: this failes with a weird error where it says there's no matching overload for _==_ (int, int)
+  {
+    in: `x["a"].single_int32 == 23`,
+    env: getDefaultEnv().extend({
+      idents: [
+        identDecl('x', {
+          type: mapType({
+            keyType: STRING_TYPE,
+            valueType: messageType(
+              'google.api.expr.test.v1.proto3.TestAllTypes'
+            ),
+          }),
+        }),
+      ],
+    }),
+    out: `
+    _==_(_[_](x~map(string,  google.api.expr.test.v1.proto3.TestAllTypes)^x, "a"~string)
+    ~ google.api.expr.test.v1.proto3.TestAllTypes^index_map
+    .
+    single_int32
+    ~int,
+    23~int)
+    ~bool^equals`,
+    outType: BOOL_TYPE,
+  },
+  {
+    in: `x.single_nested_message.bb == 43 && has(x.single_nested_message)`,
+    env: getDefaultEnv().extend({
+      idents: [
+        identDecl('x', {
+          type: messageType('google.api.expr.test.v1.proto3.TestAllTypes'),
+        }),
+      ],
+    }),
+    // Our implementation code is expanding the macro
+    out: `_&&_(
+    		  _==_(
+    		    x~google.api.expr.test.v1.proto3.TestAllTypes^x.single_nested_message~google.api.expr.test.v1.proto3.TestAllTypes.NestedMessage.bb~int,
+    		    43~int
+    		  )~bool^equals,
+    		  x~google.api.expr.test.v1.proto3.TestAllTypes^x.single_nested_message~test-only~~bool
+    		)~bool^logical_and`,
+    outType: BOOL_TYPE,
+  },
+  {
+    in: `x.single_nested_message.undefined == x.undefined && has(x.single_int32) && has(x.repeated_int32)`,
+    env: getDefaultEnv().extend({
+      idents: [
+        identDecl('x', {
+          type: messageType('google.api.expr.test.v1.proto3.TestAllTypes'),
+        }),
+      ],
+    }),
+    err: `
+ERROR: <input>:1:24: undefined field 'undefined'
+| x.single_nested_message.undefined == x.undefined && has(x.single_int32) && has(x.repeated_int32)
+| .......................^
+ERROR: <input>:1:39: undefined field 'undefined'
+| x.single_nested_message.undefined == x.undefined && has(x.single_int32) && has(x.repeated_int32)
+| ......................................^`,
+  },
+  {
+    in: `x.single_nested_message != null`,
+    env: getDefaultEnv().extend({
+      idents: [
+        identDecl('x', {
+          type: messageType('google.api.expr.test.v1.proto3.TestAllTypes'),
+        }),
+      ],
+    }),
+    out: `
+  _!=_(x~google.api.expr.test.v1.proto3.TestAllTypes^x.single_nested_message
+  ~google.api.expr.test.v1.proto3.TestAllTypes.NestedMessage,
+  null~null)
+  ~bool^not_equals
+  `,
+    outType: BOOL_TYPE,
+  },
+  {
+    in: `x.single_int64 != null`,
+    env: getDefaultEnv().extend({
+      idents: [
+        identDecl('x', {
+          type: messageType('google.api.expr.test.v1.proto3.TestAllTypes'),
+        }),
+      ],
+    }),
+    err: `
+ERROR: <input>:1:16: found no matching overload for '_!=_' applied to '(int, null)'
+| x.single_int64 != null
+| ...............^
+  `,
+  },
+  {
+    in: `x.single_int64_wrapper == null`,
+    env: getDefaultEnv().extend({
+      idents: [
+        identDecl('x', {
+          type: messageType('google.api.expr.test.v1.proto3.TestAllTypes'),
+        }),
+      ],
+    }),
+    out: `
+  _==_(x~google.api.expr.test.v1.proto3.TestAllTypes^x.single_int64_wrapper
+  ~wrapper(int),
+  null~null)
+  ~bool^equals
+  `,
+    outType: BOOL_TYPE,
+  },
+  {
+    in: `x.single_bool_wrapper
+  && x.single_bytes_wrapper == b'hi'
+  && x.single_double_wrapper != 2.0
+  && x.single_float_wrapper == 1.0
+  && x.single_int32_wrapper != 2
+  && x.single_int64_wrapper == 1
+  && x.single_string_wrapper == 'hi'
+  && x.single_uint32_wrapper == 1u
+  && x.single_uint64_wrapper != 42u`,
+    env: getDefaultEnv().extend({
+      idents: [
+        identDecl('x', {
+          type: messageType('google.api.expr.test.v1.proto3.TestAllTypes'),
+        }),
+      ],
+    }),
+    out: `
+  _&&_(
+      _&&_(
+          _&&_(
+          _&&_(
+              x~google.api.expr.test.v1.proto3.TestAllTypes^x.single_bool_wrapper~wrapper(bool),
+              _==_(
+              x~google.api.expr.test.v1.proto3.TestAllTypes^x.single_bytes_wrapper~wrapper(bytes),
+              b"hi"~bytes
+              )~bool^equals
+          )~bool^logical_and,
+          _!=_(
+              x~google.api.expr.test.v1.proto3.TestAllTypes^x.single_double_wrapper~wrapper(double),
+              2~double
+          )~bool^not_equals
+          )~bool^logical_and,
+          _&&_(
+          _==_(
+              x~google.api.expr.test.v1.proto3.TestAllTypes^x.single_float_wrapper~wrapper(double),
+              1~double
+          )~bool^equals,
+          _!=_(
+              x~google.api.expr.test.v1.proto3.TestAllTypes^x.single_int32_wrapper~wrapper(int),
+              2~int
+          )~bool^not_equals
+          )~bool^logical_and
+      )~bool^logical_and,
+      _&&_(
+          _&&_(
+          _==_(
+              x~google.api.expr.test.v1.proto3.TestAllTypes^x.single_int64_wrapper~wrapper(int),
+              1~int
+          )~bool^equals,
+          _==_(
+              x~google.api.expr.test.v1.proto3.TestAllTypes^x.single_string_wrapper~wrapper(string),
+              "hi"~string
+          )~bool^equals
+          )~bool^logical_and,
+          _&&_(
+          _==_(
+              x~google.api.expr.test.v1.proto3.TestAllTypes^x.single_uint32_wrapper~wrapper(uint),
+              1u~uint
+          )~bool^equals,
+          _!=_(
+              x~google.api.expr.test.v1.proto3.TestAllTypes^x.single_uint64_wrapper~wrapper(uint),
+              42u~uint
+          )~bool^not_equals
+          )~bool^logical_and
+      )~bool^logical_and
+  )~bool^logical_and`,
+    outType: BOOL_TYPE,
+  },
+  {
+    in: `x.single_timestamp == google.protobuf.Timestamp{seconds: 20} &&
+     x.single_duration < google.protobuf.Duration{seconds: 10}`,
+    env: getDefaultEnv().extend({
+      idents: [
+        identDecl('x', {
+          type: messageType('google.api.expr.test.v1.proto3.TestAllTypes'),
+        }),
+      ],
+    }),
+    outType: BOOL_TYPE,
+  },
+  {
+    in: `x.single_bool_wrapper == google.protobuf.BoolValue{value: true}
+      && x.single_bytes_wrapper == google.protobuf.BytesValue{value: b'hi'}
+      && x.single_double_wrapper != google.protobuf.DoubleValue{value: 2.0}
+      && x.single_float_wrapper == google.protobuf.FloatValue{value: 1.0}
+      && x.single_int32_wrapper != google.protobuf.Int32Value{value: -2}
+      && x.single_int64_wrapper == google.protobuf.Int64Value{value: 1}
+      && x.single_string_wrapper == google.protobuf.StringValue{value: 'hi'}
+      && x.single_string_wrapper == google.protobuf.Value{string_value: 'hi'}
+      && x.single_uint32_wrapper == google.protobuf.UInt32Value{value: 1u}
+      && x.single_uint64_wrapper != google.protobuf.UInt64Value{value: 42u}`,
+    env: getDefaultEnv().extend({
+      idents: [
+        identDecl('x', {
+          type: messageType('google.api.expr.test.v1.proto3.TestAllTypes'),
+        }),
+      ],
+    }),
+    outType: BOOL_TYPE,
+  },
+  {
+    in: `x.repeated_int64.exists(y, y > 10) && y < 5`,
+    env: getDefaultEnv().extend({
+      idents: [
+        identDecl('x', {
+          type: messageType('google.api.expr.test.v1.proto3.TestAllTypes'),
+        }),
+      ],
+    }),
+    err: `ERROR: <input>:1:39: undeclared reference to 'y' (in container '')
+  | x.repeated_int64.exists(y, y > 10) && y < 5
+  | ......................................^`,
+  },
+  {
+    in: `x.repeated_int64.all(e, e > 0) && x.repeated_int64.exists(e, e < 0) && x.repeated_int64.exists_one(e, e == 0)`,
+    env: getDefaultEnv().extend({
+      idents: [
+        identDecl('x', {
+          type: messageType('google.api.expr.test.v1.proto3.TestAllTypes'),
+        }),
+      ],
+    }),
+    out: `_&&_(
+      _&&_(
+        __comprehension__(
+          // Variable
+          e,
+          // Target
+          x~google.api.expr.test.v1.proto3.TestAllTypes^x.repeated_int64~list(int),
+          // Accumulator
+          __result__,
+          // Init
+          true~bool,
+          // LoopCondition
+          @not_strictly_false(
+            __result__~bool^__result__
+          )~bool^not_strictly_false,
+          // LoopStep
+          _&&_(
+            __result__~bool^__result__,
+            _>_(
+              e~int^e,
+              0~int
+            )~bool^greater_int64
+          )~bool^logical_and,
+          // Result
+          __result__~bool^__result__)~bool,
+        __comprehension__(
+          // Variable
+          e,
+          // Target
+          x~google.api.expr.test.v1.proto3.TestAllTypes^x.repeated_int64~list(int),
+          // Accumulator
+          __result__,
+          // Init
+          false~bool,
+          // LoopCondition
+          @not_strictly_false(
+            !_(
+              __result__~bool^__result__
+            )~bool^logical_not
+          )~bool^not_strictly_false,
+          // LoopStep
+          _||_(
+            __result__~bool^__result__,
+            _<_(
+              e~int^e,
+              0~int
+            )~bool^less_int64
+          )~bool^logical_or,
+          // Result
+          __result__~bool^__result__)~bool
+      )~bool^logical_and,
+      __comprehension__(
+        // Variable
+        e,
+        // Target
+        x~google.api.expr.test.v1.proto3.TestAllTypes^x.repeated_int64~list(int),
+        // Accumulator
+        __result__,
+        // Init
+        0~int,
+        // LoopCondition
+        true~bool,
+        // LoopStep
+        _?_:_(
+          _==_(
+            e~int^e,
+            0~int
+          )~bool^equals,
+          _+_(
+            __result__~int^__result__,
+            1~int
+          )~int^add_int64,
+          __result__~int^__result__
+        )~int^conditional,
+        // Result
+        _==_(
+          __result__~int^__result__,
+          1~int
+        )~bool^equals)~bool
+    )~bool^logical_and`,
+    outType: BOOL_TYPE,
+  },
+  {
+    in: `x.all(e, 0)`,
+    env: getDefaultEnv().extend({
+      idents: [
+        identDecl('x', {
+          type: messageType('google.api.expr.test.v1.proto3.TestAllTypes'),
+        }),
+      ],
+    }),
+    // TODO: this is the "correct" error message, but the second line doesn't match
+    //     err: `
+    // ERROR: <input>:1:1: expression of type 'google.api.expr.test.v1.proto3.TestAllTypes' cannot be range of a comprehension (must be list, map, or dynamic)
+    // | x.all(e, 0)
+    // | ^
+    // ERROR: <input>:1:10: expected type 'bool' but found 'int'
+    // | x.all(e, 0)
+    // | .........^
+    // `,
+    err: `
+ERROR: <input>:1:1: expression of type 'google.api.expr.test.v1.proto3.TestAllTypes' cannot be range of a comprehension (must be list, map, or dynamic)
+| x.all(e, 0)
+| ^
+ERROR: <input>:1:1: found no matching overload for '_&&_' applied to '(bool, int)'
+| x.all(e, 0)
+| ^
+`,
+  },
+  {
+    in: `lists.filter(x, x > 1.5)`,
+    out: `__comprehension__(
+      // Variable
+      x,
+      // Target
+      lists~dyn^lists,
+      // Accumulator
+      __result__,
+      // Init
+      []~list(dyn),
+      // LoopCondition
+      true~bool,
+      // LoopStep
+      _?_:_(
+        _>_(
+          x~dyn^x,
+          1.5~double
+        )~bool^greater_double|greater_int64_double|greater_uint64_double,
+        _+_(
+          __result__~list(dyn)^__result__,
+          [
+            x~dyn^x
+          ]~list(dyn)
+        )~list(dyn)^add_list,
+        __result__~list(dyn)^__result__
+      )~list(dyn)^conditional,
+      // Result
+      __result__~list(dyn)^__result__)~list(dyn)`,
+    outType: listType({ elemType: DYN_TYPE }),
+    env: getDefaultEnv().extend({
+      idents: [identDecl('lists', { type: DYN_TYPE })],
+    }),
+  },
+  // TODO: incorrect outType
   //   {
-  //     in: `x[2].single_int32 == 23`,
+  //     in: `.google.api.expr.test.v1.proto3.TestAllTypes`,
+  //     out: `google.api.expr.test.v1.proto3.TestAllTypes
+  // ~type(google.api.expr.test.v1.proto3.TestAllTypes)
+  // ^google.api.expr.test.v1.proto3.TestAllTypes`,
+  //     outType: typeType(
+  //       messageType('google.api.expr.test.v1.proto3.TestAllTypes')
+  //     ),
+  //   },
+  {
+    in: `proto3.TestAllTypes`,
+    container: 'google.api.expr.test.v1',
+    out: `
+google.api.expr.test.v1.proto3.TestAllTypes
+~type(google.api.expr.test.v1.proto3.TestAllTypes)
+^google.api.expr.test.v1.proto3.TestAllTypes
+`,
+    outType: messageType('google.api.expr.test.v1.proto3.TestAllTypes'),
+  },
+  {
+    in: `1 + x`,
+    err: `
+ERROR: <input>:1:5: undeclared reference to 'x' (in container '')
+| 1 + x
+| ....^`,
+  },
+  // TODO: these two fail because nullable and any don't have less than/greater equals operators. Should we add them?
+  //   {
+  //     in: `x == google.protobuf.Any{
+  //         type_url:'types.googleapis.com/google.api.expr.test.v1.proto3.TestAllTypes'
+  //     } && x.single_nested_message.bb == 43
+  //     || x == google.api.expr.test.v1.proto3.TestAllTypes{}
+  //     || y < x
+  //     || x >= x`,
   //     env: getDefaultEnv().extend({
   //       idents: [
-  //         identDecl('x', {
-  //           type: mapType({
-  //             keyType: STRING_TYPE,
-  //             valueType: messageType(
-  //               'google.api.expr.test.v1.proto3.TestAllTypes'
-  //             ),
-  //           }),
+  //         identDecl('x', { type: ANY_TYPE }),
+  //         identDecl('y', { type: nullableType(INT64_TYPE) }),
+  //       ],
+  //     }),
+  //     out: `
+  // _||_(
+  //     _||_(
+  //         _&&_(
+  //             _==_(
+  //                 x~any^x,
+  //                 google.protobuf.Any{
+  //                     type_url:"types.googleapis.com/google.api.expr.test.v1.proto3.TestAllTypes"~string
+  //                 }~any^google.protobuf.Any
+  //             )~bool^equals,
+  //             _==_(
+  //                 x~any^x.single_nested_message~dyn.bb~dyn,
+  //                 43~int
+  //             )~bool^equals
+  //         )~bool^logical_and,
+  //         _==_(
+  //             x~any^x,
+  //             google.api.expr.test.v1.proto3.TestAllTypes{}~google.api.expr.test.v1.proto3.TestAllTypes^google.api.expr.test.v1.proto3.TestAllTypes
+  //         )~bool^equals
+  //     )~bool^logical_or,
+  //     _||_(
+  //         _<_(
+  //             y~wrapper(int)^y,
+  //             x~any^x
+  //         )~bool^less_int64|less_int64_double|less_int64_uint64,
+  //         _>=_(
+  //             x~any^x,
+  //             x~any^x
+  //         )~bool^greater_equals_bool|greater_equals_bytes|greater_equals_double|greater_equals_double_int64|greater_equals_double_uint64|greater_equals_duration|greater_equals_int64|greater_equals_int64_double|greater_equals_int64_uint64|greater_equals_string|greater_equals_timestamp|greater_equals_uint64|greater_equals_uint64_double|greater_equals_uint64_int64
+  //     )~bool^logical_or
+  // )~bool^logical_or
+  // `,
+  //     outType: BOOL_TYPE,
+  //   },
+  //   {
+  //     in: `x == google.protobuf.Any{
+  //         type_url:'types.googleapis.com/google.api.expr.test.v1.proto3.TestAllTypes'
+  //     } && x.single_nested_message.bb == 43
+  //     || x == google.api.expr.test.v1.proto3.TestAllTypes{}
+  //     || y < x
+  //     || x >= x`,
+  //     env: getDefaultEnv().extend({
+  //       idents: [
+  //         identDecl('x', { type: ANY_TYPE }),
+  //         identDecl('y', { type: nullableType(INT64_TYPE) }),
+  //       ],
+  //     }),
+  //     out: `
+  // _||_(
+  //     _&&_(
+  //       _==_(
+  //         x~any^x,
+  //         google.protobuf.Any{
+  //           type_url:"types.googleapis.com/google.api.expr.test.v1.proto3.TestAllTypes"~string
+  //         }~any^google.protobuf.Any
+  //       )~bool^equals,
+  //       _==_(
+  //         x~any^x.single_nested_message~dyn.bb~dyn,
+  //         43~int
+  //       )~bool^equals
+  //     )~bool^logical_and,
+  //     _==_(
+  //       x~any^x,
+  //       google.api.expr.test.v1.proto3.TestAllTypes{}~google.api.expr.test.v1.proto3.TestAllTypes^google.api.expr.test.v1.proto3.TestAllTypes
+  //     )~bool^equals,
+  //     _<_(
+  //       y~wrapper(int)^y,
+  //       x~any^x
+  //     )~bool^less_int64|less_int64_double|less_int64_uint64,
+  //     _>=_(
+  //       x~any^x,
+  //       x~any^x
+  //     )~bool^greater_equals_bool|greater_equals_bytes|greater_equals_double|greater_equals_double_int64|greater_equals_double_uint64|greater_equals_duration|greater_equals_int64|greater_equals_int64_double|greater_equals_int64_uint64|greater_equals_string|greater_equals_timestamp|greater_equals_uint64|greater_equals_uint64_double|greater_equals_uint64_int64
+  //   )~bool^logical_or
+  // `,
+  //     outType: types.BoolType,
+  //   },
+  // TODO: not sure why this fails. probably because of the decl name having the container name in it
+  //   {
+  //     in: `x`,
+  //     container: 'container',
+  //     env: getDefaultEnv().extend({
+  //       idents: [
+  //         identDecl('container.x', {
+  //           type: messageType('google.api.expr.test.v1.proto3.TestAllTypes'),
   //         }),
   //       ],
   //     }),
-  //     err: `
-  // ERROR: <input>:1:2: found no matching overload for '_[_]' applied to '(map(string, google.api.expr.test.v1.proto3.TestAllTypes), int)'
-  //   | x[2].single_int32 == 23
-  //   | .^
-  // 		`,
+  //     out: `container.x~google.api.expr.test.v1.proto3.TestAllTypes^container.x`,
+  //     outType: messageType('google.api.expr.test.v1.proto3.TestAllTypes'),
   //   },
+  {
+    in: `list == type([1]) && map == type({1:2u})`,
+    out: `
+_&&_(_==_(list~type(list(dyn))^list,
+   type([1~int]~list(int))~type(list(int))^type)
+~bool^equals,
+_==_(map~type(map(dyn, dyn))^map,
+    type({1~int : 2u~uint}~map(int, uint))~type(map(int, uint))^type)
+~bool^equals)
+~bool^logical_and
+`,
+    outType: BOOL_TYPE,
+  },
+  {
+    in: `size(x) > 4`,
+    env: getDefaultEnv().extend({
+      idents: [
+        identDecl('x', {
+          type: messageType('google.api.expr.test.v1.proto3.TestAllTypes'),
+        }),
+      ],
+      functions: [
+        functionDecl('size', {
+          overloads: [
+            overloadDecl({
+              overloadId: 'size_message',
+              params: [
+                messageType('google.api.expr.test.v1.proto3.TestAllTypes'),
+              ],
+              resultType: INT64_TYPE,
+            }),
+          ],
+        }),
+      ],
+    }),
+    outType: BOOL_TYPE,
+  },
+  {
+    in: `x.single_int64_wrapper + 1 != 23`,
+    env: getDefaultEnv().extend({
+      idents: [
+        identDecl('x', {
+          type: messageType('google.api.expr.test.v1.proto3.TestAllTypes'),
+        }),
+      ],
+    }),
+    out: `
+_!=_(_+_(x~google.expr.proto3.test.TestAllTypes^x.single_int64_wrapper
+~wrapper(int),
+1~int)
+~int^add_int64,
+23~int)
+~bool^not_equals
+`,
+    outType: BOOL_TYPE,
+  },
 ];
 
+// TODO: fix TestAllTypes container name mismatch
+// TODO: check out strings
 describe('CELChecker', () => {
   for (const testCase of testCases) {
     it(`should check ${testCase.in}`, () => {
