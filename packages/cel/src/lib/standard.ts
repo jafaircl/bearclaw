@@ -238,8 +238,10 @@ import {
   DURATION_TYPE,
   DYN_TYPE,
   INT64_TYPE,
+  NULL_TYPE,
   STRING_TYPE,
   TIMESTAMP_TYPE,
+  TYPE_TYPE,
   UINT64_TYPE,
   listType,
   mapType,
@@ -287,6 +289,9 @@ export const STANDARD_IDENTS: Decl[] = [
   identDecl('map', {
     type: typeType(mapType({ keyType: DYN_TYPE, valueType: DYN_TYPE })),
   }),
+  identDecl('type', { type: typeType(TYPE_TYPE) }),
+  identDecl('null_type', { type: typeType(NULL_TYPE) }),
+  identDecl('null', { type: NULL_TYPE }),
 ];
 
 const paramA = typeParamType('A');

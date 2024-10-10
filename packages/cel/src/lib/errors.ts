@@ -13,7 +13,7 @@ import { create, createRegistry } from '@bufbuild/protobuf';
 import { anyPack, anyUnpack } from '@bufbuild/protobuf/wkt';
 import { ErrorListener, RecognitionException, Recognizer, Token } from 'antlr4';
 import { CELContainer } from './container';
-import { Location, formatCELType, formatFunctionDeclType } from './types';
+import { Location, formatCELType, formatFunctionType } from './types';
 
 export class Errors {
   public readonly errors = create(ErrorSetSchema);
@@ -109,7 +109,7 @@ export class Errors {
     return this.reportErrorAtId(
       id,
       location,
-      `type '${type.typeKind.case}' does not support field selection`
+      `type '${formatCELType(type)}' does not support field selection`
     );
   }
 
@@ -124,7 +124,7 @@ export class Errors {
     args: Type[],
     isInstance: boolean
   ) {
-    const signature = formatFunctionDeclType(null, args, isInstance);
+    const signature = formatFunctionType(null, args, isInstance);
     return this.reportErrorAtId(
       id,
       location,

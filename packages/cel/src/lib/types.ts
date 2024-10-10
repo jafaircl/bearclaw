@@ -238,6 +238,8 @@ export function abstractType(
   });
 }
 
+export const TYPE_TYPE = abstractType({ name: 'type' });
+
 export function optionalType(value: Type) {
   return abstractType({ name: 'optional_type', parameterTypes: [value] });
 }
@@ -1025,7 +1027,7 @@ export function formatCELType(t: Type | null): string {
     case 'dyn':
       return 'dyn';
     case 'function':
-      return formatFunctionDeclType(
+      return formatFunctionType(
         t.typeKind.value.resultType!,
         t.typeKind.value.argTypes,
         false
@@ -1141,44 +1143,28 @@ export function isExactTypeList(t1: Type[], t2: Type[]) {
   return true;
 }
 
-export function formatFunctionDeclType(
+export function formatFunctionType(
   resultType: Type | null,
   argTypes: Type[],
   isInstance: boolean
-): string {
-  return formatFunctionInternal(
-    resultType,
-    argTypes,
-    isInstance,
-    formatCELType
-  );
-}
-
-function formatFunctionInternal<T>(
-  resultType: T | null,
-  argTypes: T[],
-  isInstance: boolean,
-  format: (value: T | null) => string
 ): string {
   let result = '';
   if (isInstance) {
     const target = argTypes[0];
     argTypes = argTypes.slice(1);
-    result += format(target);
-    result += '.';
+    result = formatCELType(target) + '.';
   }
   result += '(';
   for (let i = 0; i < argTypes.length; i++) {
+    const argType = argTypes[i];
     if (i > 0) {
       result += ', ';
     }
-    result += format(argTypes[i]);
+    result += formatCELType(argType);
   }
   result += ')';
-  const rt = format(resultType);
-  if (rt !== '') {
-    result += ' -> ';
-    result += rt;
+  if (!isNil(resultType)) {
+    result += ' -> ' + formatCELType(resultType);
   }
   return result;
 }

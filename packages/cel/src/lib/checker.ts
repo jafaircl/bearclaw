@@ -624,7 +624,11 @@ export class CELChecker {
     this.checkExpr(comp.iterRange);
     this.checkExpr(comp.accuInit);
     const accuType = this.getType(comp.accuInit!.id);
-    const rangeType = this.getType(comp.iterRange!.id)!;
+    const rangeType = substitute(
+      this.#mapping,
+      this.getType(comp.iterRange!.id)!,
+      false
+    );
     let varType: Type | undefined = undefined;
 
     switch (rangeType.typeKind.case) {
