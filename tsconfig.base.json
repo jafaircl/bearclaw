@@ -16,6 +16,7 @@
     "skipDefaultLibCheck": true,
     "baseUrl": ".",
     "paths": {
+      "@bearclaw/cel": ["packages/cel/src/index.ts"],
       "@bearclaw/collections": ["packages/collections/src/index.ts"],
       "@bearclaw/immutable-class": ["packages/immutable-class/src/index.ts"],
       "@bearclaw/is": ["packages/is/src/index.ts"]

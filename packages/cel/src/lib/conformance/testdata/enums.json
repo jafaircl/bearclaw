@@ -1,0 +1,936 @@
+{
+  "name":  "enums",
+  "description":  "Tests for enum types.",
+  "section":  [
+    {
+      "name":  "legacy_proto2",
+      "description":  "Legacy semantics where all enums are ints, proto2.",
+      "test":  [
+        {
+          "name":  "literal_global",
+          "expr":  "GlobalEnum.GAZ",
+          "container":  "google.api.expr.test.v1.proto2",
+          "value":  {
+            "int64Value":  "2"
+          }
+        },
+        {
+          "name":  "literal_nested",
+          "expr":  "TestAllTypes.NestedEnum.BAR",
+          "container":  "google.api.expr.test.v1.proto2",
+          "value":  {
+            "int64Value":  "1"
+          }
+        },
+        {
+          "name":  "literal_zero",
+          "expr":  "GlobalEnum.GOO",
+          "container":  "google.api.expr.test.v1.proto2",
+          "value":  {
+            "int64Value":  "0"
+          }
+        },
+        {
+          "name":  "comparision",
+          "expr":  "GlobalEnum.GAR == 1",
+          "container":  "google.api.expr.test.v1.proto2",
+          "value":  {
+            "boolValue":  true
+          }
+        },
+        {
+          "name":  "arithmetic",
+          "expr":  "TestAllTypes.NestedEnum.BAR + 3",
+          "container":  "google.api.expr.test.v1.proto2",
+          "value":  {
+            "int64Value":  "4"
+          }
+        },
+        {
+          "name":  "type_global",
+          "expr":  "type(GlobalEnum.GOO)",
+          "container":  "google.api.expr.test.v1.proto2",
+          "value":  {
+            "typeValue":  "int"
+          }
+        },
+        {
+          "name":  "type_nested",
+          "expr":  "type(TestAllTypes.NestedEnum.BAZ)",
+          "container":  "google.api.expr.test.v1.proto2",
+          "value":  {
+            "typeValue":  "int"
+          }
+        },
+        {
+          "name":  "select_default",
+          "expr":  "TestAllTypes{}.standalone_enum",
+          "container":  "google.api.expr.test.v1.proto2",
+          "value":  {
+            "int64Value":  "0"
+          }
+        },
+        {
+          "name":  "field_type",
+          "expr":  "type(TestAllTypes{}.standalone_enum)",
+          "container":  "google.api.expr.test.v1.proto2",
+          "value":  {
+            "typeValue":  "int"
+          }
+        },
+        {
+          "name":  "assign_standalone_name",
+          "expr":  "TestAllTypes{standalone_enum: TestAllTypes.NestedEnum.BAZ}",
+          "container":  "google.api.expr.test.v1.proto2",
+          "value":  {
+            "objectValue":  {
+              "@type":  "type.googleapis.com/google.api.expr.test.v1.proto2.TestAllTypes",
+              "standaloneEnum":  "BAZ"
+            }
+          }
+        },
+        {
+          "name":  "assign_standalone_int",
+          "expr":  "TestAllTypes{standalone_enum: 1}",
+          "container":  "google.api.expr.test.v1.proto2",
+          "value":  {
+            "objectValue":  {
+              "@type":  "type.googleapis.com/google.api.expr.test.v1.proto2.TestAllTypes",
+              "standaloneEnum":  "BAR"
+            }
+          }
+        },
+        {
+          "name":  "assign_standalone_int_too_big",
+          "expr":  "TestAllTypes{standalone_enum: 5000000000}",
+          "container":  "google.api.expr.test.v1.proto2",
+          "evalError":  {
+            "errors":  [
+              {
+                "message":  "range"
+              }
+            ]
+          }
+        },
+        {
+          "name":  "assign_standalone_int_too_neg",
+          "expr":  "TestAllTypes{standalone_enum: -7000000000}",
+          "container":  "google.api.expr.test.v1.proto2",
+          "evalError":  {
+            "errors":  [
+              {
+                "message":  "range"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name":  "legacy_proto3",
+      "description":  "Legacy semantics where all enums are ints, proto3",
+      "test":  [
+        {
+          "name":  "literal_global",
+          "expr":  "GlobalEnum.GAZ",
+          "container":  "google.api.expr.test.v1.proto3",
+          "value":  {
+            "int64Value":  "2"
+          }
+        },
+        {
+          "name":  "literal_nested",
+          "expr":  "TestAllTypes.NestedEnum.BAR",
+          "container":  "google.api.expr.test.v1.proto3",
+          "value":  {
+            "int64Value":  "1"
+          }
+        },
+        {
+          "name":  "literal_zero",
+          "expr":  "GlobalEnum.GOO",
+          "container":  "google.api.expr.test.v1.proto3",
+          "value":  {
+            "int64Value":  "0"
+          }
+        },
+        {
+          "name":  "comparision",
+          "expr":  "GlobalEnum.GAR == 1",
+          "container":  "google.api.expr.test.v1.proto3",
+          "value":  {
+            "boolValue":  true
+          }
+        },
+        {
+          "name":  "arithmetic",
+          "expr":  "TestAllTypes.NestedEnum.BAR + 3",
+          "container":  "google.api.expr.test.v1.proto3",
+          "value":  {
+            "int64Value":  "4"
+          }
+        },
+        {
+          "name":  "type_global",
+          "expr":  "type(GlobalEnum.GOO)",
+          "container":  "google.api.expr.test.v1.proto3",
+          "value":  {
+            "typeValue":  "int"
+          }
+        },
+        {
+          "name":  "type_nested",
+          "expr":  "type(TestAllTypes.NestedEnum.BAZ)",
+          "container":  "google.api.expr.test.v1.proto3",
+          "value":  {
+            "typeValue":  "int"
+          }
+        },
+        {
+          "name":  "select_default",
+          "expr":  "TestAllTypes{}.standalone_enum",
+          "container":  "google.api.expr.test.v1.proto3",
+          "value":  {
+            "int64Value":  "0"
+          }
+        },
+        {
+          "name":  "select",
+          "expr":  "x.standalone_enum",
+          "typeEnv":  [
+            {
+              "name":  "x",
+              "ident":  {
+                "type":  {
+                  "messageType":  "google.api.expr.test.v1.proto3.TestAllTypes"
+                }
+              }
+            }
+          ],
+          "container":  "google.api.expr.test.v1.proto3",
+          "bindings":  {
+            "x":  {
+              "value":  {
+                "objectValue":  {
+                  "@type":  "type.googleapis.com/google.api.expr.test.v1.proto3.TestAllTypes",
+                  "standaloneEnum":  "BAZ"
+                }
+              }
+            }
+          },
+          "value":  {
+            "int64Value":  "2"
+          }
+        },
+        {
+          "name":  "select_big",
+          "expr":  "x.standalone_enum",
+          "typeEnv":  [
+            {
+              "name":  "x",
+              "ident":  {
+                "type":  {
+                  "messageType":  "google.api.expr.test.v1.proto3.TestAllTypes"
+                }
+              }
+            }
+          ],
+          "container":  "google.api.expr.test.v1.proto3",
+          "bindings":  {
+            "x":  {
+              "value":  {
+                "objectValue":  {
+                  "@type":  "type.googleapis.com/google.api.expr.test.v1.proto3.TestAllTypes",
+                  "standaloneEnum":  108
+                }
+              }
+            }
+          },
+          "value":  {
+            "int64Value":  "108"
+          }
+        },
+        {
+          "name":  "select_neg",
+          "expr":  "x.standalone_enum",
+          "typeEnv":  [
+            {
+              "name":  "x",
+              "ident":  {
+                "type":  {
+                  "messageType":  "google.api.expr.test.v1.proto3.TestAllTypes"
+                }
+              }
+            }
+          ],
+          "container":  "google.api.expr.test.v1.proto3",
+          "bindings":  {
+            "x":  {
+              "value":  {
+                "objectValue":  {
+                  "@type":  "type.googleapis.com/google.api.expr.test.v1.proto3.TestAllTypes",
+                  "standaloneEnum":  -3
+                }
+              }
+            }
+          },
+          "value":  {
+            "int64Value":  "-3"
+          }
+        },
+        {
+          "name":  "field_type",
+          "expr":  "type(TestAllTypes{}.standalone_enum)",
+          "container":  "google.api.expr.test.v1.proto3",
+          "value":  {
+            "typeValue":  "int"
+          }
+        },
+        {
+          "name":  "assign_standalone_name",
+          "expr":  "TestAllTypes{standalone_enum: TestAllTypes.NestedEnum.BAZ}",
+          "container":  "google.api.expr.test.v1.proto3",
+          "value":  {
+            "objectValue":  {
+              "@type":  "type.googleapis.com/google.api.expr.test.v1.proto3.TestAllTypes",
+              "standaloneEnum":  "BAZ"
+            }
+          }
+        },
+        {
+          "name":  "assign_standalone_int",
+          "expr":  "TestAllTypes{standalone_enum: 1}",
+          "container":  "google.api.expr.test.v1.proto3",
+          "value":  {
+            "objectValue":  {
+              "@type":  "type.googleapis.com/google.api.expr.test.v1.proto3.TestAllTypes",
+              "standaloneEnum":  "BAR"
+            }
+          }
+        },
+        {
+          "name":  "assign_standalone_int_big",
+          "expr":  "TestAllTypes{standalone_enum: 99}",
+          "container":  "google.api.expr.test.v1.proto3",
+          "value":  {
+            "objectValue":  {
+              "@type":  "type.googleapis.com/google.api.expr.test.v1.proto3.TestAllTypes",
+              "standaloneEnum":  99
+            }
+          }
+        },
+        {
+          "name":  "assign_standalone_int_neg",
+          "expr":  "TestAllTypes{standalone_enum: -1}",
+          "container":  "google.api.expr.test.v1.proto3",
+          "value":  {
+            "objectValue":  {
+              "@type":  "type.googleapis.com/google.api.expr.test.v1.proto3.TestAllTypes",
+              "standaloneEnum":  -1
+            }
+          }
+        },
+        {
+          "name":  "assign_standalone_int_too_big",
+          "expr":  "TestAllTypes{standalone_enum: 5000000000}",
+          "container":  "google.api.expr.test.v1.proto3",
+          "evalError":  {
+            "errors":  [
+              {
+                "message":  "range"
+              }
+            ]
+          }
+        },
+        {
+          "name":  "assign_standalone_int_too_neg",
+          "expr":  "TestAllTypes{standalone_enum: -7000000000}",
+          "container":  "google.api.expr.test.v1.proto3",
+          "evalError":  {
+            "errors":  [
+              {
+                "message":  "range"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name":  "strong_proto2",
+      "description":  "String semantics where enums are distinct types, proto2.",
+      "test":  [
+        {
+          "name":  "literal_global",
+          "expr":  "GlobalEnum.GAZ",
+          "container":  "google.api.expr.test.v1.proto2",
+          "value":  {
+            "enumValue":  {
+              "type":  "google.api.expr.test.v1.proto2.GlobalEnum",
+              "value":  2
+            }
+          }
+        },
+        {
+          "name":  "literal_nested",
+          "expr":  "TestAllTypes.NestedEnum.BAR",
+          "container":  "google.api.expr.test.v1.proto2",
+          "value":  {
+            "enumValue":  {
+              "type":  "google.api.expr.test.v1.proto2.TestAllTypes.NestedEnum",
+              "value":  1
+            }
+          }
+        },
+        {
+          "name":  "literal_zero",
+          "expr":  "GlobalEnum.GOO",
+          "container":  "google.api.expr.test.v1.proto2",
+          "value":  {
+            "enumValue":  {
+              "type":  "google.api.expr.test.v1.proto2.GlobalEnum"
+            }
+          }
+        },
+        {
+          "name":  "comparision_true",
+          "expr":  "GlobalEnum.GAR == GlobalEnum.GAR",
+          "container":  "google.api.expr.test.v1.proto2",
+          "value":  {
+            "boolValue":  true
+          }
+        },
+        {
+          "name":  "comparision_false",
+          "expr":  "GlobalEnum.GAR == GlobalEnum.GAZ",
+          "container":  "google.api.expr.test.v1.proto2",
+          "value":  {
+            "boolValue":  false
+          }
+        },
+        {
+          "name":  "type_global",
+          "expr":  "type(GlobalEnum.GOO)",
+          "container":  "google.api.expr.test.v1.proto2",
+          "value":  {
+            "typeValue":  "google.api.expr.test.v1.proto2.GlobalEnum"
+          }
+        },
+        {
+          "name":  "type_nested",
+          "expr":  "type(TestAllTypes.NestedEnum.BAZ)",
+          "container":  "google.api.expr.test.v1.proto2",
+          "value":  {
+            "typeValue":  "google.api.expr.test.v1.proto2.TestAllTypes.NestedEnum"
+          }
+        },
+        {
+          "name":  "select_default",
+          "expr":  "TestAllTypes{}.standalone_enum",
+          "container":  "google.api.expr.test.v1.proto2",
+          "value":  {
+            "enumValue":  {
+              "type":  "google.api.expr.test.v1.proto2.TestAllTypes.NestedEnum"
+            }
+          }
+        },
+        {
+          "name":  "field_type",
+          "expr":  "type(TestAllTypes{}.standalone_enum)",
+          "container":  "google.api.expr.test.v1.proto2",
+          "value":  {
+            "typeValue":  "google.api.expr.test.v1.proto2.TestAllTypes.NestedEnum"
+          }
+        },
+        {
+          "name":  "assign_standalone_name",
+          "expr":  "TestAllTypes{standalone_enum: TestAllTypes.NestedEnum.BAZ}",
+          "container":  "google.api.expr.test.v1.proto2",
+          "value":  {
+            "objectValue":  {
+              "@type":  "type.googleapis.com/google.api.expr.test.v1.proto2.TestAllTypes",
+              "standaloneEnum":  "BAZ"
+            }
+          }
+        },
+        {
+          "name":  "assign_standalone_int",
+          "expr":  "TestAllTypes{standalone_enum: TestAllTypes.NestedEnum(1)}",
+          "container":  "google.api.expr.test.v1.proto2",
+          "value":  {
+            "objectValue":  {
+              "@type":  "type.googleapis.com/google.api.expr.test.v1.proto2.TestAllTypes",
+              "standaloneEnum":  "BAR"
+            }
+          }
+        },
+        {
+          "name":  "convert_symbol_to_int",
+          "expr":  "int(GlobalEnum.GAZ)",
+          "container":  "google.api.expr.test.v1.proto2",
+          "value":  {
+            "int64Value":  "2"
+          }
+        },
+        {
+          "name":  "convert_unnamed_to_int",
+          "description":  "Disable check - missing way to declare enums.",
+          "expr":  "int(x)",
+          "disableCheck":  true,
+          "bindings":  {
+            "x":  {
+              "value":  {
+                "enumValue":  {
+                  "type":  "google.api.expr.test.v1.proto2.GlobalEnum",
+                  "value":  444
+                }
+              }
+            }
+          },
+          "value":  {
+            "int64Value":  "444"
+          }
+        },
+        {
+          "name":  "convert_int_inrange",
+          "expr":  "TestAllTypes.NestedEnum(2)",
+          "container":  "google.api.expr.test.v1.proto2",
+          "value":  {
+            "enumValue":  {
+              "type":  "google.api.expr.test.v1.proto2.TestAllTypes.NestedEnum",
+              "value":  2
+            }
+          }
+        },
+        {
+          "name":  "convert_int_big",
+          "expr":  "TestAllTypes.NestedEnum(20000)",
+          "container":  "google.api.expr.test.v1.proto2",
+          "value":  {
+            "enumValue":  {
+              "type":  "google.api.expr.test.v1.proto2.TestAllTypes.NestedEnum",
+              "value":  20000
+            }
+          }
+        },
+        {
+          "name":  "convert_int_neg",
+          "expr":  "GlobalEnum(-33)",
+          "container":  "google.api.expr.test.v1.proto2",
+          "value":  {
+            "enumValue":  {
+              "type":  "google.api.expr.test.v1.proto2.GlobalEnum",
+              "value":  -33
+            }
+          }
+        },
+        {
+          "name":  "convert_int_too_big",
+          "expr":  "TestAllTypes.NestedEnum(5000000000)",
+          "container":  "google.api.expr.test.v1.proto2",
+          "evalError":  {
+            "errors":  [
+              {
+                "message":  "range"
+              }
+            ]
+          }
+        },
+        {
+          "name":  "convert_int_too_neg",
+          "expr":  "TestAllTypes.NestedEnum(-7000000000)",
+          "container":  "google.api.expr.test.v1.proto2",
+          "evalError":  {
+            "errors":  [
+              {
+                "message":  "range"
+              }
+            ]
+          }
+        },
+        {
+          "name":  "convert_string",
+          "expr":  "TestAllTypes.NestedEnum('BAZ')",
+          "container":  "google.api.expr.test.v1.proto2",
+          "value":  {
+            "enumValue":  {
+              "type":  "google.api.expr.test.v1.proto2.TestAllTypes.NestedEnum",
+              "value":  2
+            }
+          }
+        },
+        {
+          "name":  "convert_string_bad",
+          "expr":  "TestAllTypes.NestedEnum('BLETCH')",
+          "container":  "google.api.expr.test.v1.proto2",
+          "evalError":  {
+            "errors":  [
+              {
+                "message":  "invalid"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name":  "strong_proto3",
+      "description":  "String semantics where enums are distinct types, proto3.",
+      "test":  [
+        {
+          "name":  "literal_global",
+          "expr":  "GlobalEnum.GAZ",
+          "container":  "google.api.expr.test.v1.proto3",
+          "value":  {
+            "enumValue":  {
+              "type":  "google.api.expr.test.v1.proto3.GlobalEnum",
+              "value":  2
+            }
+          }
+        },
+        {
+          "name":  "literal_nested",
+          "expr":  "TestAllTypes.NestedEnum.BAR",
+          "container":  "google.api.expr.test.v1.proto3",
+          "value":  {
+            "enumValue":  {
+              "type":  "google.api.expr.test.v1.proto3.TestAllTypes.NestedEnum",
+              "value":  1
+            }
+          }
+        },
+        {
+          "name":  "literal_zero",
+          "expr":  "GlobalEnum.GOO",
+          "container":  "google.api.expr.test.v1.proto3",
+          "value":  {
+            "enumValue":  {
+              "type":  "google.api.expr.test.v1.proto3.GlobalEnum"
+            }
+          }
+        },
+        {
+          "name":  "comparision_true",
+          "expr":  "GlobalEnum.GAR == GlobalEnum.GAR",
+          "container":  "google.api.expr.test.v1.proto3",
+          "value":  {
+            "boolValue":  true
+          }
+        },
+        {
+          "name":  "comparision_false",
+          "expr":  "GlobalEnum.GAR == GlobalEnum.GAZ",
+          "container":  "google.api.expr.test.v1.proto3",
+          "value":  {
+            "boolValue":  false
+          }
+        },
+        {
+          "name":  "type_global",
+          "expr":  "type(GlobalEnum.GOO)",
+          "container":  "google.api.expr.test.v1.proto3",
+          "value":  {
+            "typeValue":  "google.api.expr.test.v1.proto3.GlobalEnum"
+          }
+        },
+        {
+          "name":  "type_nested",
+          "expr":  "type(TestAllTypes.NestedEnum.BAZ)",
+          "container":  "google.api.expr.test.v1.proto3",
+          "value":  {
+            "typeValue":  "google.api.expr.test.v1.proto3.TestAllTypes.NestedEnum"
+          }
+        },
+        {
+          "name":  "select_default",
+          "expr":  "TestAllTypes{}.standalone_enum",
+          "container":  "google.api.expr.test.v1.proto3",
+          "value":  {
+            "enumValue":  {
+              "type":  "google.api.expr.test.v1.proto3.TestAllTypes.NestedEnum"
+            }
+          }
+        },
+        {
+          "name":  "select",
+          "expr":  "x.standalone_enum",
+          "typeEnv":  [
+            {
+              "name":  "x",
+              "ident":  {
+                "type":  {
+                  "messageType":  "google.api.expr.test.v1.proto3.TestAllTypes"
+                }
+              }
+            }
+          ],
+          "container":  "google.api.expr.test.v1.proto3",
+          "bindings":  {
+            "x":  {
+              "value":  {
+                "objectValue":  {
+                  "@type":  "type.googleapis.com/google.api.expr.test.v1.proto3.TestAllTypes",
+                  "standaloneEnum":  "BAZ"
+                }
+              }
+            }
+          },
+          "value":  {
+            "enumValue":  {
+              "type":  "google.api.expr.test.v1.proto3.TestAllTypes.NestedEnum",
+              "value":  2
+            }
+          }
+        },
+        {
+          "name":  "select_big",
+          "expr":  "x.standalone_enum",
+          "typeEnv":  [
+            {
+              "name":  "x",
+              "ident":  {
+                "type":  {
+                  "messageType":  "google.api.expr.test.v1.proto3.TestAllTypes"
+                }
+              }
+            }
+          ],
+          "container":  "google.api.expr.test.v1.proto3",
+          "bindings":  {
+            "x":  {
+              "value":  {
+                "objectValue":  {
+                  "@type":  "type.googleapis.com/google.api.expr.test.v1.proto3.TestAllTypes",
+                  "standaloneEnum":  108
+                }
+              }
+            }
+          },
+          "value":  {
+            "enumValue":  {
+              "type":  "google.api.expr.test.v1.proto3.TestAllTypes.NestedEnum",
+              "value":  108
+            }
+          }
+        },
+        {
+          "name":  "select_neg",
+          "expr":  "x.standalone_enum",
+          "typeEnv":  [
+            {
+              "name":  "x",
+              "ident":  {
+                "type":  {
+                  "messageType":  "google.api.expr.test.v1.proto3.TestAllTypes"
+                }
+              }
+            }
+          ],
+          "container":  "google.api.expr.test.v1.proto3",
+          "bindings":  {
+            "x":  {
+              "value":  {
+                "objectValue":  {
+                  "@type":  "type.googleapis.com/google.api.expr.test.v1.proto3.TestAllTypes",
+                  "standaloneEnum":  -3
+                }
+              }
+            }
+          },
+          "value":  {
+            "enumValue":  {
+              "type":  "google.api.expr.test.v1.proto3.TestAllTypes.NestedEnum",
+              "value":  -3
+            }
+          }
+        },
+        {
+          "name":  "field_type",
+          "expr":  "type(TestAllTypes{}.standalone_enum)",
+          "container":  "google.api.expr.test.v1.proto3",
+          "value":  {
+            "typeValue":  "google.api.expr.test.v1.proto3.TestAllTypes.NestedEnum"
+          }
+        },
+        {
+          "name":  "assign_standalone_name",
+          "expr":  "TestAllTypes{standalone_enum: TestAllTypes.NestedEnum.BAZ}",
+          "container":  "google.api.expr.test.v1.proto3",
+          "value":  {
+            "objectValue":  {
+              "@type":  "type.googleapis.com/google.api.expr.test.v1.proto3.TestAllTypes",
+              "standaloneEnum":  "BAZ"
+            }
+          }
+        },
+        {
+          "name":  "assign_standalone_int",
+          "expr":  "TestAllTypes{standalone_enum: TestAllTypes.NestedEnum(1)}",
+          "container":  "google.api.expr.test.v1.proto3",
+          "value":  {
+            "objectValue":  {
+              "@type":  "type.googleapis.com/google.api.expr.test.v1.proto3.TestAllTypes",
+              "standaloneEnum":  "BAR"
+            }
+          }
+        },
+        {
+          "name":  "assign_standalone_int_big",
+          "expr":  "TestAllTypes{standalone_enum: TestAllTypes.NestedEnum(99)}",
+          "container":  "google.api.expr.test.v1.proto3",
+          "value":  {
+            "objectValue":  {
+              "@type":  "type.googleapis.com/google.api.expr.test.v1.proto3.TestAllTypes",
+              "standaloneEnum":  99
+            }
+          }
+        },
+        {
+          "name":  "assign_standalone_int_neg",
+          "expr":  "TestAllTypes{standalone_enum: TestAllTypes.NestedEnum(-1)}",
+          "container":  "google.api.expr.test.v1.proto3",
+          "value":  {
+            "objectValue":  {
+              "@type":  "type.googleapis.com/google.api.expr.test.v1.proto3.TestAllTypes",
+              "standaloneEnum":  -1
+            }
+          }
+        },
+        {
+          "name":  "convert_symbol_to_int",
+          "expr":  "int(GlobalEnum.GAZ)",
+          "container":  "google.api.expr.test.v1.proto3",
+          "value":  {
+            "int64Value":  "2"
+          }
+        },
+        {
+          "name":  "convert_unnamed_to_int",
+          "description":  "Disable check - missing way to declare enums.",
+          "expr":  "int(x)",
+          "disableCheck":  true,
+          "bindings":  {
+            "x":  {
+              "value":  {
+                "enumValue":  {
+                  "type":  "google.api.expr.test.v1.proto3.GlobalEnum",
+                  "value":  444
+                }
+              }
+            }
+          },
+          "value":  {
+            "int64Value":  "444"
+          }
+        },
+        {
+          "name":  "convert_unnamed_to_int_select",
+          "expr":  "int(x.standalone_enum)",
+          "typeEnv":  [
+            {
+              "name":  "x",
+              "ident":  {
+                "type":  {
+                  "messageType":  "google.api.expr.test.v1.proto3.TestAllTypes"
+                }
+              }
+            }
+          ],
+          "bindings":  {
+            "x":  {
+              "value":  {
+                "objectValue":  {
+                  "@type":  "type.googleapis.com/google.api.expr.test.v1.proto3.TestAllTypes",
+                  "standaloneEnum":  -987
+                }
+              }
+            }
+          },
+          "value":  {
+            "int64Value":  "-987"
+          }
+        },
+        {
+          "name":  "convert_int_inrange",
+          "expr":  "TestAllTypes.NestedEnum(2)",
+          "container":  "google.api.expr.test.v1.proto3",
+          "value":  {
+            "enumValue":  {
+              "type":  "google.api.expr.test.v1.proto3.TestAllTypes.NestedEnum",
+              "value":  2
+            }
+          }
+        },
+        {
+          "name":  "convert_int_big",
+          "expr":  "TestAllTypes.NestedEnum(20000)",
+          "container":  "google.api.expr.test.v1.proto3",
+          "value":  {
+            "enumValue":  {
+              "type":  "google.api.expr.test.v1.proto3.TestAllTypes.NestedEnum",
+              "value":  20000
+            }
+          }
+        },
+        {
+          "name":  "convert_int_neg",
+          "expr":  "GlobalEnum(-33)",
+          "container":  "google.api.expr.test.v1.proto3",
+          "value":  {
+            "enumValue":  {
+              "type":  "google.api.expr.test.v1.proto3.GlobalEnum",
+              "value":  -33
+            }
+          }
+        },
+        {
+          "name":  "convert_int_too_big",
+          "expr":  "TestAllTypes.NestedEnum(5000000000)",
+          "container":  "google.api.expr.test.v1.proto3",
+          "evalError":  {
+            "errors":  [
+              {
+                "message":  "range"
+              }
+            ]
+          }
+        },
+        {
+          "name":  "convert_int_too_neg",
+          "expr":  "TestAllTypes.NestedEnum(-7000000000)",
+          "container":  "google.api.expr.test.v1.proto3",
+          "evalError":  {
+            "errors":  [
+              {
+                "message":  "range"
+              }
+            ]
+          }
+        },
+        {
+          "name":  "convert_string",
+          "expr":  "TestAllTypes.NestedEnum('BAZ')",
+          "container":  "google.api.expr.test.v1.proto3",
+          "value":  {
+            "enumValue":  {
+              "type":  "google.api.expr.test.v1.proto3.TestAllTypes.NestedEnum",
+              "value":  2
+            }
+          }
+        },
+        {
+          "name":  "convert_string_bad",
+          "expr":  "TestAllTypes.NestedEnum('BLETCH')",
+          "container":  "google.api.expr.test.v1.proto3",
+          "evalError":  {
+            "errors":  [
+              {
+                "message":  "invalid"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
