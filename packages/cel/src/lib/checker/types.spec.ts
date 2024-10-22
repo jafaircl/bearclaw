@@ -5,27 +5,22 @@ import {
 } from '@buf/google_cel-spec.bufbuild_es/cel/expr/checked_pb.js';
 import { create } from '@bufbuild/protobuf';
 import { EmptySchema, NullValue } from '@bufbuild/protobuf/wkt';
-import {
-  DYN_TYPE,
-  ERROR_TYPE,
-  NULL_TYPE,
-  abstractType,
-  formatCELType,
-  functionType,
-  isAssignableType,
-  isExactType,
-  listType,
-  mapType,
-  messageType,
-  nullableType,
-  optionalType,
-  primitiveType,
-  typeParamType,
-  typeType,
-  wellKnownType,
-  wrappedType,
-  wrapperType,
-} from './types';
+import { abstractType } from '../common/types/abstract';
+import { DYN_TYPE } from '../common/types/dyn';
+import { ERROR_TYPE } from '../common/types/error';
+import { functionType } from '../common/types/function';
+import { listType } from '../common/types/list';
+import { mapType } from '../common/types/map';
+import { messageType } from '../common/types/message';
+import { NULL_TYPE } from '../common/types/null';
+import { nullableType } from '../common/types/nullable';
+import { optionalType } from '../common/types/optional';
+import { primitiveType } from '../common/types/primitive';
+import { typeType } from '../common/types/type';
+import { typeParamType } from '../common/types/type-param';
+import { wellKnownType } from '../common/types/wkt';
+import { wrapperType } from '../common/types/wrapper';
+import { formatCELType, isAssignableType, isExactType } from './types';
 
 describe('types', () => {
   it('DYN_TYPE', () => {
@@ -311,13 +306,13 @@ describe('types', () => {
         isExact: false,
       },
       {
-        t1: wrappedType(Type_PrimitiveType.STRING),
-        t2: wrappedType(Type_PrimitiveType.STRING),
+        t1: wrapperType(Type_PrimitiveType.STRING),
+        t2: wrapperType(Type_PrimitiveType.STRING),
         isExact: true,
       },
       {
-        t1: wrappedType(Type_PrimitiveType.STRING),
-        t2: wrappedType(Type_PrimitiveType.INT64),
+        t1: wrapperType(Type_PrimitiveType.STRING),
+        t2: wrapperType(Type_PrimitiveType.INT64),
         isExact: false,
       },
     ];

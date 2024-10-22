@@ -16,6 +16,7 @@ import {
   ParserRuleContext,
   Token,
 } from 'antlr4';
+import { Location, OffsetRange } from '../checker/types';
 import {
   RESERVED_IDS,
   parseBytesConstant,
@@ -23,10 +24,27 @@ import {
   parseIntConstant,
   parseStringConstant,
   parseUintConstant,
-} from './constants';
-import { Errors, LexerErrorListener, ParserErrorListener } from './errors';
-import { ParseException } from './exceptions';
-import CELLexer from './gen/CELLexer';
+} from '../common/constants';
+import {
+  Errors,
+  LexerErrorListener,
+  ParserErrorListener,
+} from '../common/errors';
+import {
+  boolExpr,
+  callExpr,
+  constExpr,
+  createStructFieldEntry,
+  createStructMapEntry,
+  identExpr,
+  listExpr,
+  nullExpr,
+  selectExpr,
+  stringExpr,
+  structExpr,
+} from '../common/utils';
+import { ParseException } from '../exceptions';
+import CELLexer from '../gen/CELLexer';
 import {
   BoolFalseContext,
   BoolTrueContext,
@@ -60,10 +78,9 @@ import {
   StartContext,
   StringContext,
   UintContext,
-} from './gen/CELParser';
-import { default as GeneratedCelVisitor } from './gen/CELVisitor';
-import { LogicManager } from './logic-manager';
-import { MacroError, expandMacro, findMacro } from './macros';
+} from '../gen/CELParser';
+import { default as GeneratedCelVisitor } from '../gen/CELVisitor';
+import { LogicManager } from '../logic-manager';
 import {
   CONDITIONAL_OPERATOR,
   INDEX_OPERATOR,
@@ -74,22 +91,9 @@ import {
   OPT_INDEX_OPERATOR,
   OPT_SELECT_OPERATOR,
   getOperatorFromText,
-} from './operators';
+} from '../operators';
+import { MacroError, expandMacro, findMacro } from './macros';
 import { ParserHelper } from './parser-helper';
-import { Location, OffsetRange } from './types';
-import {
-  boolExpr,
-  callExpr,
-  constExpr,
-  createStructFieldEntry,
-  createStructMapEntry,
-  identExpr,
-  listExpr,
-  nullExpr,
-  selectExpr,
-  stringExpr,
-  structExpr,
-} from './utils';
 
 export interface CELParserOptions {
   enableOptionalSyntax?: boolean;

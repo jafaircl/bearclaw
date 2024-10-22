@@ -1,3 +1,4 @@
+import { ParseException } from '../exceptions';
 import {
   parseBytesConstant,
   parseDoubleConstant,
@@ -5,7 +6,6 @@ import {
   parseStringConstant,
   parseUintConstant,
 } from './constants';
-import { ParseException } from './exceptions';
 
 describe('ConstantsTest', () => {
   it('parseInt_base10Zero', () => {

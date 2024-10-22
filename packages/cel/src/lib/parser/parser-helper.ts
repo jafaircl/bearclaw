@@ -1,8 +1,12 @@
 import { SourceInfoSchema } from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb.js';
 import { create } from '@bufbuild/protobuf';
 import { ParserRuleContext, Token } from 'antlr4';
-import { Location, OffsetRange } from './types';
-import { computeOffset, getLocationByOffset } from './utils';
+import {
+  Location,
+  OffsetRange,
+  computeOffset,
+  getLocationByOffset,
+} from '../common/ast';
 
 export class ParserHelper {
   #id = BigInt(1);

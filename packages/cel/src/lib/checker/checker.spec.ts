@@ -11,30 +11,28 @@ import {
 } from '@buf/cel_spec.bufbuild_es/proto/test/v1/proto3/test_all_types_pb.js';
 import { Type } from '@buf/google_cel-spec.bufbuild_es/cel/expr/checked_pb.js';
 import { createMutableRegistry } from '@bufbuild/protobuf';
+import { CELContainer } from '../common/container';
+import { functionDecl, overloadDecl } from '../common/decls/function-decl';
+import { identDecl } from '../common/decls/ident-decl';
+import { abstractType } from '../common/types/abstract';
+import { BOOL_TYPE } from '../common/types/bool';
+import { BYTES_TYPE } from '../common/types/bytes';
+import { DOUBLE_TYPE } from '../common/types/double';
+import { DYN_TYPE } from '../common/types/dyn';
+import { ERROR_TYPE } from '../common/types/error';
+import { INT64_TYPE } from '../common/types/int';
+import { listType } from '../common/types/list';
+import { mapType } from '../common/types/map';
+import { messageType } from '../common/types/message';
+import { NULL_TYPE } from '../common/types/null';
+import { nullableType } from '../common/types/nullable';
+import { ABSTRACT_OPTIONAL_TYPE, optionalType } from '../common/types/optional';
+import { STRING_TYPE } from '../common/types/string';
+import { typeParamType } from '../common/types/type-param';
+import { UINT64_TYPE } from '../common/types/uint';
+import { CELEnvironment, STANDARD_ENV } from '../environment';
+import { CELParser, CELParserOptions } from '../parser/parser';
 import { CELChecker } from './checker';
-import { CELContainer } from './container';
-import { CELEnvironment, STANDARD_ENV } from './environment';
-import { CELParser, CELParserOptions } from './parser';
-import {
-  BOOL_TYPE,
-  BYTES_TYPE,
-  DOUBLE_TYPE,
-  DYN_TYPE,
-  ERROR_TYPE,
-  INT64_TYPE,
-  NULL_TYPE,
-  OPTIONAL_TYPE,
-  STRING_TYPE,
-  UINT64_TYPE,
-  abstractType,
-  listType,
-  mapType,
-  messageType,
-  nullableType,
-  optionalType,
-  typeParamType,
-} from './types';
-import { functionDecl, identDecl, overloadDecl } from './utils';
 
 interface TestInfo {
   // in contains the expression to be parsed.
@@ -2200,7 +2198,7 @@ _==_(
     in: `type(a.?b) == optional_type`,
     env: getDefaultEnv().extend({
       idents: [
-        identDecl('optional_type', { type: OPTIONAL_TYPE }),
+        identDecl('optional_type', { type: ABSTRACT_OPTIONAL_TYPE }),
         identDecl('a', {
           type: mapType({
             keyType: STRING_TYPE,

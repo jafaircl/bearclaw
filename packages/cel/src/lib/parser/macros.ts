@@ -2,7 +2,18 @@
 import { isNil } from '@bearclaw/is';
 import { Expr } from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb.js';
 import { ParserRuleContext, Token } from 'antlr4';
-import { ACCUMULATOR_VAR } from './constants';
+import { Location, OffsetRange } from '../common/ast';
+import { ACCUMULATOR_VAR } from '../common/constants';
+import {
+  boolExpr,
+  callExpr,
+  comprehensionExpr,
+  extractIdent,
+  identExpr,
+  int64Expr,
+  listExpr,
+  selectExpr,
+} from '../common/utils';
 import {
   ADD_OPERATOR,
   ALL_MACRO,
@@ -17,19 +28,8 @@ import {
   LOGICAL_OR_OPERATOR,
   MAP_MACRO,
   NOT_STRICTLY_FALSE_OPERATOR,
-} from './operators';
+} from '../operators';
 import { ParserHelper } from './parser-helper';
-import { Location, OffsetRange } from './types';
-import {
-  boolExpr,
-  callExpr,
-  comprehensionExpr,
-  extractIdent,
-  identExpr,
-  int64Expr,
-  listExpr,
-  selectExpr,
-} from './utils';
 
 export const STANDARD_MACROS = new Set([
   HAS_MACRO,

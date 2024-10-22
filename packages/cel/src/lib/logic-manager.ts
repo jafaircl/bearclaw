@@ -1,5 +1,5 @@
 import { Expr } from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb.js';
-import { callExpr } from './utils';
+import { callExpr } from './common/utils';
 
 export class LogicManager {
   private function: string;

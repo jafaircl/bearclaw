@@ -3,16 +3,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { isNil } from '@bearclaw/is';
 import {
-  DeclSchema,
-  Decl_FunctionDeclSchema,
-  Decl_FunctionDecl_OverloadSchema,
-  Decl_IdentDeclSchema,
-  ReferenceSchema,
-  Type_PrimitiveType,
-  Type_WellKnownType,
-} from '@buf/google_cel-spec.bufbuild_es/cel/expr/checked_pb.js';
-import {
-  Constant,
   ConstantSchema,
   Expr,
   ExprSchema,
@@ -23,25 +13,10 @@ import {
   Expr_CreateStruct_EntrySchema,
   Expr_IdentSchema,
   Expr_SelectSchema,
-  SourceInfo,
 } from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb.js';
 import { ValueSchema } from '@buf/google_cel-spec.bufbuild_es/cel/expr/value_pb.js';
-import {
-  DescField,
-  MessageInitShape,
-  ScalarType,
-  create,
-} from '@bufbuild/protobuf';
+import { MessageInitShape, create } from '@bufbuild/protobuf';
 import { NullValue } from '@bufbuild/protobuf/wkt';
-import {
-  DYN_TYPE,
-  Location,
-  getCheckedWellKnownType,
-  listType,
-  mapType,
-  messageType,
-  primitiveType,
-} from './types';
 
 export function parseString(str: string) {
   const decoded = decodeURIComponent(str);
@@ -416,51 +391,6 @@ export function comprehensionExpr(
   });
 }
 
-export function functionDecl(
-  name: string,
-  init: MessageInitShape<typeof Decl_FunctionDeclSchema>
-) {
-  return create(DeclSchema, {
-    name,
-    declKind: {
-      case: 'function',
-      value: init,
-    },
-  });
-}
-
-export function overloadDecl(
-  init: MessageInitShape<typeof Decl_FunctionDecl_OverloadSchema>
-) {
-  return create(Decl_FunctionDecl_OverloadSchema, init);
-}
-
-export function identDecl(
-  name: string,
-  init: MessageInitShape<typeof Decl_IdentDeclSchema>
-) {
-  return create(DeclSchema, {
-    name,
-    declKind: {
-      case: 'ident',
-      value: init,
-    },
-  });
-}
-
-export function identReference(name: string, value: Constant) {
-  return create(ReferenceSchema, {
-    name,
-    value,
-  });
-}
-
-export function functionReference(overloadId: string[]) {
-  return create(ReferenceSchema, {
-    overloadId,
-  });
-}
-
 export function unquote(str: string) {
   const reg = /['"`]/;
   if (!str) {
@@ -480,54 +410,6 @@ export function extractIdent(expr: Expr): string | null {
     return null;
   }
   return expr.exprKind.value.name;
-}
-
-/**
- * Returns the line and column information for a given character offset.
- *
- * @param offset the 0-based character offset
- * @returns the line and column information
- */
-export function getLocationByOffset(
-  sourceInfo: SourceInfo,
-  offset: number
-): Location {
-  let line = 1;
-  let column = offset;
-  for (let i = 0; i < sourceInfo.lineOffsets.length; i++) {
-    const lineOffset = sourceInfo.lineOffsets[i];
-    if (lineOffset > offset) {
-      break;
-    }
-    line++;
-    column = offset - lineOffset;
-  }
-  return { line, column };
-}
-
-/**
- * calculates the 0-based character offset from a 1-based line and 0-based
- * column.
- * @param line a 1-based line number
- * @param column a 0-based column number
- */
-export function computeOffset(
-  baseLine: number,
-  baseColumn: number,
-  sourceInfo: SourceInfo,
-  line: number,
-  column: number
-) {
-  line = baseLine + line;
-  column = baseColumn + column;
-  if (line === 1) {
-    return column;
-  }
-  if (line < 1 || line > sourceInfo.lineOffsets.length) {
-    return -1;
-  }
-  const offset = sourceInfo.lineOffsets[line - 2];
-  return offset + column;
 }
 
 export function mapToObject<K extends string | number | symbol, V>(
@@ -566,118 +448,4 @@ export function toQualifiedName(expr: Expr): string | null {
       break;
   }
   return null;
-}
-
-/**
- * Get the CEL type for a field descriptor.
- *
- * @param field the field descriptor
- * @returns the CEL type for the field
- */
-export function getFieldDescriptorType(field: DescField) {
-  switch (field.fieldKind) {
-    case 'message':
-      const checkedType = getCheckedWellKnownType(field.message.typeName);
-      if (!isNil(checkedType)) {
-        return checkedType;
-      }
-      return messageType(field.message.typeName);
-    case 'enum':
-      return messageType(field.enum.typeName);
-    case 'list':
-      switch (field.listKind) {
-        case 'message':
-          return listType({
-            elemType: messageType(field.message.typeName),
-          });
-        case 'enum':
-          return listType({
-            elemType: messageType(field.enum.typeName),
-          });
-        case 'scalar':
-          return listType({
-            elemType: scalarTypeToPrimitiveType(field.scalar),
-          });
-        default:
-          return DYN_TYPE;
-      }
-    case 'scalar':
-      return scalarTypeToPrimitiveType(field.scalar);
-    case 'map':
-      const keyType = scalarTypeToPrimitiveType(field.mapKey);
-      switch (field.mapKind) {
-        case 'enum':
-          return mapType({
-            keyType,
-            valueType: messageType(field.enum.typeName),
-          });
-        case 'message':
-          return mapType({
-            keyType,
-            valueType: messageType(field.message.typeName),
-          });
-        case 'scalar':
-          return mapType({
-            keyType,
-            valueType: scalarTypeToPrimitiveType(field.scalar),
-          });
-        default:
-          return DYN_TYPE;
-      }
-    default:
-      return DYN_TYPE;
-  }
-}
-
-/**
- * Converts a protobuf scalar type to a CEL primitive type.
- *
- * @param scalar the scalar type
- * @returns the CEL primitive type
- */
-export function scalarTypeToPrimitiveType(scalar: ScalarType) {
-  switch (scalar) {
-    case ScalarType.BOOL:
-      return primitiveType(Type_PrimitiveType.BOOL);
-    case ScalarType.BYTES:
-      return primitiveType(Type_PrimitiveType.BYTES);
-    case ScalarType.SFIXED32:
-    case ScalarType.SFIXED64:
-    case ScalarType.FIXED32:
-    case ScalarType.FIXED64:
-    case ScalarType.FLOAT:
-    case ScalarType.DOUBLE:
-      return primitiveType(Type_PrimitiveType.DOUBLE);
-    case ScalarType.INT32:
-    case ScalarType.INT64:
-    case ScalarType.SINT32:
-    case ScalarType.SINT64:
-      return primitiveType(Type_PrimitiveType.INT64);
-    case ScalarType.STRING:
-      return primitiveType(Type_PrimitiveType.STRING);
-    case ScalarType.UINT32:
-    case ScalarType.UINT64:
-      return primitiveType(Type_PrimitiveType.UINT64);
-    default:
-      return DYN_TYPE;
-  }
-}
-
-/**
- * Converts a CEL WellKnwonType to a string.
- *
- * @param type the WellKnownType
- * @returns a string representation of the WellKnownType (or null if not found)
- */
-export function getWellKNownTypeName(type: Type_WellKnownType): string | null {
-  switch (type) {
-    case Type_WellKnownType.ANY:
-      return 'google.protobuf.Any';
-    case Type_WellKnownType.DURATION:
-      return 'google.protobuf.Duration';
-    case Type_WellKnownType.TIMESTAMP:
-      return 'google.protobuf.Timestamp';
-    default:
-      return null;
-  }
 }

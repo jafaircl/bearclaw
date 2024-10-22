@@ -44,7 +44,7 @@ import {
   NOT_EQUALS_OPERATOR,
   NOT_STRICTLY_FALSE_OPERATOR,
   SUBTRACT_OPERATOR,
-} from './operators';
+} from '../operators';
 import {
   ADD_BYTES_OVERLOAD,
   ADD_DOUBLE_OVERLOAD,
@@ -230,25 +230,23 @@ import {
   UINT_TO_INT_OVERLOAD,
   UINT_TO_STRING_OVERLOAD,
   UINT_TO_UINT_OVERLOAD,
-} from './overloads';
-import {
-  BOOL_TYPE,
-  BYTES_TYPE,
-  DOUBLE_TYPE,
-  DURATION_TYPE,
-  DYN_TYPE,
-  INT64_TYPE,
-  NULL_TYPE,
-  STRING_TYPE,
-  TIMESTAMP_TYPE,
-  TYPE_TYPE,
-  UINT64_TYPE,
-  listType,
-  mapType,
-  typeParamType,
-  typeType,
-} from './types';
-import { functionDecl, identDecl } from './utils';
+} from '../overloads';
+import { functionDecl } from './decls/function-decl';
+import { identDecl } from './decls/ident-decl';
+import { ABSTRACT_TYPE_TYPE } from './types/abstract';
+import { BOOL_TYPE } from './types/bool';
+import { BYTES_TYPE } from './types/bytes';
+import { DOUBLE_TYPE } from './types/double';
+import { DYN_TYPE } from './types/dyn';
+import { INT64_TYPE } from './types/int';
+import { listType } from './types/list';
+import { mapType } from './types/map';
+import { NULL_TYPE } from './types/null';
+import { STRING_TYPE } from './types/string';
+import { typeType } from './types/type';
+import { typeParamType } from './types/type-param';
+import { UINT64_TYPE } from './types/uint';
+import { DURATION_TYPE, TIMESTAMP_TYPE } from './types/wkt';
 
 export const STANDARD_DESCRIPTORS: (
   | DescMessage
@@ -289,7 +287,7 @@ export const STANDARD_IDENTS: Decl[] = [
   identDecl('map', {
     type: typeType(mapType({ keyType: DYN_TYPE, valueType: DYN_TYPE })),
   }),
-  identDecl('type', { type: typeType(TYPE_TYPE) }),
+  identDecl('type', { type: typeType(ABSTRACT_TYPE_TYPE) }),
   identDecl('null_type', { type: typeType(NULL_TYPE) }),
   identDecl('null', { type: NULL_TYPE }),
 ];

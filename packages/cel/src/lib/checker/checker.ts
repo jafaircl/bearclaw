@@ -21,48 +21,50 @@ import {
   ParsedExpr,
 } from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb.js';
 import { create } from '@bufbuild/protobuf';
-import { CELEnvironment } from './environment';
-import { Errors } from './errors';
-import { OPT_SELECT_OPERATOR } from './operators';
+import { getLocationByOffset } from '../common/ast';
+import { functionReference } from '../common/decls/function-decl';
 import {
-  BOOL_TYPE,
-  BYTES_TYPE,
-  DOUBLE_TYPE,
-  DURATION_TYPE,
-  DYN_TYPE,
-  ERROR_TYPE,
-  INT64_TYPE,
-  NULL_TYPE,
-  STRING_TYPE,
-  TIMESTAMP_TYPE,
-  UINT64_TYPE,
-  formatCELType,
-  functionType,
-  getCheckedWellKnownType,
-  isAssignable,
-  isAssignableList,
-  isDyn,
-  isDynOrError,
-  isExactType,
-  isOptionalType,
-  listType,
-  mapType,
-  maybeUnwrapOptionalType,
-  mostGeneral,
-  optionalType,
-  substitute,
-  typeParamType,
-  unwrapIdentDeclType,
-  wellKnownType,
-} from './types';
-import {
-  functionReference,
-  getLocationByOffset,
   identDecl,
   identReference,
-  mapToObject,
-  toQualifiedName,
-} from './utils';
+  unwrapIdentDecl,
+} from '../common/decls/ident-decl';
+import { Errors } from '../common/errors';
+import { BOOL_TYPE } from '../common/types/bool';
+import { BYTES_TYPE } from '../common/types/bytes';
+import { DOUBLE_TYPE } from '../common/types/double';
+import { DYN_TYPE, isDynType } from '../common/types/dyn';
+import { ERROR_TYPE } from '../common/types/error';
+import { functionType } from '../common/types/function';
+import { INT64_TYPE } from '../common/types/int';
+import { listType } from '../common/types/list';
+import { mapType } from '../common/types/map';
+import { NULL_TYPE } from '../common/types/null';
+import {
+  isOptionalType,
+  maybeUnwrapOptionalType,
+  optionalType,
+} from '../common/types/optional';
+import { STRING_TYPE } from '../common/types/string';
+import { typeParamType } from '../common/types/type-param';
+import { UINT64_TYPE } from '../common/types/uint';
+import { isDynTypeOrErrorType } from '../common/types/utils';
+import {
+  DURATION_TYPE,
+  TIMESTAMP_TYPE,
+  getCheckedWellKnownType,
+  wellKnownType,
+} from '../common/types/wkt';
+import { mapToObject, toQualifiedName } from '../common/utils';
+import { CELEnvironment } from '../environment';
+import { OPT_SELECT_OPERATOR } from '../operators';
+import {
+  formatCELType,
+  isAssignable,
+  isAssignableList,
+  isExactType,
+  mostGeneral,
+  substitute,
+} from './types';
 
 export interface OverloadResolution {
   resultType?: Type;
@@ -200,7 +202,7 @@ export class CELChecker {
     const identExpr = expr.exprKind.value as Expr_Ident;
     const ident = this.env.lookupIdent(identExpr.name);
     if (!isNil(ident)) {
-      const unwrapped = unwrapIdentDeclType(ident)!;
+      const unwrapped = unwrapIdentDecl(ident)!;
       this.setType(expr.id, unwrapped.type!);
       this.setReference(expr.id, identReference(ident.name, unwrapped.value!));
       // Overwrite the identifier with its fully qualified name.
@@ -415,7 +417,7 @@ export class CELChecker {
         if (isNil(resultType)) {
           resultType = fnResultType;
         } else if (
-          !isDyn(resultType) &&
+          !isDynType(resultType) &&
           !isExactType(fnResultType, resultType)
         ) {
           resultType = DYN_TYPE;
@@ -725,7 +727,7 @@ export class CELChecker {
       default:
         // Dynamic / error values are treated as DYN type. Errors are handled
         // this way as well in order to allow forward progress on the check.
-        if (!isDynOrError(targetType)) {
+        if (!isDynTypeOrErrorType(targetType)) {
           this.#errors.reportTypeDoesNotSupportFieldSelection(
             expr.id,
             this.getLocationById(expr.id),

@@ -12,23 +12,24 @@ import {
   MutableRegistry,
   createMutableRegistry,
 } from '@bufbuild/protobuf';
-import { CELContainer } from './container';
-import { CELParser } from './parser';
+import { CELContainer } from './common/container';
+import { identDecl } from './common/decls/ident-decl';
 import {
   STANDARD_DESCRIPTORS,
   STANDARD_FUNCTION_DECLARATIONS,
   STANDARD_IDENTS,
-} from './standard';
+} from './common/standard';
+import { DYN_TYPE } from './common/types/dyn';
+import { INT64_TYPE } from './common/types/int';
+import { mapType } from './common/types/map';
+import { messageType } from './common/types/message';
+import { STRING_TYPE } from './common/types/string';
+import { getFieldDescriptorType } from './common/types/utils';
 import {
-  DYN_TYPE,
-  INT64_TYPE,
-  STRING_TYPE,
   getCheckedWellKnownType,
   isCheckedWellKnownType,
-  mapType,
-  messageType,
-} from './types';
-import { getFieldDescriptorType, identDecl } from './utils';
+} from './common/types/wkt';
+import { CELParser } from './parser/parser';
 
 export interface CELEnvironmentOptions {
   container?: CELContainer;

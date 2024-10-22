@@ -3,331 +3,29 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { isNil } from '@bearclaw/is';
 import {
-  Decl,
   Type,
-  TypeSchema,
   Type_AbstractType,
-  Type_AbstractTypeSchema,
   Type_FunctionType,
-  Type_FunctionTypeSchema,
   Type_ListType,
-  Type_ListTypeSchema,
   Type_MapType,
-  Type_MapTypeSchema,
   Type_PrimitiveType,
   Type_PrimitiveTypeSchema,
   Type_WellKnownType,
   Type_WellKnownTypeSchema,
 } from '@buf/google_cel-spec.bufbuild_es/cel/expr/checked_pb.js';
-import { MessageInitShape, create, enumToJson } from '@bufbuild/protobuf';
-import { EmptySchema, NullValue } from '@bufbuild/protobuf/wkt';
-
-export interface Location {
-  line: number;
-  column: number;
-}
-
-export interface OffsetRange {
-  start: number;
-  stop: number;
-}
-
-export const DYN_TYPE = create(TypeSchema, {
-  typeKind: {
-    case: 'dyn',
-    value: create(EmptySchema),
-  },
-});
-
-export const NULL_TYPE = create(TypeSchema, {
-  typeKind: {
-    case: 'null',
-    value: NullValue.NULL_VALUE,
-  },
-});
-
-export function primitiveType(value: Type_PrimitiveType) {
-  return create(TypeSchema, {
-    typeKind: {
-      case: 'primitive',
-      value,
-    },
-  });
-}
-
-export const BOOL_TYPE = primitiveType(Type_PrimitiveType.BOOL);
-export const BYTES_TYPE = primitiveType(Type_PrimitiveType.BYTES);
-export const DOUBLE_TYPE = primitiveType(Type_PrimitiveType.DOUBLE);
-export const INT64_TYPE = primitiveType(Type_PrimitiveType.INT64);
-export const STRING_TYPE = primitiveType(Type_PrimitiveType.STRING);
-export const UINT64_TYPE = primitiveType(Type_PrimitiveType.UINT64);
-
-export function wrapperType(value: Type_PrimitiveType) {
-  return create(TypeSchema, {
-    typeKind: {
-      case: 'wrapper',
-      value,
-    },
-  });
-}
-
-export function wellKnownType(value: Type_WellKnownType) {
-  return create(TypeSchema, {
-    typeKind: {
-      case: 'wellKnown',
-      value,
-    },
-  });
-}
-
-export const ANY_TYPE = wellKnownType(Type_WellKnownType.ANY);
-export const DURATION_TYPE = wellKnownType(Type_WellKnownType.DURATION);
-export const TIMESTAMP_TYPE = wellKnownType(Type_WellKnownType.TIMESTAMP);
-
-export function isCheckedWellKnownType(type: Type) {
-  if (type.typeKind.case !== 'messageType') {
-    return false;
-  }
-  switch (type.typeKind.value) {
-    case 'google.protobuf.BoolValue': // Wrapper types.
-    case 'google.protobuf.BytesValue':
-    case 'google.protobuf.DoubleValue':
-    case 'google.protobuf.FloatValue':
-    case 'google.protobuf.Int64Value':
-    case 'google.protobuf.Int32Value':
-    case 'google.protobuf.UInt64Value':
-    case 'google.protobuf.UInt32Value':
-    case 'google.protobuf.StringValue':
-    case 'google.protobuf.Any': // Well-known types.
-    case 'google.protobuf.Duration':
-    case 'google.protobuf.Timestamp':
-    case 'google.protobuf.ListValue': // Json types.
-    case 'google.protobuf.NullValue':
-    case 'google.protobuf.Struct':
-    case 'google.protobuf.Value':
-      return true;
-    default:
-      return false;
-  }
-}
-
-export function getCheckedWellKnownType(value: string) {
-  switch (value) {
-    // Wrapper types.
-    case 'google.protobuf.BoolValue':
-      return BOOL_TYPE;
-    case 'google.protobuf.BytesValue':
-      return BYTES_TYPE;
-    case 'google.protobuf.DoubleValue':
-    case 'google.protobuf.FloatValue':
-      return DOUBLE_TYPE;
-    case 'google.protobuf.Int64Value':
-    case 'google.protobuf.Int32Value':
-      return INT64_TYPE;
-    case 'google.protobuf.UInt64Value':
-    case 'google.protobuf.UInt32Value':
-      return UINT64_TYPE;
-    case 'google.protobuf.StringValue':
-      return STRING_TYPE;
-    // Well-known types.
-    case 'google.protobuf.Any':
-      return ANY_TYPE;
-    case 'google.protobuf.Duration':
-      return DURATION_TYPE;
-    case 'google.protobuf.Timestamp':
-      return TIMESTAMP_TYPE;
-    // Json types.
-    case 'google.protobuf.ListValue':
-      return listType({ elemType: DYN_TYPE });
-    case 'google.protobuf.NullValue':
-      return NULL_TYPE;
-    case 'google.protobuf.Struct':
-      return mapType({ keyType: STRING_TYPE, valueType: DYN_TYPE });
-    case 'google.protobuf.Value':
-      return DYN_TYPE;
-    default:
-      return null;
-  }
-}
-
-export function listType(value: MessageInitShape<typeof Type_ListTypeSchema>) {
-  return create(TypeSchema, {
-    typeKind: {
-      case: 'listType',
-      value,
-    },
-  });
-}
-
-export function mapType(value: MessageInitShape<typeof Type_MapTypeSchema>) {
-  return create(TypeSchema, {
-    typeKind: {
-      case: 'mapType',
-      value,
-    },
-  });
-}
-
-export function functionType(
-  value: MessageInitShape<typeof Type_FunctionTypeSchema>
-) {
-  return create(TypeSchema, {
-    typeKind: {
-      case: 'function',
-      value,
-    },
-  });
-}
-
-export function unwrapFunctionType(val: Type) {
-  if (val.typeKind.case === 'function') {
-    return val.typeKind.value;
-  }
-  return null;
-}
-
-export function messageType(value: string) {
-  return create(TypeSchema, {
-    typeKind: {
-      case: 'messageType',
-      value,
-    },
-  });
-}
-
-export function unwrapMessageType(val: Type) {
-  if (val.typeKind.case === 'messageType') {
-    return val.typeKind.value;
-  }
-  return null;
-}
-
-export function typeParamType(value: string) {
-  return create(TypeSchema, {
-    typeKind: {
-      case: 'typeParam',
-      value,
-    },
-  });
-}
-
-export function typeType(value: Type) {
-  return create(TypeSchema, {
-    typeKind: {
-      case: 'type',
-      value,
-    },
-  });
-}
-
-export const ERROR_TYPE = create(TypeSchema, {
-  typeKind: {
-    case: 'error',
-    value: create(EmptySchema),
-  },
-});
-
-export function abstractType(
-  value: MessageInitShape<typeof Type_AbstractTypeSchema>
-) {
-  return create(TypeSchema, {
-    typeKind: {
-      case: 'abstractType',
-      value,
-    },
-  });
-}
-
-export const TYPE_TYPE = abstractType({ name: 'type' });
-
-export function optionalType(value: Type) {
-  return abstractType({ name: 'optional_type', parameterTypes: [value] });
-}
-
-export function isOptionalType(val: Type) {
-  return (
-    val.typeKind.case === 'abstractType' &&
-    val.typeKind.value.name === 'optional_type'
-  );
-}
-
-export function unwrapOptionalType(val: Type) {
-  if (isOptionalType(val)) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return (val.typeKind.value as any).parameterTypes[0] as Type;
-  }
-  return null;
-}
-
-export function maybeUnwrapOptionalType(val: Type | null | undefined) {
-  if (isNil(val)) {
-    return null;
-  }
-  if (!isOptionalType(val)) {
-    return val;
-  }
-  return unwrapOptionalType(val);
-}
-
-export const OPTIONAL_TYPE = abstractType({ name: 'optional_type' });
-
-export function wrappedType(value: Type_PrimitiveType) {
-  return create(TypeSchema, {
-    typeKind: {
-      case: 'wrapper',
-      value,
-    },
-  });
-}
-
-export function nullableType(value: Type) {
-  return abstractType({ name: 'nullable_type', parameterTypes: [value] });
-}
-
-export function isNullableType(val: Type) {
-  return (
-    val.typeKind.case === 'abstractType' &&
-    val.typeKind.value.name === 'nullable_type'
-  );
-}
-
-export function unwrapNullableType(val: Type) {
-  if (isNullableType(val)) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return (val.typeKind.value as any).parameterTypes[0] as Type;
-  }
-  return null;
-}
-
-export function unwrapIdentDeclType(val: Decl) {
-  if (val.declKind.case === 'ident') {
-    return val.declKind.value ?? null;
-  }
-  return null;
-}
-
-export function unwrapFunctionDeclType(val: Decl) {
-  if (val.declKind.case === 'function') {
-    return val.declKind.value ?? null;
-  }
-  return null;
-}
-
-export function isDyn(val: Type) {
-  return val.typeKind.case === 'dyn';
-}
-
-export function isError(val: Type) {
-  return val.typeKind.case === 'error';
-}
-
-export function isDynOrError(val: Type) {
-  return isDyn(val) || isError(val);
-}
-
-export function isNullType(val: Type) {
-  return val.typeKind.case === 'null';
-}
+import { enumToJson } from '@bufbuild/protobuf';
+import { abstractType } from '../common/types/abstract';
+import { DYN_TYPE, isDynType } from '../common/types/dyn';
+import { functionType } from '../common/types/function';
+import { listType } from '../common/types/list';
+import { mapType } from '../common/types/map';
+import { isNullType } from '../common/types/null';
+import { isNullableType, unwrapNullableType } from '../common/types/nullable';
+import { primitiveType } from '../common/types/primitive';
+import { typeType } from '../common/types/type';
+import { isDynTypeOrErrorType } from '../common/types/utils';
+import { getCheckedWellKnownType } from '../common/types/wkt';
+import { wrapperType } from '../common/types/wrapper';
 
 /**
  * Checks whether one type is equal or less specific than another. A type is
@@ -339,11 +37,11 @@ export function isEqualOrLessSpecific(t1: Type, t2: Type): boolean {
   const kind1 = t1.typeKind.case;
   const kind2 = t2.typeKind.case;
   // The first type is less specific
-  if (isDyn(t1) || kind1 === 'typeParam') {
+  if (isDynType(t1) || kind1 === 'typeParam') {
     return true;
   }
   // The first type is not less specific.
-  if (isDyn(t2) || kind2 === 'typeParam') {
+  if (isDynType(t2) || kind2 === 'typeParam') {
     return false;
   }
   // Types must be of the same kind to be equal.
@@ -548,7 +246,7 @@ export function internalIsAssignable(
     }
   }
   // Next check for wildcard types.
-  if (isDynOrError(t1) || isDynOrError(t2)) {
+  if (isDynTypeOrErrorType(t1) || isDynTypeOrErrorType(t2)) {
     return true;
   }
 
@@ -801,7 +499,7 @@ export function notReferencedIn(
         notReferencedIn(m, t, withinType.typeKind.value.valueType!)
       );
     case 'wrapper':
-      return notReferencedIn(m, t, wrappedType(withinType.typeKind.value));
+      return notReferencedIn(m, t, wrapperType(withinType.typeKind.value));
     default:
       return true;
   }
@@ -837,7 +535,7 @@ export function defaultIsAssignableType(
   current: Type,
   fromType: Type
 ): boolean {
-  if (current === fromType || isDyn(current)) {
+  if (current === fromType || isDynType(current)) {
     return true;
   }
   if (isNullableType(current) && isNullType(fromType)) {

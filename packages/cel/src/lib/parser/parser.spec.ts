@@ -2,7 +2,25 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { isNil } from '@bearclaw/is';
 import { Expr } from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb.js';
-import { ACCUMULATOR_VAR } from './constants';
+import { Location } from '../common/ast';
+import { ACCUMULATOR_VAR } from '../common/constants';
+import {
+  boolExpr,
+  bytesExpr,
+  callExpr,
+  comprehensionExpr,
+  createStructFieldEntry,
+  createStructMapEntry,
+  doubleExpr,
+  identExpr,
+  int64Expr,
+  listExpr,
+  nullExpr,
+  selectExpr,
+  stringExpr,
+  structExpr,
+  uint64Expr,
+} from '../common/utils';
 import {
   ADD_OPERATOR,
   CONDITIONAL_OPERATOR,
@@ -25,26 +43,8 @@ import {
   OPT_INDEX_OPERATOR,
   OPT_SELECT_OPERATOR,
   SUBTRACT_OPERATOR,
-} from './operators';
+} from '../operators';
 import { CELParser, CELParserOptions } from './parser';
-import { Location } from './types';
-import {
-  boolExpr,
-  bytesExpr,
-  callExpr,
-  comprehensionExpr,
-  createStructFieldEntry,
-  createStructMapEntry,
-  doubleExpr,
-  identExpr,
-  int64Expr,
-  listExpr,
-  nullExpr,
-  selectExpr,
-  stringExpr,
-  structExpr,
-  uint64Expr,
-} from './utils';
 
 interface TestInfo {
   // I contains the input expression to be parsed.
