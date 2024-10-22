@@ -14,7 +14,7 @@ import { createMutableRegistry } from '@bufbuild/protobuf';
 import { CELChecker } from './checker';
 import { CELContainer } from './container';
 import { CELEnvironment, STANDARD_ENV } from './environment';
-import { CELParser } from './parser';
+import { CELParser, CELParserOptions } from './parser';
 import {
   BOOL_TYPE,
   BYTES_TYPE,
@@ -23,12 +23,15 @@ import {
   ERROR_TYPE,
   INT64_TYPE,
   NULL_TYPE,
+  OPTIONAL_TYPE,
   STRING_TYPE,
   UINT64_TYPE,
   abstractType,
   listType,
   mapType,
   messageType,
+  nullableType,
+  optionalType,
   typeParamType,
 } from './types';
 import { functionDecl, identDecl, overloadDecl } from './utils';
@@ -57,6 +60,7 @@ interface TestInfo {
 
   // opts is the set of checker Option flags to use when type-checking.
   // opts []Option
+  parserOptions?: CELParserOptions;
 }
 
 function getDefaultEnv() {
@@ -1763,7 +1767,7 @@ _==_(
    | ..^
   `,
   },
-  // TODO: implement CrossTypeNumericComparisons
+  // TODO: implement CrossTypeNumericComparisons flag. Right now they are always enabled
   //   {
   //     in: `1 <= 1.0 && 1u <= 1.0 && 1.0 <= 1 && 1.0 <= 1u && 1 <= 1u && 1u <= 1`,
   //     opts: []Option{CrossTypeNumericComparisons(false)},
@@ -1788,199 +1792,200 @@ _==_(
   //    | ................................................................^
   //   `,
   //   },
-  //   {
-  //     in:      `1 <= 1.0 && 1u <= 1.0 && 1.0 <= 1 && 1.0 <= 1u && 1 <= 1u && 1u <= 1`,
-  //     opts:    []Option{CrossTypeNumericComparisons(true)},
-  //     outType: types.BoolType,
-  //     out: `
-  // _&&_(
-  //     _&&_(
-  //       _&&_(
-  //         _<=_(
-  //           1~int,
-  //           1~double
-  //         )~bool^less_equals_int64_double,
-  //         _<=_(
-  //           1u~uint,
-  //           1~double
-  //         )~bool^less_equals_uint64_double
-  //       )~bool^logical_and,
-  //       _<=_(
-  //         1~double,
-  //         1~int
-  //       )~bool^less_equals_double_int64
-  //     )~bool^logical_and,
-  //     _&&_(
-  //       _&&_(
-  //         _<=_(
-  //           1~double,
-  //           1u~uint
-  //         )~bool^less_equals_double_uint64,
-  //         _<=_(
-  //           1~int,
-  //           1u~uint
-  //         )~bool^less_equals_int64_uint64
-  //       )~bool^logical_and,
-  //       _<=_(
-  //         1u~uint,
-  //         1~int
-  //       )~bool^less_equals_uint64_int64
-  //     )~bool^logical_and
-  //   )~bool^logical_and`,
-  // },
-  // {
-  //     in:      `1 < 1.0 && 1u < 1.0 && 1.0 < 1 && 1.0 < 1u && 1 < 1u && 1u < 1`,
-  //     opts:    []Option{CrossTypeNumericComparisons(true)},
-  //     outType: types.BoolType,
-  //     out: `
-  // _&&_(
-  //     _&&_(
-  //       _&&_(
-  //         _<_(
-  //           1~int,
-  //           1~double
-  //         )~bool^less_int64_double,
-  //         _<_(
-  //           1u~uint,
-  //           1~double
-  //         )~bool^less_uint64_double
-  //       )~bool^logical_and,
-  //       _<_(
-  //         1~double,
-  //         1~int
-  //       )~bool^less_double_int64
-  //     )~bool^logical_and,
-  //     _&&_(
-  //       _&&_(
-  //         _<_(
-  //           1~double,
-  //           1u~uint
-  //         )~bool^less_double_uint64,
-  //         _<_(
-  //           1~int,
-  //           1u~uint
-  //         )~bool^less_int64_uint64
-  //       )~bool^logical_and,
-  //       _<_(
-  //         1u~uint,
-  //         1~int
-  //       )~bool^less_uint64_int64
-  //     )~bool^logical_and
-  //   )~bool^logical_and`,
-  // },
-  // {
-  //     in:      `1 > 1.0 && 1u > 1.0 && 1.0 > 1 && 1.0 > 1u && 1 > 1u && 1u > 1`,
-  //     opts:    []Option{CrossTypeNumericComparisons(true)},
-  //     outType: types.BoolType,
-  //     out: `
-  // _&&_(
-  //     _&&_(
-  //       _&&_(
-  //         _>_(
-  //           1~int,
-  //           1~double
-  //         )~bool^greater_int64_double,
-  //         _>_(
-  //           1u~uint,
-  //           1~double
-  //         )~bool^greater_uint64_double
-  //       )~bool^logical_and,
-  //       _>_(
-  //         1~double,
-  //         1~int
-  //       )~bool^greater_double_int64
-  //     )~bool^logical_and,
-  //     _&&_(
-  //       _&&_(
-  //         _>_(
-  //           1~double,
-  //           1u~uint
-  //         )~bool^greater_double_uint64,
-  //         _>_(
-  //           1~int,
-  //           1u~uint
-  //         )~bool^greater_int64_uint64
-  //       )~bool^logical_and,
-  //       _>_(
-  //         1u~uint,
-  //         1~int
-  //       )~bool^greater_uint64_int64
-  //     )~bool^logical_and
-  //   )~bool^logical_and`,
-  // },
-  // {
-  //     in:      `1 >= 1.0 && 1u >= 1.0 && 1.0 >= 1 && 1.0 >= 1u && 1 >= 1u && 1u >= 1`,
-  //     opts:    []Option{CrossTypeNumericComparisons(true)},
-  //     outType: types.BoolType,
-  //     out: `
-  // _&&_(
-  //     _&&_(
-  //       _&&_(
-  //         _>=_(
-  //           1~int,
-  //           1~double
-  //         )~bool^greater_equals_int64_double,
-  //         _>=_(
-  //           1u~uint,
-  //           1~double
-  //         )~bool^greater_equals_uint64_double
-  //       )~bool^logical_and,
-  //       _>=_(
-  //         1~double,
-  //         1~int
-  //       )~bool^greater_equals_double_int64
-  //     )~bool^logical_and,
-  //     _&&_(
-  //       _&&_(
-  //         _>=_(
-  //           1~double,
-  //           1u~uint
-  //         )~bool^greater_equals_double_uint64,
-  //         _>=_(
-  //           1~int,
-  //           1u~uint
-  //         )~bool^greater_equals_int64_uint64
-  //       )~bool^logical_and,
-  //       _>=_(
-  //         1u~uint,
-  //         1~int
-  //       )~bool^greater_equals_uint64_int64
-  //     )~bool^logical_and
-  //   )~bool^logical_and`,
-  // },
-  // {
-  //     in:      `1 >= 1.0 && 1u >= 1.0 && 1.0 >= 1 && 1.0 >= 1u && 1 >= 1u && 1u >= 1`,
-  //     opts:    []Option{CrossTypeNumericComparisons(true)},
-  //     env:     testEnv{variadicASTs: true},
-  //     outType: types.BoolType,
-  //     out: `
-  // _&&_(
-  //     _>=_(
-  //       1~int,
-  //       1~double
-  //     )~bool^greater_equals_int64_double,
-  //     _>=_(
-  //       1u~uint,
-  //       1~double
-  //     )~bool^greater_equals_uint64_double,
-  //     _>=_(
-  //       1~double,
-  //       1~int
-  //     )~bool^greater_equals_double_int64,
-  //     _>=_(
-  //       1~double,
-  //       1u~uint
-  //     )~bool^greater_equals_double_uint64,
-  //     _>=_(
-  //       1~int,
-  //       1u~uint
-  //     )~bool^greater_equals_int64_uint64,
-  //     _>=_(
-  //       1u~uint,
-  //       1~int
-  //     )~bool^greater_equals_uint64_int64
-  //   )~bool^logical_and`,
-  // },
+  {
+    in: `1 <= 1.0 && 1u <= 1.0 && 1.0 <= 1 && 1.0 <= 1u && 1 <= 1u && 1u <= 1`,
+    // opts:    []Option{CrossTypeNumericComparisons(true)},
+    outType: BOOL_TYPE,
+    out: `
+  _&&_(
+      _&&_(
+        _&&_(
+          _<=_(
+            1~int,
+            1~double
+          )~bool^less_equals_int64_double,
+          _<=_(
+            1u~uint,
+            1~double
+          )~bool^less_equals_uint64_double
+        )~bool^logical_and,
+        _<=_(
+          1~double,
+          1~int
+        )~bool^less_equals_double_int64
+      )~bool^logical_and,
+      _&&_(
+        _&&_(
+          _<=_(
+            1~double,
+            1u~uint
+          )~bool^less_equals_double_uint64,
+          _<=_(
+            1~int,
+            1u~uint
+          )~bool^less_equals_int64_uint64
+        )~bool^logical_and,
+        _<=_(
+          1u~uint,
+          1~int
+        )~bool^less_equals_uint64_int64
+      )~bool^logical_and
+    )~bool^logical_and`,
+  },
+  {
+    in: `1 < 1.0 && 1u < 1.0 && 1.0 < 1 && 1.0 < 1u && 1 < 1u && 1u < 1`,
+    // opts:    []Option{CrossTypeNumericComparisons(true)},
+    outType: BOOL_TYPE,
+    out: `
+  _&&_(
+      _&&_(
+        _&&_(
+          _<_(
+            1~int,
+            1~double
+          )~bool^less_int64_double,
+          _<_(
+            1u~uint,
+            1~double
+          )~bool^less_uint64_double
+        )~bool^logical_and,
+        _<_(
+          1~double,
+          1~int
+        )~bool^less_double_int64
+      )~bool^logical_and,
+      _&&_(
+        _&&_(
+          _<_(
+            1~double,
+            1u~uint
+          )~bool^less_double_uint64,
+          _<_(
+            1~int,
+            1u~uint
+          )~bool^less_int64_uint64
+        )~bool^logical_and,
+        _<_(
+          1u~uint,
+          1~int
+        )~bool^less_uint64_int64
+      )~bool^logical_and
+    )~bool^logical_and`,
+  },
+  {
+    in: `1 > 1.0 && 1u > 1.0 && 1.0 > 1 && 1.0 > 1u && 1 > 1u && 1u > 1`,
+    // opts:    []Option{CrossTypeNumericComparisons(true)},
+    outType: BOOL_TYPE,
+    out: `
+  _&&_(
+      _&&_(
+        _&&_(
+          _>_(
+            1~int,
+            1~double
+          )~bool^greater_int64_double,
+          _>_(
+            1u~uint,
+            1~double
+          )~bool^greater_uint64_double
+        )~bool^logical_and,
+        _>_(
+          1~double,
+          1~int
+        )~bool^greater_double_int64
+      )~bool^logical_and,
+      _&&_(
+        _&&_(
+          _>_(
+            1~double,
+            1u~uint
+          )~bool^greater_double_uint64,
+          _>_(
+            1~int,
+            1u~uint
+          )~bool^greater_int64_uint64
+        )~bool^logical_and,
+        _>_(
+          1u~uint,
+          1~int
+        )~bool^greater_uint64_int64
+      )~bool^logical_and
+    )~bool^logical_and`,
+  },
+  {
+    in: `1 >= 1.0 && 1u >= 1.0 && 1.0 >= 1 && 1.0 >= 1u && 1 >= 1u && 1u >= 1`,
+    // opts:    []Option{CrossTypeNumericComparisons(true)},
+    outType: BOOL_TYPE,
+    out: `
+  _&&_(
+      _&&_(
+        _&&_(
+          _>=_(
+            1~int,
+            1~double
+          )~bool^greater_equals_int64_double,
+          _>=_(
+            1u~uint,
+            1~double
+          )~bool^greater_equals_uint64_double
+        )~bool^logical_and,
+        _>=_(
+          1~double,
+          1~int
+        )~bool^greater_equals_double_int64
+      )~bool^logical_and,
+      _&&_(
+        _&&_(
+          _>=_(
+            1~double,
+            1u~uint
+          )~bool^greater_equals_double_uint64,
+          _>=_(
+            1~int,
+            1u~uint
+          )~bool^greater_equals_int64_uint64
+        )~bool^logical_and,
+        _>=_(
+          1u~uint,
+          1~int
+        )~bool^greater_equals_uint64_int64
+      )~bool^logical_and
+    )~bool^logical_and`,
+  },
+  // TODO: implement variadicASTs option?
+  {
+    in: `1 >= 1.0 && 1u >= 1.0 && 1.0 >= 1 && 1.0 >= 1u && 1 >= 1u && 1u >= 1`,
+    // opts:    []Option{CrossTypeNumericComparisons(true)},
+    // env:     testEnv{variadicASTs: true},
+    outType: BOOL_TYPE,
+    out: `
+  _&&_(
+      _>=_(
+        1~int,
+        1~double
+      )~bool^greater_equals_int64_double,
+      _>=_(
+        1u~uint,
+        1~double
+      )~bool^greater_equals_uint64_double,
+      _>=_(
+        1~double,
+        1~int
+      )~bool^greater_equals_double_int64,
+      _>=_(
+        1~double,
+        1u~uint
+      )~bool^greater_equals_double_uint64,
+      _>=_(
+        1~int,
+        1u~uint
+      )~bool^greater_equals_int64_uint64,
+      _>=_(
+        1u~uint,
+        1~int
+      )~bool^greater_equals_uint64_int64
+    )~bool^logical_and`,
+  },
   {
     in: `[1].map(x, [x, x]).map(x, [x, x])`,
     outType: listType({
@@ -2172,149 +2177,196 @@ _==_(
   // 		  )~bool^equals`,
   //   },
   // TODO: Optionals
+  {
+    in: `a.?b`,
+    env: getDefaultEnv().extend({
+      idents: [
+        identDecl('a', {
+          type: mapType({
+            keyType: STRING_TYPE,
+            valueType: STRING_TYPE,
+          }),
+        }),
+      ],
+    }),
+    parserOptions: { enableOptionalSyntax: true },
+    outType: optionalType(STRING_TYPE),
+    out: `_?._(
+  			a~map(string, string)^a,
+  			"b"
+  		  )~optional_type(string)^select_optional_field`,
+  },
+  {
+    in: `type(a.?b) == optional_type`,
+    env: getDefaultEnv().extend({
+      idents: [
+        identDecl('optional_type', { type: OPTIONAL_TYPE }),
+        identDecl('a', {
+          type: mapType({
+            keyType: STRING_TYPE,
+            valueType: STRING_TYPE,
+          }),
+        }),
+      ],
+    }),
+    parserOptions: { enableOptionalSyntax: true },
+    outType: BOOL_TYPE,
+    out: `_==_(
+          type(
+            _?._(
+              a~map(string, string)^a,
+              "b"
+            )~optional_type(string)^select_optional_field
+          )~type(optional_type(string))^type,
+          optional_type~type(optional_type)^optional_type
+        )~bool^equals`,
+  },
+  {
+    in: `a.b`,
+    env: getDefaultEnv().extend({
+      idents: [
+        identDecl('a', {
+          type: optionalType(
+            mapType({
+              keyType: STRING_TYPE,
+              valueType: STRING_TYPE,
+            })
+          ),
+        }),
+      ],
+    }),
+    outType: optionalType(STRING_TYPE),
+    out: `a~optional_type(map(string, string))^a.b~optional_type(string)`,
+  },
+  {
+    in: `a.dynamic`,
+    env: getDefaultEnv().extend({
+      idents: [
+        identDecl('a', {
+          type: optionalType(DYN_TYPE),
+        }),
+      ],
+    }),
+    outType: optionalType(DYN_TYPE),
+    out: `a~optional_type(dyn)^a.dynamic~optional_type(dyn)`,
+  },
+  {
+    in: `has(a.dynamic)`,
+    env: getDefaultEnv().extend({
+      idents: [
+        identDecl('a', {
+          type: optionalType(DYN_TYPE),
+        }),
+      ],
+    }),
+    outType: BOOL_TYPE,
+    out: `a~optional_type(dyn)^a.dynamic~test-only~~bool`,
+  },
+  {
+    in: `has(a.?b.c)`,
+    env: getDefaultEnv().extend({
+      idents: [
+        identDecl('a', {
+          type: optionalType(
+            mapType({
+              keyType: STRING_TYPE,
+              valueType: DYN_TYPE,
+            })
+          ),
+        }),
+      ],
+    }),
+    parserOptions: { enableOptionalSyntax: true },
+    outType: BOOL_TYPE,
+    out: `_?._(
+      a~optional_type(map(string, dyn))^a,
+      "b"
+    )~optional_type(dyn)^select_optional_field.c~test-only~~bool`,
+  },
+  {
+    in: `{?'key': {'a': 'b'}.?value}`,
+    parserOptions: { enableOptionalSyntax: true },
+    outType: mapType({
+      keyType: STRING_TYPE,
+      // TODO: the go test has this as just a string type, but it seems like it should be optional. And the test passes with this change
+      valueType: optionalType(STRING_TYPE),
+    }),
+    out: `{
+      ?"key"~string:_?._(
+        {
+          "a"~string:"b"~string
+        }~map(string, string),
+        "value"
+      )~optional_type(string)^select_optional_field
+    }~map(string, string)`,
+  },
+  {
+    in: `{?'key': {'a': 'b'}.?value}.key`,
+    parserOptions: { enableOptionalSyntax: true },
+    // TODO: the go test has this as just a string type, but it seems like it should be optional. And the test passes with this change
+    outType: optionalType(STRING_TYPE),
+    out: `{
+      ?"key"~string:_?._(
+        {
+          "a"~string:"b"~string
+        }~map(string, string),
+        "value"
+      )~optional_type(string)^select_optional_field
+    }~map(string, string).key~string`,
+  },
+  {
+    in: `{?'nested': a.b}`,
+    parserOptions: { enableOptionalSyntax: true },
+    env: getDefaultEnv().extend({
+      idents: [
+        identDecl('a', {
+          type: optionalType(
+            mapType({
+              keyType: STRING_TYPE,
+              valueType: STRING_TYPE,
+            })
+          ),
+        }),
+      ],
+    }),
+    outType: mapType({
+      keyType: STRING_TYPE,
+      // TODO: the go test has this as just a string type, but it seems like it should be optional. And the test passes with this change
+      valueType: optionalType(STRING_TYPE),
+    }),
+    out: `{
+      ?"nested"~string:a~optional_type(map(string, string))^a.b~optional_type(string)
+    }~map(string, string)`,
+  },
+  // TODO: does this test make sense?
   //   {
-  //     in: `a.?b`,
+  //     in: `{?'key': 'hi'}`,
+  //     parserOptions: { enableOptionalSyntax: true },
+  //     err: `ERROR: <input>:1:10: expected type 'optional_type(string)' but found 'string'
+  //   | {?'key': 'hi'}
+  //   | .........^`,
+  //   },
+  // TODO: this outputs a DYN list
+  //   {
+  //     in: `[?a, ?b, 'world']`,
+  //     parserOptions: { enableOptionalSyntax: true },
   //     env: getDefaultEnv().extend({
   //       idents: [
   //         identDecl('a', {
-  //           type: mapType({
-  //             keyType: STRING_TYPE,
-  //             valueType: optionalType(STRING_TYPE),
-  //           }),
+  //           type: optionalType(STRING_TYPE),
+  //         }),
+  //         identDecl('b', {
+  //           type: optionalType(STRING_TYPE),
   //         }),
   //       ],
   //     }),
-  //     outType: optionalType(STRING_TYPE),
-  //     out: `_?._(
-  // 			a~map(string, string)^a,
-  // 			"b"
-  // 		  )~optional_type(string)^select_optional_field`,
-  //   },
-  //   {
-  //     in: `type(a.?b) == optional_type`,
-  //     env: testEnv{
-  //         optionalSyntax: true,
-  //         idents: []*decls.VariableDecl{
-  //             decls.NewVariable("a", types.NewMapType(types.StringType, types.StringType)),
-  //         },
-  //     },
-  //     outType: types.BoolType,
-  //     out: `_==_(
-  //         type(
-  //           _?._(
-  //             a~map(string, string)^a,
-  //             "b"
-  //           )~optional_type(string)^select_optional_field
-  //         )~type(optional_type(string))^type,
-  //         optional_type~type(optional_type)^optional_type
-  //       )~bool^equals`,
-  // },
-  // {
-  //     in: `a.b`,
-  //     env: testEnv{
-  //         idents: []*decls.VariableDecl{
-  //             decls.NewVariable("a", types.NewOptionalType(types.NewMapType(types.StringType, types.StringType))),
-  //         },
-  //     },
-  //     outType: types.NewOptionalType(types.StringType),
-  //     out:     `a~optional_type(map(string, string))^a.b~optional_type(string)`,
-  // },
-  // {
-  //     in: `a.dynamic`,
-  //     env: testEnv{
-  //         idents: []*decls.VariableDecl{
-  //             decls.NewVariable("a", types.NewOptionalType(types.DynType)),
-  //         },
-  //     },
-  //     outType: types.NewOptionalType(types.DynType),
-  //     out:     `a~optional_type(dyn)^a.dynamic~optional_type(dyn)`,
-  // },
-  // {
-  //     in: `has(a.dynamic)`,
-  //     env: testEnv{
-  //         idents: []*decls.VariableDecl{
-  //             decls.NewVariable("a", types.NewOptionalType(types.DynType)),
-  //         },
-  //     },
-  //     outType: types.BoolType,
-  //     out:     `a~optional_type(dyn)^a.dynamic~test-only~~bool`,
-  // },
-  // {
-  //     in: `has(a.?b.c)`,
-  //     env: testEnv{
-  //         optionalSyntax: true,
-  //         idents: []*decls.VariableDecl{
-  //             decls.NewVariable("a", types.NewOptionalType(types.NewMapType(types.StringType, types.DynType))),
-  //         },
-  //     },
-  //     outType: types.BoolType,
-  //     out: `_?._(
-  //     a~optional_type(map(string, dyn))^a,
-  //     "b"
-  //   )~optional_type(dyn)^select_optional_field.c~test-only~~bool`,
-  // },
-  // {
-  //     in:      `{?'key': {'a': 'b'}.?value}`,
-  //     env:     testEnv{optionalSyntax: true},
-  //     outType: types.NewMapType(types.StringType, types.StringType),
-  //     out: `{
-  //     ?"key"~string:_?._(
-  //       {
-  //         "a"~string:"b"~string
-  //       }~map(string, string),
-  //       "value"
-  //     )~optional_type(string)^select_optional_field
-  //   }~map(string, string)`,
-  // },
-  // {
-  //     in:      `{?'key': {'a': 'b'}.?value}.key`,
-  //     env:     testEnv{optionalSyntax: true},
-  //     outType: types.StringType,
-  //     out: `{
-  //     ?"key"~string:_?._(
-  //       {
-  //         "a"~string:"b"~string
-  //       }~map(string, string),
-  //       "value"
-  //     )~optional_type(string)^select_optional_field
-  //   }~map(string, string).key~string`,
-  // },
-  // {
-  //     in: `{?'nested': a.b}`,
-  //     env: testEnv{
-  //         optionalSyntax: true,
-  //         idents: []*decls.VariableDecl{
-  //             decls.NewVariable("a", types.NewOptionalType(types.NewMapType(types.StringType, types.StringType))),
-  //         },
-  //     },
-  //     outType: types.NewMapType(types.StringType, types.StringType),
-  //     out: `{
-  //     ?"nested"~string:a~optional_type(map(string, string))^a.b~optional_type(string)
-  //   }~map(string, string)`,
-  // },
-  // {
-  //     in:  `{?'key': 'hi'}`,
-  //     env: testEnv{optionalSyntax: true},
-  //     err: `ERROR: <input>:1:10: expected type 'optional_type(string)' but found 'string'
-  // | {?'key': 'hi'}
-  // | .........^`,
-  // },
-  // {
-  //     in: `[?a, ?b, 'world']`,
-  //     env: testEnv{
-  //         optionalSyntax: true,
-  //         idents: []*decls.VariableDecl{
-  //             decls.NewVariable("a", types.NewOptionalType(types.StringType)),
-  //             decls.NewVariable("b", types.NewOptionalType(types.StringType)),
-  //         },
-  //     },
-  //     outType: types.NewListType(types.StringType),
+  //     outType: listType({ elemType: STRING_TYPE }),
   //     out: `[
-  //     a~optional_type(string)^a,
-  //     b~optional_type(string)^b,
-  //     "world"~string
-  //   ]~list(string)`,
-  // },
+  //       a~optional_type(string)^a,
+  //       b~optional_type(string)^b,
+  //       "world"~string
+  //     ]~list(string)`,
+  //   },
   // {
   //     in:  `[?'value']`,
   //     env: testEnv{optionalSyntax: true},
@@ -2322,28 +2374,28 @@ _==_(
   // | [?'value']
   // | ..^`,
   // },
-  // {
-  //     in:        `TestAllTypes{?single_int32: {}.?i}`,
-  //     container: "google.expr.proto2.test",
-  //     env:       testEnv{optionalSyntax: true},
-  //     out: `google.expr.proto2.test.TestAllTypes{
-  //     ?single_int32:_?._(
-  //       {}~map(dyn, int),
-  //       "i"
-  //     )~optional_type(int)^select_optional_field
-  //   }~google.expr.proto2.test.TestAllTypes^google.expr.proto2.test.TestAllTypes`,
-  //     outType: types.NewObjectType(
-  //         "google.expr.proto2.test.TestAllTypes",
-  //     ),
-  // },
-  // {
-  //     in:        `TestAllTypes{?single_int32: 1}`,
-  //     container: "google.expr.proto2.test",
-  //     env:       testEnv{optionalSyntax: true},
+  // TODO: this outputs an error
+  //   {
+  //     in: `TestAllTypes{?single_int32: {}.?i}`,
+  //     container: 'google.api.expr.test.v1.proto2',
+  //     parserOptions: { enableOptionalSyntax: true },
+  //     out: `google.api.expr.test.v1.proto2.TestAllTypes{
+  //       ?single_int32:_?._(
+  //         {}~map(dyn, int),
+  //         "i"
+  //       )~optional_type(int)^select_optional_field
+  //     }~google.api.expr.test.v1.proto2.TestAllTypes^google.api.expr.test.v1.proto2.TestAllTypes`,
+  //     outType: messageType('google.api.expr.test.v1.proto2.TestAllTypes'),
+  //   },
+  // TODO: this does not put out an error
+  //   {
+  //     in: `TestAllTypes{?single_int32: 1}`,
+  //     container: 'google.api.expr.test.v1.proto2',
+  //     parserOptions: { enableOptionalSyntax: true },
   //     err: `ERROR: <input>:1:29: expected type 'optional_type(int)' but found 'int'
-  // | TestAllTypes{?single_int32: 1}
-  // | ............................^`,
-  // },
+  //   | TestAllTypes{?single_int32: 1}
+  //   | ............................^`,
+  //   },
   {
     in: `undef`,
     err: `ERROR: <input>:1:1: undeclared reference to 'undef' (in container '')
@@ -2356,28 +2408,30 @@ _==_(
       | undef()
       | .....^`,
   },
+  {
+    in: `null_int == null || null == null_int || null_msg == null || null == null_msg`,
+    env: getDefaultEnv().extend({
+      idents: [
+        identDecl('null_int', { type: nullableType(INT64_TYPE) }),
+        identDecl('null_msg', {
+          type: nullableType(
+            messageType('google.api.expr.test.v1.proto2.TestAllTypes')
+          ),
+        }),
+      ],
+    }),
+    outType: BOOL_TYPE,
+  },
   // TODO: nullables
-  // {
-  //     in: `null_int == null || null == null_int || null_msg == null || null == null_msg`,
-  //     env: testEnv{
-  //         idents: []*decls.VariableDecl{
-  //             decls.NewVariable("null_int", types.NewNullableType(types.IntType)),
-  //             decls.NewVariable("null_msg", types.NewObjectType("google.expr.proto2.test.TestAllTypes")),
-  //         },
-  //     },
-  //     outType: types.BoolType,
-  // },
-  // {
+  //   {
   //     in: `NotAMessage{}`,
-  //     env: testEnv{
-  //         idents: []*decls.VariableDecl{
-  //             decls.NewVariable("NotAMessage", types.NewNullableType(types.IntType)),
-  //         },
-  //     },
+  //     env: getDefaultEnv().extend({
+  //       idents: [identDecl('NotAMessage', { type: nullableType(INT64_TYPE) })],
+  //     }),
   //     err: `ERROR: <input>:1:12: 'wrapper(int)' is not a type
-  //     | NotAMessage{}
-  //     | ...........^`,
-  // },
+  //       | NotAMessage{}
+  //       | ...........^`,
+  //   },
   {
     in: `{}.map(c,[c,type(c)])`,
     out: `__comprehension__(
@@ -2416,22 +2470,18 @@ describe('CELChecker', () => {
     it(`should check ${testCase.in}`, () => {
       const container = new CELContainer(testCase.container ?? '');
       const env = testCase.env ?? getDefaultEnv().extend({ container });
-      const parser = new CELParser(testCase.in);
+      const parser = new CELParser(testCase.in, testCase.parserOptions);
       const parsed = parser.parse();
-      if (testCase.in === `a.?b`) {
-        console.log('hey buddy');
-        console.dir(parsed.expr, { depth: null });
-      }
       if (isNil(parsed.expr)) {
         throw new Error('parsed.expr is nil');
       }
       const checker = new CELChecker(parsed, testCase.in, env);
       const result = checker.check();
       if (testCase.outType) {
+        const got = result.typeMap[parsed.expr.id.toString()];
+        const expected = testCase.outType;
         try {
-          expect(result.typeMap[parsed.expr.id.toString()]).toEqual(
-            testCase.outType
-          );
+          expect(got).toEqual(expected);
           if (
             testCase.outType !== ERROR_TYPE &&
             !testCase.err &&
@@ -2443,6 +2493,7 @@ describe('CELChecker', () => {
           }
         } catch (e) {
           console.log(checker.errors.toDisplayString());
+          console.dir({ expected, got }, { depth: null });
           throw e;
         }
       }

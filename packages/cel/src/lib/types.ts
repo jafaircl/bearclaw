@@ -263,8 +263,13 @@ export function maybeUnwrapOptionalType(val: Type | null | undefined) {
   if (isNil(val)) {
     return null;
   }
+  if (!isOptionalType(val)) {
+    return val;
+  }
   return unwrapOptionalType(val);
 }
+
+export const OPTIONAL_TYPE = abstractType({ name: 'optional_type' });
 
 export function wrappedType(value: Type_PrimitiveType) {
   return create(TypeSchema, {

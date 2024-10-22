@@ -23,6 +23,7 @@ import {
 import { create } from '@bufbuild/protobuf';
 import { CELEnvironment } from './environment';
 import { Errors } from './errors';
+import { OPT_SELECT_OPERATOR } from './operators';
 import {
   BOOL_TYPE,
   BYTES_TYPE,
@@ -43,9 +44,12 @@ import {
   isDyn,
   isDynOrError,
   isExactType,
+  isOptionalType,
   listType,
   mapType,
+  maybeUnwrapOptionalType,
   mostGeneral,
+  optionalType,
   substitute,
   typeParamType,
   unwrapIdentDeclType,
@@ -232,69 +236,12 @@ export class CELChecker {
       }
     }
 
-    // Interpret as field selection, first traversing down the operand.
-    const checkedOperand = this.checkExpr(sel.operand);
-    const targetType = this.getType(checkedOperand!.id)!;
-    // Assume error type by default as most types do not support field
-    // selection.
-    let resultType: Type = ERROR_TYPE;
-    switch (targetType.typeKind.case) {
-      case 'mapType':
-        // Maps yield their value type as the selection result type.
-        resultType = targetType.typeKind.value.valueType!;
-        break;
-      case 'messageType':
-        // Objects yield their field type declaration as the selection result type, but only if
-        // the field is defined.
-        const fieldType = this.env.lookupFieldType(
-          targetType.typeKind.value,
-          sel.field
-        );
-        if (!isNil(fieldType)) {
-          resultType = fieldType;
-        } else {
-          const msg = this.env.lookupStructType(targetType.typeKind.value);
-          if (isNil(msg)) {
-            this.#errors.reportUnexpectedFailedResolution(
-              expr.id,
-              this.getLocationById(expr.id),
-              targetType.typeKind.value
-            );
-          } else {
-            this.#errors.reportUndefinedField(
-              expr.id,
-              this.getLocationById(expr.id),
-              sel.field
-            );
-          }
-        }
-        break;
-      case 'wellKnown':
-        resultType = wellKnownType(targetType.typeKind.value);
-        break;
-      case 'typeParam':
-        // Set the operand type to DYN to prevent assignment to a potentionally
-        // incorrect type at a later point in type-checking. The isAssignable
-        // call will update the type substitutions for the type param under the
-        // covers.
-        this._isAssignable(DYN_TYPE, targetType);
-        // Also, set the result type to DYN.
-        resultType = DYN_TYPE;
-        break;
-      default:
-        // Dynamic / error values are treated as DYN type. Errors are handled this way as well
-        // in order to allow forward progress on the check.
-        if (isDynOrError(targetType)) {
-          resultType = DYN_TYPE;
-        } else {
-          this.#errors.reportTypeDoesNotSupportFieldSelection(
-            expr.id,
-            this.getLocationById(expr.id),
-            targetType
-          );
-        }
-        break;
-    }
+    let resultType = this.checkSelectField(
+      expr,
+      sel.operand!,
+      sel.field,
+      false
+    );
     if (sel.testOnly) {
       resultType = BOOL_TYPE;
     }
@@ -307,8 +254,11 @@ export class CELChecker {
     // making changes here please consider the impact on planner.go and
     // consolidate implementations or mirror code as appropriate.
     const call = expr.exprKind.value as Expr_Call;
-    const args = call.args;
     const fnName = call.function;
+    if (fnName === OPT_SELECT_OPERATOR) {
+      return this.checkOptSelect(expr);
+    }
+    const args = call.args;
 
     // Traverse arguments.
     for (const arg of args) {
@@ -678,6 +628,119 @@ export class CELChecker {
     this.env.exitScope();
     this.setType(expr.id, this.getType(comp.result!.id)!);
     return expr;
+  }
+
+  checkOptSelect(expr: Expr) {
+    // Collect metadata related to the opt select call packaged by the parser.
+    const call = expr.exprKind.value as Expr_Call;
+    const operand = call.args[0];
+    const field = call.args[1];
+    if (
+      field.exprKind.case !== 'constExpr' ||
+      (field.exprKind.case === 'constExpr' &&
+        field.exprKind.value.constantKind.case !== 'stringValue')
+    ) {
+      this.#errors.reportNotAnOptionalFieldSelection(
+        field.id,
+        this.getLocationById(field.id),
+        field.exprKind.case!
+      );
+      return expr;
+    }
+
+    const resultType = this.checkSelectField(
+      expr,
+      operand,
+      field.exprKind.value.constantKind.value as string,
+      true
+    );
+    this.setType(expr.id, substitute(this.#mapping, resultType, false));
+    this.setReference(expr.id, functionReference(['select_optional_field']));
+    return expr;
+  }
+
+  checkSelectField(
+    expr: Expr,
+    operand: Expr,
+    field: string,
+    optional: boolean
+  ) {
+    // Interpret as field selection, first traversing down the operand.
+    const checkedOperand = this.checkExpr(operand)!;
+    const operandType = substitute(
+      this.#mapping,
+      this.getType(checkedOperand.id)!,
+      false
+    );
+
+    // If the target type is 'optional', unwrap it for the sake of this check.
+    const targetType = maybeUnwrapOptionalType(operandType)!;
+
+    // Assume error type by default as most types do not support field
+    // selection.
+    let resultType = ERROR_TYPE;
+    switch (targetType.typeKind.case) {
+      case 'mapType':
+        // Maps yield their value type as the selection result type.
+        resultType = targetType.typeKind.value.valueType!;
+        break;
+      case 'messageType':
+        // Objects yield their field type declaration as the selection result type, but only if
+        // the field is defined.
+        const fieldType = this.env.lookupFieldType(
+          targetType.typeKind.value,
+          field
+        );
+        if (!isNil(fieldType)) {
+          resultType = fieldType;
+        } else {
+          const msg = this.env.lookupStructType(targetType.typeKind.value);
+          if (isNil(msg)) {
+            this.#errors.reportUnexpectedFailedResolution(
+              expr.id,
+              this.getLocationById(expr.id),
+              targetType.typeKind.value
+            );
+          } else {
+            this.#errors.reportUndefinedField(
+              expr.id,
+              this.getLocationById(expr.id),
+              field
+            );
+          }
+        }
+        break;
+      case 'wellKnown':
+        resultType = wellKnownType(targetType.typeKind.value);
+        break;
+      case 'typeParam':
+        // Set the operand type to DYN to prevent assignment to a potentially
+        // incorrect type at a later point in type-checking. The isAssignable
+        // call will update the type substitutions for the type param under the
+        // covers.
+        this._isAssignable(DYN_TYPE, targetType);
+        // Also, set the result type to DYN.
+        resultType = DYN_TYPE;
+        break;
+      default:
+        // Dynamic / error values are treated as DYN type. Errors are handled
+        // this way as well in order to allow forward progress on the check.
+        if (!isDynOrError(targetType)) {
+          this.#errors.reportTypeDoesNotSupportFieldSelection(
+            expr.id,
+            this.getLocationById(expr.id),
+            targetType
+          );
+        }
+        resultType = DYN_TYPE;
+        break;
+    }
+    // If the target type was optional coming in, then the result must be
+    // optional going out.
+    if (isOptionalType(operandType) || optional) {
+      return optionalType(resultType);
+    }
+    return resultType;
   }
 
   setType(id: bigint, type: Type) {

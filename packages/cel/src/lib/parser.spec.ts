@@ -2486,7 +2486,7 @@ const testCases: TestInfo[] = [
         | .^
         ERROR: <input>:1:10: unsupported syntax '[?'
         | a.?b && a[?b]
-		| .........^`,
+		    | .........^`,
   },
   {
     I: `a.?b[?0] && a[?c]`,

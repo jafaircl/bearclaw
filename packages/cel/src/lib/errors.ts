@@ -117,6 +117,18 @@ export class Errors {
     return this.reportErrorAtId(id, location, `undefined field '${field}'`);
   }
 
+  public reportNotAnOptionalFieldSelection(
+    id: bigint,
+    location: Location,
+    field: string
+  ) {
+    return this.reportErrorAtId(
+      id,
+      location,
+      `unsupported optional field selection: ${field}`
+    );
+  }
+
   public reportNoMatchingOverload(
     id: bigint,
     location: Location,
