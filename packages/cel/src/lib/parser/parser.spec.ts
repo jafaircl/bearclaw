@@ -4,23 +4,23 @@ import { isNil } from '@bearclaw/is';
 import { Expr } from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb.js';
 import { Location } from '../common/ast';
 import { ACCUMULATOR_VAR } from '../common/constants';
+import { boolExpr } from '../common/types/bool';
+import { bytesExpr } from '../common/types/bytes';
+import { callExpr } from '../common/types/call';
+import { comprehensionExpr } from '../common/types/comprehension';
+import { doubleExpr } from '../common/types/double';
+import { identExpr } from '../common/types/ident';
+import { int64Expr } from '../common/types/int';
+import { listExpr } from '../common/types/list';
+import { nullExpr } from '../common/types/null';
+import { selectExpr } from '../common/types/select';
+import { stringExpr } from '../common/types/string';
 import {
-  boolExpr,
-  bytesExpr,
-  callExpr,
-  comprehensionExpr,
-  createStructFieldEntry,
-  createStructMapEntry,
-  doubleExpr,
-  identExpr,
-  int64Expr,
-  listExpr,
-  nullExpr,
-  selectExpr,
-  stringExpr,
   structExpr,
-  uint64Expr,
-} from '../common/utils';
+  structFieldEntry,
+  structMapEntry,
+} from '../common/types/struct';
+import { uint64Expr } from '../common/types/uint';
 import {
   ADD_OPERATOR,
   CONDITIONAL_OPERATOR,
@@ -644,10 +644,7 @@ const testCases: TestInfo[] = [
     P: structExpr(BigInt(1), {
       messageName: 'foo',
       entries: [
-        createStructFieldEntry(BigInt(2), {
-          key: 'a',
-          value: identExpr(BigInt(3), { name: 'b' }),
-        }),
+        structFieldEntry(BigInt(2), 'a', identExpr(BigInt(3), { name: 'b' })),
       ],
     }),
   },
@@ -660,14 +657,8 @@ const testCases: TestInfo[] = [
     P: structExpr(BigInt(1), {
       messageName: 'foo',
       entries: [
-        createStructFieldEntry(BigInt(2), {
-          key: 'a',
-          value: identExpr(BigInt(3), { name: 'b' }),
-        }),
-        createStructFieldEntry(BigInt(4), {
-          key: 'c',
-          value: identExpr(BigInt(5), { name: 'd' }),
-        }),
+        structFieldEntry(BigInt(2), 'a', identExpr(BigInt(3), { name: 'b' })),
+        structFieldEntry(BigInt(4), 'c', identExpr(BigInt(5), { name: 'd' })),
       ],
     }),
   },
@@ -684,14 +675,16 @@ const testCases: TestInfo[] = [
     // }^#1:*expr.Expr_StructExpr#`,
     P: structExpr(BigInt(1), {
       entries: [
-        createStructMapEntry(BigInt(2), {
-          key: identExpr(BigInt(3), { name: 'a' }),
-          value: identExpr(BigInt(4), { name: 'b' }),
-        }),
-        createStructMapEntry(BigInt(5), {
-          key: identExpr(BigInt(6), { name: 'c' }),
-          value: identExpr(BigInt(7), { name: 'd' }),
-        }),
+        structMapEntry(
+          BigInt(2),
+          identExpr(BigInt(3), { name: 'a' }),
+          identExpr(BigInt(4), { name: 'b' })
+        ),
+        structMapEntry(
+          BigInt(5),
+          identExpr(BigInt(6), { name: 'c' }),
+          identExpr(BigInt(7), { name: 'd' })
+        ),
       ],
     }),
   },
@@ -1265,14 +1258,8 @@ const testCases: TestInfo[] = [
     P: structExpr(BigInt(1), {
       messageName: 'SomeMessage',
       entries: [
-        createStructFieldEntry(BigInt(2), {
-          key: 'foo',
-          value: int64Expr(BigInt(3), BigInt(5)),
-        }),
-        createStructFieldEntry(BigInt(4), {
-          key: 'bar',
-          value: stringExpr(BigInt(5), 'xyz'),
-        }),
+        structFieldEntry(BigInt(2), 'foo', int64Expr(BigInt(3), BigInt(5))),
+        structFieldEntry(BigInt(4), 'bar', stringExpr(BigInt(5), 'xyz')),
       ],
     }),
   },
@@ -1314,14 +1301,16 @@ const testCases: TestInfo[] = [
     // }^#1:*expr.Expr_StructExpr#`,
     P: structExpr(BigInt(1), {
       entries: [
-        createStructMapEntry(BigInt(2), {
-          key: identExpr(BigInt(3), { name: 'foo' }),
-          value: int64Expr(BigInt(4), BigInt(5)),
-        }),
-        createStructMapEntry(BigInt(5), {
-          key: identExpr(BigInt(6), { name: 'bar' }),
-          value: stringExpr(BigInt(7), 'xyz'),
-        }),
+        structMapEntry(
+          BigInt(2),
+          identExpr(BigInt(3), { name: 'foo' }),
+          int64Expr(BigInt(4), BigInt(5))
+        ),
+        structMapEntry(
+          BigInt(5),
+          identExpr(BigInt(6), { name: 'bar' }),
+          stringExpr(BigInt(7), 'xyz')
+        ),
       ],
     }),
   },
@@ -1333,14 +1322,16 @@ const testCases: TestInfo[] = [
     // }^#1:*expr.Expr_StructExpr#`,
     P: structExpr(BigInt(1), {
       entries: [
-        createStructMapEntry(BigInt(2), {
-          key: identExpr(BigInt(3), { name: 'foo' }),
-          value: int64Expr(BigInt(4), BigInt(5)),
-        }),
-        createStructMapEntry(BigInt(5), {
-          key: identExpr(BigInt(6), { name: 'bar' }),
-          value: stringExpr(BigInt(7), 'xyz'),
-        }),
+        structMapEntry(
+          BigInt(2),
+          identExpr(BigInt(3), { name: 'foo' }),
+          int64Expr(BigInt(4), BigInt(5))
+        ),
+        structMapEntry(
+          BigInt(5),
+          identExpr(BigInt(6), { name: 'bar' }),
+          stringExpr(BigInt(7), 'xyz')
+        ),
       ],
     }),
   },
@@ -1461,14 +1452,16 @@ const testCases: TestInfo[] = [
     // }^#1:*expr.Expr_StructExpr#`,
     P: structExpr(BigInt(1), {
       entries: [
-        createStructMapEntry(BigInt(2), {
-          key: int64Expr(BigInt(3), BigInt(1)),
-          value: uint64Expr(BigInt(4), BigInt(2)),
-        }),
-        createStructMapEntry(BigInt(5), {
-          key: int64Expr(BigInt(6), BigInt(2)),
-          value: uint64Expr(BigInt(7), BigInt(3)),
-        }),
+        structMapEntry(
+          BigInt(2),
+          int64Expr(BigInt(3), BigInt(1)),
+          uint64Expr(BigInt(4), BigInt(2))
+        ),
+        structMapEntry(
+          BigInt(5),
+          int64Expr(BigInt(6), BigInt(2)),
+          uint64Expr(BigInt(7), BigInt(3))
+        ),
       ],
     }),
   },
@@ -1481,14 +1474,16 @@ const testCases: TestInfo[] = [
     P: structExpr(BigInt(1), {
       messageName: 'TestAllTypes',
       entries: [
-        createStructFieldEntry(BigInt(2), {
-          key: 'single_int32',
-          value: int64Expr(BigInt(3), BigInt(1)),
-        }),
-        createStructFieldEntry(BigInt(4), {
-          key: 'single_int64',
-          value: int64Expr(BigInt(5), BigInt(2)),
-        }),
+        structFieldEntry(
+          BigInt(2),
+          'single_int32',
+          int64Expr(BigInt(3), BigInt(1))
+        ),
+        structFieldEntry(
+          BigInt(4),
+          'single_int64',
+          int64Expr(BigInt(5), BigInt(2))
+        ),
       ],
     }),
   },
@@ -2585,11 +2580,12 @@ const testCases: TestInfo[] = [
     P: structExpr(BigInt(1), {
       messageName: 'Msg',
       entries: [
-        createStructFieldEntry(BigInt(2), {
-          key: 'field',
-          value: identExpr(BigInt(3), { name: 'value' }),
-          optionalEntry: true,
-        }),
+        structFieldEntry(
+          BigInt(2),
+          'field',
+          identExpr(BigInt(3), { name: 'value' }),
+          true
+        ),
       ],
     }),
   },

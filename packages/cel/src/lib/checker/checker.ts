@@ -4,7 +4,6 @@ import { isEmpty, isNil } from '@bearclaw/is';
 import {
   CheckedExprSchema,
   Decl,
-  Decl_FunctionDecl,
   Decl_IdentDecl,
   Reference,
   Type,
@@ -12,17 +11,14 @@ import {
 } from '@buf/google_cel-spec.bufbuild_es/cel/expr/checked_pb';
 import {
   Expr,
-  Expr_Call,
-  Expr_Comprehension,
-  Expr_CreateList,
-  Expr_CreateStruct,
-  Expr_Ident,
-  Expr_Select,
   ParsedExpr,
 } from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb.js';
 import { create } from '@bufbuild/protobuf';
 import { getLocationByOffset } from '../common/ast';
-import { functionReference } from '../common/decls/function-decl';
+import {
+  functionReference,
+  unwrapFunctionDecl,
+} from '../common/decls/function-decl';
 import {
   identDecl,
   identReference,
@@ -31,12 +27,16 @@ import {
 import { Errors } from '../common/errors';
 import { BOOL_TYPE } from '../common/types/bool';
 import { BYTES_TYPE } from '../common/types/bytes';
+import { unwrapCallExpr } from '../common/types/call';
+import { unwrapComprehensionExpr } from '../common/types/comprehension';
+import { isConstExpr, unwrapConstExpr } from '../common/types/constant';
 import { DOUBLE_TYPE } from '../common/types/double';
 import { DYN_TYPE, isDynType } from '../common/types/dyn';
 import { ERROR_TYPE } from '../common/types/error';
 import { functionType } from '../common/types/function';
+import { unwrapIdentExpr } from '../common/types/ident';
 import { INT64_TYPE } from '../common/types/int';
-import { listType } from '../common/types/list';
+import { listType, unwrapCreateList } from '../common/types/list';
 import { mapType } from '../common/types/map';
 import { NULL_TYPE } from '../common/types/null';
 import {
@@ -44,7 +44,9 @@ import {
   maybeUnwrapOptionalType,
   optionalType,
 } from '../common/types/optional';
+import { unwrapSelectExpr } from '../common/types/select';
 import { STRING_TYPE } from '../common/types/string';
+import { unwrapStructExpr } from '../common/types/struct';
 import { typeParamType } from '../common/types/type-param';
 import { UINT64_TYPE } from '../common/types/uint';
 import { isDynTypeOrErrorType } from '../common/types/utils';
@@ -147,7 +149,7 @@ export class CELChecker {
   }
 
   checkConstExpr(expr: Expr) {
-    if (expr.exprKind.case !== 'constExpr') {
+    if (!isConstExpr(expr)) {
       this.#errors.reportUnexpectedAstTypeError(
         expr.id,
         this.getLocationById(expr.id),
@@ -157,7 +159,9 @@ export class CELChecker {
       this.setType(expr.id, ERROR_TYPE);
       return expr;
     }
-    switch (expr.exprKind.value.constantKind.case) {
+    1;
+    const constant = unwrapConstExpr(expr)!;
+    switch (constant.constantKind.case) {
       case 'boolValue':
         this.setType(expr.id, BOOL_TYPE);
         break;
@@ -190,7 +194,7 @@ export class CELChecker {
           expr.id,
           this.getLocationById(expr.id),
           'constExpr',
-          expr.exprKind.value.constantKind.case!
+          constant.constantKind.case!
         );
         this.setType(expr.id, ERROR_TYPE);
         break;
@@ -199,7 +203,7 @@ export class CELChecker {
   }
 
   checkIdentExpr(expr: Expr) {
-    const identExpr = expr.exprKind.value as Expr_Ident;
+    const identExpr = unwrapIdentExpr(expr)!;
     const ident = this.env.lookupIdent(identExpr.name);
     if (!isNil(ident)) {
       const unwrapped = unwrapIdentDecl(ident)!;
@@ -220,7 +224,7 @@ export class CELChecker {
   }
 
   checkSelect(expr: Expr) {
-    const sel = expr.exprKind.value as Expr_Select;
+    const sel = unwrapSelectExpr(expr)!;
     // Before traversing down the tree, try to interpret as qualified name.
     const qname = toQualifiedName(expr);
     if (!isNil(qname)) {
@@ -255,7 +259,7 @@ export class CELChecker {
     // Note: similar logic exists within the `interpreter/planner.go`. If
     // making changes here please consider the impact on planner.go and
     // consolidate implementations or mirror code as appropriate.
-    const call = expr.exprKind.value as Expr_Call;
+    const call = unwrapCallExpr(expr)!;
     const fnName = call.function;
     if (fnName === OPT_SELECT_OPERATOR) {
       return this.checkOptSelect(expr);
@@ -355,7 +359,7 @@ export class CELChecker {
     target: Expr | null,
     args: Expr[]
   ): OverloadResolution | null {
-    const fn = fnDecl.declKind.value as Decl_FunctionDecl;
+    const fn = unwrapFunctionDecl(fnDecl)!;
     const argTypes: Type[] = [];
     if (!isNil(target)) {
       const argType = this.getType(target.id);
@@ -439,7 +443,7 @@ export class CELChecker {
   }
 
   checkCreateList(expr: Expr) {
-    const create = expr.exprKind.value as Expr_CreateList;
+    const create = unwrapCreateList(expr)!;
     let elemType: Type | undefined = undefined;
     for (let i = 0; i < create.elements.length; i++) {
       const e = create.elements[i];
@@ -455,7 +459,7 @@ export class CELChecker {
   }
 
   checkCreateStruct(expr: Expr) {
-    const struct = expr.exprKind.value as Expr_CreateStruct;
+    const struct = unwrapStructExpr(expr)!;
     if (!isEmpty(struct.messageName)) {
       return this.checkCreateMessage(expr);
     }
@@ -463,7 +467,7 @@ export class CELChecker {
   }
 
   checkCreateMap(expr: Expr) {
-    const mapVal = expr.exprKind.value as Expr_CreateStruct;
+    const mapVal = unwrapStructExpr(expr)!;
     let keyType: Type | undefined = undefined;
     let valueType: Type | undefined = undefined;
     for (let i = 0; i < mapVal.entries.length; i++) {
@@ -486,7 +490,7 @@ export class CELChecker {
   }
 
   checkCreateMessage(expr: Expr) {
-    const mapVal = expr.exprKind.value as Expr_CreateStruct;
+    const mapVal = unwrapStructExpr(expr)!;
     // Determine the type of the message.
     let messageType: Type = ERROR_TYPE;
     const decl = this.env.lookupIdent(mapVal.messageName);
@@ -572,7 +576,7 @@ export class CELChecker {
   }
 
   checkComprehension(expr: Expr) {
-    const comp = expr.exprKind.value as Expr_Comprehension;
+    const comp = unwrapComprehensionExpr(expr)!;
     this.checkExpr(comp.iterRange);
     this.checkExpr(comp.accuInit);
     const accuType = this.getType(comp.accuInit!.id);
@@ -634,7 +638,7 @@ export class CELChecker {
 
   checkOptSelect(expr: Expr) {
     // Collect metadata related to the opt select call packaged by the parser.
-    const call = expr.exprKind.value as Expr_Call;
+    const call = unwrapCallExpr(expr)!;
     const operand = call.args[0];
     const field = call.args[1];
     if (

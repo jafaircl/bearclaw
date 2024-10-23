@@ -16,7 +16,7 @@ import {
   ParserRuleContext,
   Token,
 } from 'antlr4';
-import { Location, OffsetRange } from '../checker/types';
+import { Location, OffsetRange } from '../common/ast';
 import {
   RESERVED_IDS,
   parseBytesConstant,
@@ -30,19 +30,19 @@ import {
   LexerErrorListener,
   ParserErrorListener,
 } from '../common/errors';
+import { boolExpr } from '../common/types/bool';
+import { callExpr } from '../common/types/call';
+import { constExpr } from '../common/types/constant';
+import { identExpr } from '../common/types/ident';
+import { listExpr } from '../common/types/list';
+import { nullExpr } from '../common/types/null';
+import { selectExpr } from '../common/types/select';
+import { stringExpr } from '../common/types/string';
 import {
-  boolExpr,
-  callExpr,
-  constExpr,
-  createStructFieldEntry,
-  createStructMapEntry,
-  identExpr,
-  listExpr,
-  nullExpr,
-  selectExpr,
-  stringExpr,
   structExpr,
-} from '../common/utils';
+  structFieldEntry,
+  structMapEntry,
+} from '../common/types/struct';
 import { ParseException } from '../exceptions';
 import CELLexer from '../gen/CELLexer';
 import {
@@ -471,11 +471,12 @@ export class CELParser extends GeneratedCelVisitor<Expr> {
         return this._reportError(ctx, 'no valid identifier specified');
       }
       fields.push(
-        createStructFieldEntry(exprId, {
-          key: id.getText(),
-          value: this.visit(ctx._values[i]),
-          optionalEntry,
-        })
+        structFieldEntry(
+          exprId,
+          id.getText(),
+          this.visit(ctx._values[i]),
+          optionalEntry
+        )
       );
     }
     return structExpr(this.#helper.nextId(ctx), { entries: fields });
@@ -501,13 +502,7 @@ export class CELParser extends GeneratedCelVisitor<Expr> {
       }
       const key = this.visit(optKey._e);
       const value = this.visit(ctx._values[i]);
-      fields.push(
-        createStructMapEntry(colId, {
-          key,
-          value,
-          optionalEntry,
-        })
-      );
+      fields.push(structMapEntry(colId, key, value, optionalEntry));
     }
     return structExpr(this.#helper.nextId(ctx), { entries: fields });
   };

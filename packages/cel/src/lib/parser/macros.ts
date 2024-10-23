@@ -4,16 +4,13 @@ import { Expr } from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb.js';
 import { ParserRuleContext, Token } from 'antlr4';
 import { Location, OffsetRange } from '../common/ast';
 import { ACCUMULATOR_VAR } from '../common/constants';
-import {
-  boolExpr,
-  callExpr,
-  comprehensionExpr,
-  extractIdent,
-  identExpr,
-  int64Expr,
-  listExpr,
-  selectExpr,
-} from '../common/utils';
+import { boolExpr } from '../common/types/bool';
+import { callExpr } from '../common/types/call';
+import { comprehensionExpr } from '../common/types/comprehension';
+import { identExpr, unwrapIdentExpr } from '../common/types/ident';
+import { int64Expr } from '../common/types/int';
+import { listExpr } from '../common/types/list';
+import { selectExpr } from '../common/types/select';
 import {
   ADD_OPERATOR,
   ALL_MACRO,
@@ -209,7 +206,7 @@ export function expandMapMacro(
   target: Expr,
   args: Expr[]
 ): Expr {
-  const v = extractIdent(args[0]);
+  const v = unwrapIdentExpr(args[0]);
   if (isNil(v)) {
     throw new MacroError('argument is not an identifier', ctx, args[0]);
   }
@@ -239,7 +236,7 @@ export function expandMapMacro(
   const result = identExpr(helper.nextId(ctx), { name: ACCUMULATOR_VAR });
   return comprehensionExpr(helper.nextId(ctx), {
     iterRange: target,
-    iterVar: v,
+    iterVar: v.name,
     accuVar: ACCUMULATOR_VAR,
     accuInit: init,
     loopCondition: condition,
@@ -254,7 +251,7 @@ export function expandFilterMacro(
   target: Expr,
   args: Expr[]
 ): Expr {
-  const v = extractIdent(args[0]);
+  const v = unwrapIdentExpr(args[0]);
   if (isNil(v)) {
     throw new MacroError('argument is not an identifier', ctx, args[0]);
   }
@@ -275,7 +272,7 @@ export function expandFilterMacro(
   const result = identExpr(helper.nextId(ctx), { name: ACCUMULATOR_VAR });
   return comprehensionExpr(helper.nextId(ctx), {
     iterRange: target,
-    iterVar: v,
+    iterVar: v.name,
     accuVar: ACCUMULATOR_VAR,
     accuInit: listInit,
     loopCondition: condition,
