@@ -146,3 +146,7 @@ export function getWellKNownTypeName(type: Type_WellKnownType): string | null {
       return null;
   }
 }
+
+export function typeNameToUrl(name: string): string {
+  return `type.googleapis.com/${name}`;
+}

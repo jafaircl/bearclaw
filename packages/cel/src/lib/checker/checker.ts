@@ -25,6 +25,7 @@ import {
   unwrapIdentDecl,
 } from '../common/decls/ident-decl';
 import { Errors } from '../common/errors';
+import { formatCELType } from '../common/format';
 import { BOOL_TYPE } from '../common/types/bool';
 import { BYTES_TYPE } from '../common/types/bytes';
 import { unwrapCallExpr } from '../common/types/call';
@@ -60,7 +61,6 @@ import { mapToObject, toQualifiedName } from '../common/utils';
 import { CELEnvironment } from '../environment';
 import { OPT_SELECT_OPERATOR } from '../operators';
 import {
-  formatCELType,
   isAssignable,
   isAssignableList,
   isExactType,
@@ -93,7 +93,11 @@ export class CELChecker {
   }
 
   public get errors() {
-    return this.#errors;
+    return this.#errors.errors.errors;
+  }
+
+  public errorsToDisplayString() {
+    return this.#errors.toDisplayString();
   }
 
   check(expr: Expr = this.parsed.expr!) {

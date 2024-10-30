@@ -28,6 +28,16 @@ export function mapToObject<K extends string | number | symbol, V>(
   return obj;
 }
 
+export function objectToMap<K extends string | number | symbol, V>(
+  obj: Record<K, V>
+) {
+  const map = new Map<K, V>();
+  for (const key of Object.keys(obj) as K[]) {
+    map.set(key, obj[key]);
+  }
+  return map;
+}
+
 /**
  * Converts an expression AST into a qualified name if possible, or an empty
  * string otherwise.

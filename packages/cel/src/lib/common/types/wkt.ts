@@ -3,7 +3,12 @@ import {
   TypeSchema,
   Type_WellKnownType,
 } from '@buf/google_cel-spec.bufbuild_es/cel/expr/checked_pb';
-import { create } from '@bufbuild/protobuf';
+import { create, createRegistry } from '@bufbuild/protobuf';
+import {
+  AnySchema,
+  DurationSchema,
+  TimestampSchema,
+} from '@bufbuild/protobuf/wkt';
 import { BOOL_TYPE } from './bool';
 import { BYTES_TYPE } from './bytes';
 import { DOUBLE_TYPE } from './double';
@@ -106,3 +111,9 @@ export function getCheckedWellKnownType(value: string) {
       return null;
   }
 }
+
+export const WKT_REGISTRY = createRegistry(
+  AnySchema,
+  DurationSchema,
+  TimestampSchema
+);

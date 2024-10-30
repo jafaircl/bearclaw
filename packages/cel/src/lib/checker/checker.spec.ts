@@ -2483,20 +2483,20 @@ describe('CELChecker', () => {
           if (
             testCase.outType !== ERROR_TYPE &&
             !testCase.err &&
-            checker.errors.errors.errors.length > 0
+            checker.errors.length > 0
           ) {
             throw new Error(
-              'Unexpected errors: ' + checker.errors.toDisplayString()
+              'Unexpected errors: ' + checker.errorsToDisplayString()
             );
           }
         } catch (e) {
-          console.log(checker.errors.toDisplayString());
+          console.log(checker.errorsToDisplayString());
           console.dir({ expected, got }, { depth: null });
           throw e;
         }
       }
       if (testCase.err) {
-        expect(checker.errors.toDisplayString()).toEqual(
+        expect(checker.errorsToDisplayString()).toEqual(
           // Account for the difference in spacing between the test case and
           // the error message
           testCase.err

@@ -12,9 +12,10 @@ import {
 import { create, createRegistry } from '@bufbuild/protobuf';
 import { anyPack, anyUnpack } from '@bufbuild/protobuf/wkt';
 import { ErrorListener, RecognitionException, Recognizer, Token } from 'antlr4';
-import { formatCELType, formatFunctionType } from '../checker/types';
+import { formatFunctionType } from '../checker/types';
 import { Location } from './ast';
 import { CELContainer } from './container';
+import { formatCELType } from './format';
 
 export class Errors {
   public readonly errors = create(ErrorSetSchema);

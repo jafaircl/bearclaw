@@ -57,6 +57,7 @@
     "antlr4": "^4.13.2",
     "class-transformer": "^0.5.1",
     "deep-freeze-strict": "^1.1.1",
+    "dequal": "^2.0.3",
     "fast-json-stable-stringify": "^2.1.0",
     "immer": "^9.0.15",
     "just-extend": "^6.1.1",

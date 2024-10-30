@@ -13,6 +13,14 @@ export function typeType(value: Type) {
   });
 }
 
+export const TYPE_TYPE = create(TypeSchema, {
+  typeKind: {
+    case: 'type',
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    value: null as any,
+  },
+});
+
 export function isTypeType(value: Type): value is Type & {
   typeKind: { case: 'type'; value: Type };
 } {

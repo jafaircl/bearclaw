@@ -5,6 +5,7 @@ import {
 } from '@buf/google_cel-spec.bufbuild_es/cel/expr/checked_pb.js';
 import { create } from '@bufbuild/protobuf';
 import { EmptySchema, NullValue } from '@bufbuild/protobuf/wkt';
+import { formatCELType } from '../common/format';
 import { abstractType } from '../common/types/abstract';
 import { DYN_TYPE } from '../common/types/dyn';
 import { ERROR_TYPE } from '../common/types/error';
@@ -20,7 +21,7 @@ import { typeType } from '../common/types/type';
 import { typeParamType } from '../common/types/type-param';
 import { wellKnownType } from '../common/types/wkt';
 import { wrapperType } from '../common/types/wrapper';
-import { formatCELType, isAssignableType, isExactType } from './types';
+import { isAssignableType, isExactType } from './types';
 
 describe('types', () => {
   it('DYN_TYPE', () => {

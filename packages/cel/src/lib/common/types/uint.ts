@@ -14,6 +14,7 @@ import {
 } from '@buf/google_cel-spec.bufbuild_es/cel/expr/value_pb.js';
 import { create } from '@bufbuild/protobuf';
 import { isConstExpr } from './constant';
+import { MAX_INT64 } from './int';
 import { primitiveType } from './primitive';
 
 export const UINT64_TYPE = primitiveType(Type_PrimitiveType.UINT64);
@@ -81,4 +82,13 @@ export function isUint64Value(value: Value): value is Value & {
   kind: { case: 'uint64Value'; value: bigint };
 } {
   return value.kind.case === 'uint64Value';
+}
+
+export function isValidUint64(value: bigint) {
+  return (
+    !Number.isNaN(value) &&
+    value >= BigInt(0) &&
+    value <= MAX_INT64 &&
+    value <= Infinity
+  );
 }
