@@ -1,3 +1,5 @@
+import { isFunction } from '@bearclaw/is';
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export class Cost {
   public static Unknown: Cost = new Cost(0, Number.MAX_VALUE);
@@ -14,8 +16,8 @@ export class Cost {
   /**
    * estimateCost returns the heuristic cost interval for the program.
    */
-  public estimateCost(obj: any): Cost {
-    if (obj instanceof Coster) {
+  public static estimateCost(obj: any): Cost {
+    if (isFunction(obj.cost)) {
       return obj.cost();
     }
     return Cost.Unknown;
@@ -37,10 +39,6 @@ export class Cost {
 /**
  * Coster calculates the heuristic cost incurred during evaluation.
  */
-export class Coster {
-  constructor(private readonly _cost: Cost = Cost.Unknown) {}
-
-  cost(): Cost {
-    return this._cost;
-  }
+export interface Coster {
+  cost(): Cost;
 }

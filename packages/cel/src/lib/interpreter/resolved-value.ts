@@ -8,6 +8,6 @@ export class ResolvedValue<T = any> {
   constructor(public readonly value: T, public readonly present: boolean) {}
 
   equals(other: ResolvedValue<T>): boolean {
-    return dequal(this, other);
+    return this.present === other.present && dequal(this.value, other.value);
   }
 }
