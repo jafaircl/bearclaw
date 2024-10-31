@@ -1,24 +1,35 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { isMap, isNil } from '@bearclaw/is';
-import { dequal } from 'dequal';
+import { isMap, isNil, isPlainObject } from '@bearclaw/is';
 import { objectToMap } from '../common/utils';
+import { ResolvedValue } from './resolved-value';
 
-export class ResolvedValue<T> {
-  public static readonly NULL_VALUE = new ResolvedValue(null, true);
-  public static readonly ABSENT = new ResolvedValue(null, false);
+/**
+ * Activation used to resolve identifiers by name and references by id.
+ *
+ * An Activation is the primary mechanism by which a caller supplies input
+ * into a CEL program.
+ */
+export interface Activation {
+  /**
+   * ResolveName returns a value from the activation by qualified name, or
+   * false if the name could not be found.
+   */
+  resolveName<T>(name: string): ResolvedValue<T> | null;
 
-  constructor(public readonly value: T, public readonly present: boolean) {}
-
-  equals(other: ResolvedValue<T>): boolean {
-    return dequal(this, other);
-  }
+  /**
+   * Parent returns the parent of the current activation, may be nil. If
+   * non-nil, the parent will be searched during resolve calls.
+   */
+  parent(): Activation | null;
 }
 
-export abstract class Activation {
-  abstract resolveName<T>(name: string): ResolvedValue<T> | null;
-}
-
+/**
+ * mapActivation which implements Activation and maps of named values.
+ *
+ * Named bindings may lazily supply values by providing a function which
+ * accepts no arguments and produces an interface value.
+ */
 export class MapActivation implements Activation {
   #bindings: Map<string, any>;
 
@@ -38,4 +49,107 @@ export class MapActivation implements Activation {
     }
     return new ResolvedValue(obj, true);
   }
+
+  public parent(): Activation | null {
+    return null;
+  }
+}
+
+/**
+ * FunctionActivation which implements Activation and a provider of named
+ * values.
+ */
+export class FunctionActivation implements Activation {
+  #provider: (name: string) => any;
+
+  constructor(provider: (name: string) => any) {
+    this.#provider = provider;
+  }
+
+  parent(): Activation | null {
+    return null;
+  }
+
+  resolveName<T>(name: string): ResolvedValue<T> | null {
+    const obj = this.#provider(name);
+    if (obj instanceof ResolvedValue) {
+      return obj;
+    } else if (isNil(obj)) {
+      return ResolvedValue.ABSENT as ResolvedValue<T>;
+    }
+    return new ResolvedValue(obj, true);
+  }
+}
+
+/**
+ * HierarchicalActivation which implements Activation and contains a parent and
+ * child activation.
+ */
+export class HierarchicalActivation implements Activation {
+  #parent: Activation;
+  #child: Activation;
+
+  constructor(parent: Activation, child: Activation) {
+    this.#parent = parent;
+    this.#child = child;
+  }
+
+  public resolveName<T>(name: string): ResolvedValue<T> | null {
+    const value = this.#child.resolveName<T>(name);
+    if (!isNil(value)) {
+      return value;
+    }
+    return this.#parent.resolveName<T>(name);
+  }
+
+  public parent(): Activation | null {
+    return this.#parent;
+  }
+}
+
+/**
+ * NewActivation returns an activation based on a map-based binding where the
+ * map keys are expected to be qualified names used with ResolveName calls.
+ *
+ * The input `bindings` may either be of type `Activation` or
+ * `map[stringinterface{}`.
+ *
+ * Lazy bindings may be supplied within the map-based input in either of the
+ * following forms:
+ *   - func() interface{}
+ *   - func() ref.Val
+ *
+ * The output of the lazy binding will overwrite the variable reference in the
+ * internal map.
+ *
+ * Values which are not represented as ref.Val types on input may be adapted to
+ * a ref.Val using the ref.TypeAdapter configured in the environment.
+ */
+export function newActivation(bindings: any) {
+  if (isNil(bindings)) {
+    throw new Error('bindings must be non-nil');
+  }
+  if (
+    bindings instanceof MapActivation ||
+    bindings instanceof FunctionActivation ||
+    bindings instanceof HierarchicalActivation
+  ) {
+    return bindings;
+  }
+  if (bindings instanceof Map || isPlainObject(bindings)) {
+    return new MapActivation(bindings);
+  }
+  if (typeof bindings === 'function') {
+    return new FunctionActivation(bindings);
+  }
+  throw new Error(
+    `activation input must be an activation or map[string]interface: got ${typeof bindings}`
+  );
+}
+
+/**
+ * EmptyActivation returns a variable free activation.
+ */
+export function emptyActivation() {
+  return newActivation(new Map<string, any>());
 }
