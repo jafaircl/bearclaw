@@ -9,11 +9,20 @@ import {
   TestAllTypes_NestedEnumSchema as TestAllTypes_NestedEnumSchemaProto3,
   TestAllTypes_NestedMessageSchema as TestAllTypes_NestedMessageSchemaProto3,
 } from '@buf/cel_spec.bufbuild_es/proto/test/v1/proto3/test_all_types_pb.js';
-import { Type } from '@buf/google_cel-spec.bufbuild_es/cel/expr/checked_pb.js';
+import {
+  Decl,
+  Type,
+} from '@buf/google_cel-spec.bufbuild_es/cel/expr/checked_pb.js';
 import { createMutableRegistry } from '@bufbuild/protobuf';
 import { CELContainer } from '../common/container';
 import { functionDecl, overloadDecl } from '../common/decls/function-decl';
 import { identDecl } from '../common/decls/ident-decl';
+import { ProtoTypeRegistry } from '../common/pb/proto-type-registry';
+import {
+  STANDARD_DESCRIPTORS,
+  STANDARD_FUNCTION_DECLARATIONS,
+  STANDARD_IDENT_DECLARATIONS,
+} from '../common/standard';
 import { abstractType } from '../common/types/abstract';
 import { BOOL_TYPE } from '../common/types/bool';
 import { BYTES_TYPE } from '../common/types/bytes';
@@ -30,9 +39,9 @@ import { ABSTRACT_OPTIONAL_TYPE, optionalType } from '../common/types/optional';
 import { STRING_TYPE } from '../common/types/string';
 import { typeParamType } from '../common/types/type-param';
 import { UINT64_TYPE } from '../common/types/uint';
-import { CELEnvironment, STANDARD_ENV } from '../environment';
 import { CELParser, CELParserOptions } from '../parser/parser';
 import { CELChecker } from './checker';
+import { CheckerEnv } from './env';
 
 interface TestInfo {
   // in contains the expression to be parsed.
@@ -48,7 +57,7 @@ interface TestInfo {
   container?: string;
 
   // env is the environment to use for testing.
-  env?: CELEnvironment;
+  env?: CheckerEnv;
 
   // err is the expected error for negative test cases.
   err?: string;
@@ -62,45 +71,71 @@ interface TestInfo {
 }
 
 function getDefaultEnv() {
-  return STANDARD_ENV().extend({
-    registry: createMutableRegistry(
-      TestAllTypesSchemaProto3,
-      TestAllTypes_NestedMessageSchemaProto3,
-      TestAllTypes_NestedEnumSchemaProto3,
-      TestAllTypesSchemaProto2,
-      TestAllTypes_NestedMessageSchemaProto2,
-      TestAllTypes_NestedEnumSchemaProto2
-    ),
-    idents: [
-      identDecl('is', { type: STRING_TYPE }),
-      identDecl('ii', { type: INT64_TYPE }),
-      identDecl('iu', { type: UINT64_TYPE }),
-      identDecl('iz', { type: BOOL_TYPE }),
-      identDecl('ib', { type: BYTES_TYPE }),
-      identDecl('id', { type: DOUBLE_TYPE }),
-      identDecl('ix', { type: NULL_TYPE }),
-    ],
-    functions: [
-      functionDecl('fg_s', {
-        overloads: [
-          {
-            overloadId: 'fg_s_0',
-            resultType: STRING_TYPE,
-          },
-        ],
-      }),
-      functionDecl('fi_s_s', {
-        overloads: [
-          {
-            overloadId: 'fi_s_s_0',
-            params: [STRING_TYPE],
-            resultType: STRING_TYPE,
-            isInstanceFunction: true,
-          },
-        ],
-      }),
-    ],
-  });
+  const container = new CELContainer();
+  const registry = createMutableRegistry(
+    ...STANDARD_DESCRIPTORS,
+    TestAllTypesSchemaProto3,
+    TestAllTypes_NestedMessageSchemaProto3,
+    TestAllTypes_NestedEnumSchemaProto3,
+    TestAllTypesSchemaProto2,
+    TestAllTypes_NestedMessageSchemaProto2,
+    TestAllTypes_NestedEnumSchemaProto2
+  );
+  const provider = new ProtoTypeRegistry(undefined, registry);
+  const env = new CheckerEnv(container, provider);
+  env.addIdents(
+    ...STANDARD_IDENT_DECLARATIONS,
+    identDecl('is', { type: STRING_TYPE }),
+    identDecl('ii', { type: INT64_TYPE }),
+    identDecl('iu', { type: UINT64_TYPE }),
+    identDecl('iz', { type: BOOL_TYPE }),
+    identDecl('ib', { type: BYTES_TYPE }),
+    identDecl('id', { type: DOUBLE_TYPE }),
+    identDecl('ix', { type: NULL_TYPE })
+  );
+  env.addFunctions(
+    ...STANDARD_FUNCTION_DECLARATIONS,
+    functionDecl('fg_s', {
+      overloads: [
+        {
+          overloadId: 'fg_s_0',
+          resultType: STRING_TYPE,
+        },
+      ],
+    }),
+    functionDecl('fi_s_s', {
+      overloads: [
+        {
+          overloadId: 'fi_s_s_0',
+          params: [STRING_TYPE],
+          resultType: STRING_TYPE,
+          isInstanceFunction: true,
+        },
+      ],
+    })
+  );
+  return env;
+}
+
+function extendEnv(
+  env: CheckerEnv,
+  options: { container?: CELContainer; idents?: Decl[]; functions?: Decl[] }
+) {
+  const container = options.container ?? env.container;
+  const idents = options.idents ?? [];
+  const functions = options.functions ?? [];
+  const provider = env.provider;
+  const newEnv = new CheckerEnv(container, provider);
+  for (const ident of [...idents, ...env.declarations.scopes.idents.values()]) {
+    newEnv.addIdent(ident);
+  }
+  for (const fn of [
+    ...functions,
+    ...env.declarations.scopes.functions.values(),
+  ]) {
+    newEnv.setFunction(fn);
+  }
+  return newEnv;
 }
 
 const testCases: TestInfo[] = [
@@ -109,7 +144,7 @@ const testCases: TestInfo[] = [
     in: `a.b`,
     out: `a.b~bool`,
     outType: STRING_TYPE,
-    env: new CELEnvironment({
+    env: extendEnv(getDefaultEnv(), {
       idents: [
         identDecl('a', {
           type: mapType({
@@ -311,7 +346,7 @@ _+_(
       single_int64 : 2~int
   }~google.api.expr.test.v1.proto3.TestAllTypes^google.api.expr.test.v1.proto3.TestAllTypes`,
     outType: messageType('google.api.expr.test.v1.proto3.TestAllTypes'),
-    env: getDefaultEnv().extend({
+    env: extendEnv(getDefaultEnv(), {
       container: new CELContainer('google.api.expr.test.v1.proto3'),
     }),
   },
@@ -322,7 +357,7 @@ _+_(
 ERROR: <input>:1:26: expected type of field 'single_int32' is 'int' but provided type is 'uint'
 | TestAllTypes{single_int32: 1u}
 | .........................^`,
-    env: getDefaultEnv().extend({
+    env: extendEnv(getDefaultEnv(), {
       container: new CELContainer('google.api.expr.test.v1.proto3'),
     }),
   },
@@ -333,7 +368,7 @@ ERROR: <input>:1:26: expected type of field 'single_int32' is 'int' but provided
 ERROR: <input>:1:40: undefined field 'undefined'
 | TestAllTypes{single_int32: 1, undefined: 2}
 | .......................................^`,
-    env: getDefaultEnv().extend({
+    env: extendEnv(getDefaultEnv(), {
       container: new CELContainer('google.api.expr.test.v1.proto3'),
     }),
   },
@@ -342,7 +377,7 @@ ERROR: <input>:1:40: undefined field 'undefined'
     out: `
 _==_(size(x~list(int)^x)~int^size_list, x~list(int)^x.size()~int^list_size)
 ~bool^equals`,
-    env: getDefaultEnv().extend({
+    env: extendEnv(getDefaultEnv(), {
       idents: [identDecl('x', { type: listType({ elemType: INT64_TYPE }) })],
     }),
     outType: BOOL_TYPE,
@@ -435,7 +470,7 @@ _!=_(_-_(_+_(1~double, _*_(2~double, 3~double)~double^multiply_double)
   },
   {
     in: `x.single_int32 != null`,
-    env: getDefaultEnv().extend({
+    env: extendEnv(getDefaultEnv(), {
       idents: [
         identDecl('x', {
           type: messageType('google.api.expr.test.v1.proto3.Proto2Message'),
@@ -450,7 +485,7 @@ ERROR: <input>:1:2: unexpected failed resolution of 'google.api.expr.test.v1.pro
   },
   {
     in: `x.single_value + 1 / x.single_struct.y == 23`,
-    env: getDefaultEnv().extend({
+    env: extendEnv(getDefaultEnv(), {
       idents: [
         identDecl('x', {
           type: messageType('google.api.expr.test.v1.proto3.TestAllTypes'),
@@ -471,7 +506,7 @@ ERROR: <input>:1:2: unexpected failed resolution of 'google.api.expr.test.v1.pro
   },
   {
     in: `x.single_value[23] + x.single_struct['y']`,
-    env: getDefaultEnv().extend({
+    env: extendEnv(getDefaultEnv(), {
       idents: [
         identDecl('x', {
           type: messageType('google.api.expr.test.v1.proto3.TestAllTypes'),
@@ -494,7 +529,7 @@ ERROR: <input>:1:2: unexpected failed resolution of 'google.api.expr.test.v1.pro
   {
     in: `TestAllTypes.NestedEnum.BAR != 99`,
     container: 'google.api.expr.test.v1.proto3',
-    env: getDefaultEnv().extend({
+    env: extendEnv(getDefaultEnv(), {
       container: new CELContainer('google.api.expr.test.v1.proto3'),
     }),
     out: `_!=_(google.api.expr.test.v1.proto3.TestAllTypes.NestedEnum.BAR
@@ -552,7 +587,7 @@ ERROR: <input>:1:2: unexpected failed resolution of 'google.api.expr.test.v1.pro
           )~bool^equals
       )~bool^logical_and
   )~bool^logical_and`,
-    env: getDefaultEnv().extend({
+    env: extendEnv(getDefaultEnv(), {
       idents: [
         identDecl('x', { type: messageType('google.protobuf.Struct') }),
         identDecl('y', { type: messageType('google.protobuf.ListValue') }),
@@ -563,7 +598,7 @@ ERROR: <input>:1:2: unexpected failed resolution of 'google.api.expr.test.v1.pro
   },
   {
     in: `x + y`,
-    env: getDefaultEnv().extend({
+    env: extendEnv(getDefaultEnv(), {
       idents: [
         identDecl('x', {
           type: listType({
@@ -583,7 +618,7 @@ ERROR: <input>:1:2: unexpected failed resolution of 'google.api.expr.test.v1.pro
   },
   {
     in: `x[1u]`,
-    env: getDefaultEnv().extend({
+    env: extendEnv(getDefaultEnv(), {
       idents: [
         identDecl('x', {
           type: listType({
@@ -602,7 +637,7 @@ ERROR: <input>:1:2: found no matching overload for '_[_]' applied to '(list(goog
   },
   {
     in: `(x + x)[1].single_int32 == size(x)`,
-    env: getDefaultEnv().extend({
+    env: extendEnv(getDefaultEnv(), {
       idents: [
         identDecl('x', {
           type: listType({
@@ -629,7 +664,7 @@ ERROR: <input>:1:2: found no matching overload for '_[_]' applied to '(list(goog
   },
   {
     in: `x.repeated_int64[x.single_int32] == 23`,
-    env: getDefaultEnv().extend({
+    env: extendEnv(getDefaultEnv(), {
       idents: [
         identDecl('x', {
           type: messageType('google.api.expr.test.v1.proto3.TestAllTypes'),
@@ -646,7 +681,7 @@ ERROR: <input>:1:2: found no matching overload for '_[_]' applied to '(list(goog
   },
   {
     in: `size(x.map_int64_nested_type) == 0`,
-    env: getDefaultEnv().extend({
+    env: extendEnv(getDefaultEnv(), {
       idents: [
         identDecl('x', {
           type: messageType('google.api.expr.test.v1.proto3.TestAllTypes'),
@@ -664,7 +699,7 @@ ERROR: <input>:1:2: found no matching overload for '_[_]' applied to '(list(goog
   },
   {
     in: `x.all(y, y == true)`,
-    env: getDefaultEnv().extend({
+    env: extendEnv(getDefaultEnv(), {
       idents: [identDecl('x', { type: BOOL_TYPE })],
     }),
     out: `
@@ -698,7 +733,7 @@ ERROR: <input>:1:2: found no matching overload for '_[_]' applied to '(list(goog
   },
   {
     in: `x.repeated_int64.map(x, double(x))`,
-    env: getDefaultEnv().extend({
+    env: extendEnv(getDefaultEnv(), {
       idents: [
         identDecl('x', {
           type: messageType('google.api.expr.test.v1.proto3.TestAllTypes'),
@@ -733,7 +768,7 @@ ERROR: <input>:1:2: found no matching overload for '_[_]' applied to '(list(goog
   },
   {
     in: `x[2].single_int32 == 23`,
-    env: getDefaultEnv().extend({
+    env: extendEnv(getDefaultEnv(), {
       idents: [
         identDecl('x', {
           type: mapType({
@@ -753,7 +788,7 @@ ERROR: <input>:1:2: found no matching overload for '_[_]' applied to '(list(goog
   },
   {
     in: `x["a"].single_int32 == 23`,
-    env: getDefaultEnv().extend({
+    env: extendEnv(getDefaultEnv(), {
       idents: [
         identDecl('x', {
           type: mapType({
@@ -777,7 +812,7 @@ ERROR: <input>:1:2: found no matching overload for '_[_]' applied to '(list(goog
   },
   {
     in: `x.single_nested_message.bb == 43 && has(x.single_nested_message)`,
-    env: getDefaultEnv().extend({
+    env: extendEnv(getDefaultEnv(), {
       idents: [
         identDecl('x', {
           type: messageType('google.api.expr.test.v1.proto3.TestAllTypes'),
@@ -796,7 +831,7 @@ ERROR: <input>:1:2: found no matching overload for '_[_]' applied to '(list(goog
   },
   {
     in: `x.single_nested_message.undefined == x.undefined && has(x.single_int32) && has(x.repeated_int32)`,
-    env: getDefaultEnv().extend({
+    env: extendEnv(getDefaultEnv(), {
       idents: [
         identDecl('x', {
           type: messageType('google.api.expr.test.v1.proto3.TestAllTypes'),
@@ -813,7 +848,7 @@ ERROR: <input>:1:39: undefined field 'undefined'
   },
   {
     in: `x.single_nested_message != null`,
-    env: getDefaultEnv().extend({
+    env: extendEnv(getDefaultEnv(), {
       idents: [
         identDecl('x', {
           type: messageType('google.api.expr.test.v1.proto3.TestAllTypes'),
@@ -830,7 +865,7 @@ ERROR: <input>:1:39: undefined field 'undefined'
   },
   {
     in: `x.single_int64 != null`,
-    env: getDefaultEnv().extend({
+    env: extendEnv(getDefaultEnv(), {
       idents: [
         identDecl('x', {
           type: messageType('google.api.expr.test.v1.proto3.TestAllTypes'),
@@ -845,7 +880,7 @@ ERROR: <input>:1:16: found no matching overload for '_!=_' applied to '(int, nul
   },
   {
     in: `x.single_int64_wrapper == null`,
-    env: getDefaultEnv().extend({
+    env: extendEnv(getDefaultEnv(), {
       idents: [
         identDecl('x', {
           type: messageType('google.api.expr.test.v1.proto3.TestAllTypes'),
@@ -870,7 +905,7 @@ ERROR: <input>:1:16: found no matching overload for '_!=_' applied to '(int, nul
   && x.single_string_wrapper == 'hi'
   && x.single_uint32_wrapper == 1u
   && x.single_uint64_wrapper != 42u`,
-    env: getDefaultEnv().extend({
+    env: extendEnv(getDefaultEnv(), {
       idents: [
         identDecl('x', {
           type: messageType('google.api.expr.test.v1.proto3.TestAllTypes'),
@@ -932,7 +967,7 @@ ERROR: <input>:1:16: found no matching overload for '_!=_' applied to '(int, nul
   {
     in: `x.single_timestamp == google.protobuf.Timestamp{seconds: 20} &&
      x.single_duration < google.protobuf.Duration{seconds: 10}`,
-    env: getDefaultEnv().extend({
+    env: extendEnv(getDefaultEnv(), {
       idents: [
         identDecl('x', {
           type: messageType('google.api.expr.test.v1.proto3.TestAllTypes'),
@@ -952,7 +987,7 @@ ERROR: <input>:1:16: found no matching overload for '_!=_' applied to '(int, nul
       && x.single_string_wrapper == google.protobuf.Value{string_value: 'hi'}
       && x.single_uint32_wrapper == google.protobuf.UInt32Value{value: 1u}
       && x.single_uint64_wrapper != google.protobuf.UInt64Value{value: 42u}`,
-    env: getDefaultEnv().extend({
+    env: extendEnv(getDefaultEnv(), {
       idents: [
         identDecl('x', {
           type: messageType('google.api.expr.test.v1.proto3.TestAllTypes'),
@@ -963,7 +998,7 @@ ERROR: <input>:1:16: found no matching overload for '_!=_' applied to '(int, nul
   },
   {
     in: `x.repeated_int64.exists(y, y > 10) && y < 5`,
-    env: getDefaultEnv().extend({
+    env: extendEnv(getDefaultEnv(), {
       idents: [
         identDecl('x', {
           type: messageType('google.api.expr.test.v1.proto3.TestAllTypes'),
@@ -976,7 +1011,7 @@ ERROR: <input>:1:16: found no matching overload for '_!=_' applied to '(int, nul
   },
   {
     in: `x.repeated_int64.all(e, e > 0) && x.repeated_int64.exists(e, e < 0) && x.repeated_int64.exists_one(e, e == 0)`,
-    env: getDefaultEnv().extend({
+    env: extendEnv(getDefaultEnv(), {
       idents: [
         identDecl('x', {
           type: messageType('google.api.expr.test.v1.proto3.TestAllTypes'),
@@ -1067,7 +1102,7 @@ ERROR: <input>:1:16: found no matching overload for '_!=_' applied to '(int, nul
   },
   {
     in: `x.all(e, 0)`,
-    env: getDefaultEnv().extend({
+    env: extendEnv(getDefaultEnv(), {
       idents: [
         identDecl('x', {
           type: messageType('google.api.expr.test.v1.proto3.TestAllTypes'),
@@ -1122,7 +1157,7 @@ ERROR: <input>:1:1: found no matching overload for '_&&_' applied to '(bool, int
       // Result
       __result__~list(dyn)^__result__)~list(dyn)`,
     outType: listType({ elemType: DYN_TYPE }),
-    env: getDefaultEnv().extend({
+    env: extendEnv(getDefaultEnv(), {
       idents: [identDecl('lists', { type: DYN_TYPE })],
     }),
   },
@@ -1161,7 +1196,7 @@ ERROR: <input>:1:5: undeclared reference to 'x' (in container '')
   //     || x == google.api.expr.test.v1.proto3.TestAllTypes{}
   //     || y < x
   //     || x >= x`,
-  //     env: getDefaultEnv().extend({
+  //     env: extendEnv(getDefaultEnv(), {
   //       idents: [
   //         identDecl('x', { type: ANY_TYPE }),
   //         identDecl('y', { type: nullableType(INT64_TYPE) }),
@@ -1208,7 +1243,7 @@ ERROR: <input>:1:5: undeclared reference to 'x' (in container '')
   //     || x == google.api.expr.test.v1.proto3.TestAllTypes{}
   //     || y < x
   //     || x >= x`,
-  //     env: getDefaultEnv().extend({
+  //     env: extendEnv(getDefaultEnv(), {
   //       idents: [
   //         identDecl('x', { type: ANY_TYPE }),
   //         identDecl('y', { type: nullableType(INT64_TYPE) }),
@@ -1248,7 +1283,7 @@ ERROR: <input>:1:5: undeclared reference to 'x' (in container '')
   //   {
   //     in: `x`,
   //     container: 'container',
-  //     env: getDefaultEnv().extend({
+  //     env: extendEnv(getDefaultEnv(), {
   //       idents: [
   //         identDecl('container.x', {
   //           type: messageType('google.api.expr.test.v1.proto3.TestAllTypes'),
@@ -1273,7 +1308,7 @@ _==_(map~type(map(dyn, dyn))^map,
   },
   {
     in: `size(x) > 4`,
-    env: getDefaultEnv().extend({
+    env: extendEnv(getDefaultEnv(), {
       idents: [
         identDecl('x', {
           type: messageType('google.api.expr.test.v1.proto3.TestAllTypes'),
@@ -1297,7 +1332,7 @@ _==_(map~type(map(dyn, dyn))^map,
   },
   {
     in: `x.single_int64_wrapper + 1 != 23`,
-    env: getDefaultEnv().extend({
+    env: extendEnv(getDefaultEnv(), {
       idents: [
         identDecl('x', {
           type: messageType('google.api.expr.test.v1.proto3.TestAllTypes'),
@@ -1316,7 +1351,7 @@ _!=_(_+_(x~google.api.expr.test.v1.proto3.TestAllTypes^x.single_int64_wrapper
   },
   {
     in: `x.single_int64_wrapper + y != 23`,
-    env: getDefaultEnv().extend({
+    env: extendEnv(getDefaultEnv(), {
       idents: [
         identDecl('x', {
           type: messageType('google.api.expr.test.v1.proto3.TestAllTypes'),
@@ -1490,7 +1525,7 @@ _!=_(
       )~list(dyn)^conditional,
       // Result
       __result__~list(dyn)^__result__)~list(dyn)`,
-    env: getDefaultEnv().extend({
+    env: extendEnv(getDefaultEnv(), {
       idents: [
         identDecl('args', {
           type: mapType({ keyType: STRING_TYPE, valueType: DYN_TYPE }),
@@ -1511,7 +1546,7 @@ _!=_(
       0~int
     )~dyn^index_list|index_map
   )~bool^equals`,
-    env: getDefaultEnv().extend({
+    env: extendEnv(getDefaultEnv(), {
       idents: [identDecl('a', { type: typeParamType('T') })],
     }),
     outType: BOOL_TYPE,
@@ -1523,7 +1558,7 @@ _!=_(
   && !has(pb3.single_int64)
   && !has(pb3.repeated_int32)
   && !has(pb3.map_string_string)`,
-    env: getDefaultEnv().extend({
+    env: extendEnv(getDefaultEnv(), {
       idents: [
         identDecl('pb2', {
           type: messageType('google.api.expr.test.v1.proto2.TestAllTypes'),
@@ -1592,7 +1627,7 @@ google.api.expr.test.v1.proto2.TestAllTypes.repeated_nested_message
   },
   {
     in: `base64.encode('hello')`,
-    env: getDefaultEnv().extend({
+    env: extendEnv(getDefaultEnv(), {
       functions: [
         functionDecl('base64.encode', {
           overloads: [
@@ -1615,7 +1650,7 @@ google.api.expr.test.v1.proto2.TestAllTypes.repeated_nested_message
   //   {
   //     in: `encode('hello')`,
   //     container: `base64`,
-  //     env: getDefaultEnv().extend({
+  //     env: extendEnv(getDefaultEnv(), {
   //       functions: [
   //         functionDecl('base64.encode', {
   //           overloads: [
@@ -1649,7 +1684,7 @@ set(
     3~int
   ]~list(int)
 )~set(int)^set_list`,
-    env: getDefaultEnv().extend({
+    env: extendEnv(getDefaultEnv(), {
       functions: [
         functionDecl('set', {
           overloads: [
@@ -1674,7 +1709,7 @@ set(
     set([1~int, 2~int]~list(int))~set(int)^set_list,
     set([2~int, 1~int]~list(int))~set(int)^set_list
   )~bool^equals`,
-    env: getDefaultEnv().extend({
+    env: extendEnv(getDefaultEnv(), {
       functions: [
         functionDecl('set', {
           overloads: [
@@ -1699,7 +1734,7 @@ _==_(
   set([1~int, 2~int]~list(int))~set(int)^set_list,
   x~set(int)^x
 )~bool^equals`,
-    env: getDefaultEnv().extend({
+    env: extendEnv(getDefaultEnv(), {
       functions: [
         functionDecl('set', {
           overloads: [
@@ -2041,7 +2076,7 @@ _==_(
   {
     in: `values.filter(i, i.content != "").map(i, i.content)`,
     outType: listType({ elemType: STRING_TYPE }),
-    env: getDefaultEnv().extend({
+    env: extendEnv(getDefaultEnv(), {
       idents: [
         identDecl('values', {
           type: listType({
@@ -2159,7 +2194,7 @@ _==_(
   // TODO: nestedgroup does not exist on TestAllTypes. Revisit when we switch to the buf-managed proto
   //   {
   //     in: 'type(testAllTypes.nestedgroup.nested_id) == int',
-  //     env: getDefaultEnv().extend({
+  //     env: extendEnv(getDefaultEnv(), {
   //       idents: [
   //         identDecl('testAllTypes', {
   //           type: messageType('google.api.expr.test.v1.proto3.TestAllTypes'),
@@ -2177,7 +2212,7 @@ _==_(
   // TODO: Optionals
   {
     in: `a.?b`,
-    env: getDefaultEnv().extend({
+    env: extendEnv(getDefaultEnv(), {
       idents: [
         identDecl('a', {
           type: mapType({
@@ -2196,7 +2231,7 @@ _==_(
   },
   {
     in: `type(a.?b) == optional_type`,
-    env: getDefaultEnv().extend({
+    env: extendEnv(getDefaultEnv(), {
       idents: [
         identDecl('optional_type', { type: ABSTRACT_OPTIONAL_TYPE }),
         identDecl('a', {
@@ -2221,7 +2256,7 @@ _==_(
   },
   {
     in: `a.b`,
-    env: getDefaultEnv().extend({
+    env: extendEnv(getDefaultEnv(), {
       idents: [
         identDecl('a', {
           type: optionalType(
@@ -2238,7 +2273,7 @@ _==_(
   },
   {
     in: `a.dynamic`,
-    env: getDefaultEnv().extend({
+    env: extendEnv(getDefaultEnv(), {
       idents: [
         identDecl('a', {
           type: optionalType(DYN_TYPE),
@@ -2250,7 +2285,7 @@ _==_(
   },
   {
     in: `has(a.dynamic)`,
-    env: getDefaultEnv().extend({
+    env: extendEnv(getDefaultEnv(), {
       idents: [
         identDecl('a', {
           type: optionalType(DYN_TYPE),
@@ -2262,7 +2297,7 @@ _==_(
   },
   {
     in: `has(a.?b.c)`,
-    env: getDefaultEnv().extend({
+    env: extendEnv(getDefaultEnv(), {
       idents: [
         identDecl('a', {
           type: optionalType(
@@ -2315,7 +2350,7 @@ _==_(
   {
     in: `{?'nested': a.b}`,
     parserOptions: { enableOptionalSyntax: true },
-    env: getDefaultEnv().extend({
+    env: extendEnv(getDefaultEnv(), {
       idents: [
         identDecl('a', {
           type: optionalType(
@@ -2348,7 +2383,7 @@ _==_(
   //   {
   //     in: `[?a, ?b, 'world']`,
   //     parserOptions: { enableOptionalSyntax: true },
-  //     env: getDefaultEnv().extend({
+  //     env: extendEnv(getDefaultEnv(), {
   //       idents: [
   //         identDecl('a', {
   //           type: optionalType(STRING_TYPE),
@@ -2408,7 +2443,7 @@ _==_(
   },
   {
     in: `null_int == null || null == null_int || null_msg == null || null == null_msg`,
-    env: getDefaultEnv().extend({
+    env: extendEnv(getDefaultEnv(), {
       idents: [
         identDecl('null_int', { type: nullableType(INT64_TYPE) }),
         identDecl('null_msg', {
@@ -2423,7 +2458,7 @@ _==_(
   // TODO: nullables
   //   {
   //     in: `NotAMessage{}`,
-  //     env: getDefaultEnv().extend({
+  //     env: extendEnv(getDefaultEnv(), {
   //       idents: [identDecl('NotAMessage', { type: nullableType(INT64_TYPE) })],
   //     }),
   //     err: `ERROR: <input>:1:12: 'wrapper(int)' is not a type
@@ -2467,7 +2502,7 @@ describe('CELChecker', () => {
   for (const testCase of testCases) {
     it(`should check ${testCase.in}`, () => {
       const container = new CELContainer(testCase.container ?? '');
-      const env = testCase.env ?? getDefaultEnv().extend({ container });
+      const env = testCase.env ?? extendEnv(getDefaultEnv(), { container });
       const parser = new CELParser(testCase.in, testCase.parserOptions);
       const parsed = parser.parse();
       if (isNil(parsed.expr)) {

@@ -17,7 +17,7 @@ import { identDecl } from './common/decls/ident-decl';
 import {
   STANDARD_DESCRIPTORS,
   STANDARD_FUNCTION_DECLARATIONS,
-  STANDARD_IDENTS,
+  STANDARD_IDENT_DECLARATIONS,
 } from './common/standard';
 import { DYN_TYPE } from './common/types/dyn';
 import { INT64_TYPE } from './common/types/int';
@@ -362,7 +362,7 @@ export function STANDARD_ENV() {
     container: new CELContainer(),
     registry: createMutableRegistry(...STANDARD_DESCRIPTORS),
     functions: STANDARD_FUNCTION_DECLARATIONS,
-    idents: STANDARD_IDENTS,
+    idents: STANDARD_IDENT_DECLARATIONS,
   });
 }
 

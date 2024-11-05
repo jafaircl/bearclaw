@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import {
   Decl,
   DeclSchema,
@@ -43,5 +44,16 @@ export function overloadDecl(
 export function functionReference(overloadId: string[]) {
   return create(ReferenceSchema, {
     overloadId,
+  });
+}
+
+export function mergeFunctionDecls(decl: Decl, other: Decl) {
+  if (!isFunctionDecl(decl) || !isFunctionDecl(other)) {
+    return new Error('not a function decl');
+  }
+  const declOverloads = unwrapFunctionDecl(decl)!;
+  const otherOverloads = unwrapFunctionDecl(other)!;
+  return functionDecl(decl.name, {
+    overloads: [...declOverloads.overloads, ...otherOverloads.overloads],
   });
 }

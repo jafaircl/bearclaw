@@ -1,3 +1,4 @@
+/* eslint-disable no-case-declarations */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { isEmpty, isNil } from '@bearclaw/is';
 import {
@@ -23,6 +24,7 @@ import { STANDARD_DESCRIPTORS } from '../standard';
 import { BOOL_TYPE, isBoolValue } from '../types/bool';
 import { BYTES_TYPE } from '../types/bytes';
 import { DOUBLE_TYPE } from '../types/double';
+import { enumValue } from '../types/enum';
 import { INT64_TYPE } from '../types/int';
 import { LIST_TYPE } from '../types/list';
 import { MAP_TYPE } from '../types/map';
@@ -42,11 +44,12 @@ export class ProtoTypeRegistry implements TypeRegistry {
   readonly #registry: MutableRegistry;
 
   constructor(typeMap: Map<string, Type> = new Map(), registry?: Registry) {
-    const descriptors = STANDARD_DESCRIPTORS;
+    this.#registry = createMutableRegistry(...STANDARD_DESCRIPTORS);
     if (!isNil(registry)) {
-      descriptors.push(registry);
+      for (const r of registry) {
+        this.#registry.add(r);
+      }
     }
-    this.#registry = createMutableRegistry(...descriptors);
     this.registerType(
       BOOL_TYPE,
       BYTES_TYPE,
@@ -89,15 +92,7 @@ export class ProtoTypeRegistry implements TypeRegistry {
       if (desc.kind === 'enum') {
         const v = desc.values.find((v) => v.name === enumName);
         if (!isNil(v)) {
-          return create(ValueSchema, {
-            kind: {
-              case: 'enumValue',
-              value: {
-                type: desc.typeName,
-                value: v.number,
-              },
-            },
-          });
+          return enumValue(desc.typeName, v.number);
         }
       }
     }
@@ -131,28 +126,47 @@ export class ProtoTypeRegistry implements TypeRegistry {
   }
 
   findFieldType(messageType: string, fieldName: string): FieldType | Error {
-    const desc = this.#registry.getMessage(messageType);
+    const desc = this.#registry.get(messageType);
     if (isNil(desc)) {
       return new Error(`unknown type '${messageType}'`);
     }
-    if (desc.kind !== 'message') {
-      return new Error(`type '${messageType}' is not a message`);
-    }
-    const field = desc.fields.find((f) => f.name === fieldName);
-    if (isNil(field)) {
-      return new Error(`no such field '${fieldName}' on type '${messageType}'`);
-    }
-    return new FieldType(
-      getFieldDescriptorType(field),
-      (obj) => {
-        const isZero = isZeroValue(obj);
-        if (isZero instanceof Error || !isBoolValue(isZero)) {
-          return false;
+    switch (desc.kind) {
+      case 'enum':
+        const enumeration = desc.values.find((v) => v.name === fieldName);
+        if (isNil(enumeration)) {
+          return new Error(
+            `no such field '${fieldName}' on type '${messageType}'`
+          );
         }
-        return isZero.kind.value;
-      },
-      () => null // TODO: implement
-    );
+        return new FieldType(
+          INT64_TYPE,
+          (obj) => {
+            const zero = desc.values.find((v) => v.number === 0);
+            return obj.kind.value === zero?.name;
+          },
+          () => null // TODO: implement
+        );
+      case 'message':
+        const field = desc.fields.find((f) => f.name === fieldName);
+        if (isNil(field)) {
+          return new Error(
+            `no such field '${fieldName}' on type '${messageType}'`
+          );
+        }
+        return new FieldType(
+          getFieldDescriptorType(field),
+          (obj) => {
+            const isZero = isZeroValue(obj);
+            if (isZero instanceof Error || !isBoolValue(isZero)) {
+              return false;
+            }
+            return isZero.kind.value;
+          },
+          () => null // TODO: implement
+        );
+      default:
+        return new Error(`type '${messageType}' is not a message or enum`);
+    }
   }
 
   newValue(typeName: string, fields: Record<string, Value>): Value | Error {

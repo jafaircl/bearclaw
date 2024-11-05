@@ -58,8 +58,8 @@ import {
   wellKnownType,
 } from '../common/types/wkt';
 import { mapToObject, toQualifiedName } from '../common/utils';
-import { CELEnvironment } from '../environment';
 import { OPT_SELECT_OPERATOR } from '../operators';
+import { CheckerEnv } from './env';
 import {
   isAssignable,
   isAssignableList,
@@ -83,7 +83,7 @@ export class CELChecker {
   constructor(
     public readonly parsed: ParsedExpr,
     public readonly source: string,
-    public env: CELEnvironment
+    public env: CheckerEnv
   ) {
     this.#errors = new Errors(source);
   }
@@ -509,7 +509,7 @@ export class CELChecker {
     }
     // Ensure the type name is fully qualified in the AST.
     mapVal.messageName = decl.name;
-    const ident = decl.declKind.value as Decl_IdentDecl;
+    const ident = unwrapIdentDecl(decl)!;
     this.setReference(expr.id, identReference(decl.name, ident.value!));
     const identKind = ident.type!.typeKind.case;
     if (identKind === 'type') {
@@ -547,24 +547,14 @@ export class CELChecker {
       this.checkExpr(value);
 
       let fieldType: Type = ERROR_TYPE;
-      const t = this.env.lookupFieldType(mapVal.messageName, field);
+      const t = this._lookupFieldType(
+        expr.id,
+        entry.id,
+        mapVal.messageName,
+        field
+      );
       if (!isNil(t)) {
         fieldType = t;
-      } else {
-        const msg = this.env.lookupStructType(mapVal.messageName);
-        if (isNil(msg)) {
-          this.#errors.reportUnexpectedFailedResolution(
-            expr.id,
-            this.getLocationById(expr.id),
-            mapVal.messageName
-          );
-        } else {
-          this.#errors.reportUndefinedField(
-            entry.id,
-            this.getLocationById(entry.id),
-            field
-          );
-        }
       }
       if (!this._isAssignable(fieldType, this.getType(value.id)!)) {
         this.#errors.reportFieldTypeMismatch(
@@ -621,10 +611,10 @@ export class CELChecker {
     // Create a scope for the comprehension since it has a local accumulation
     // variable. This scope will contain the accumulation variable used to
     // compute the result.
-    this.env.enterScope();
+    this.env = this.env.enterScope();
     this.env.addIdent(identDecl(comp.accuVar, { type: accuType }));
     // Create a block scope for the loop.
-    this.env.enterScope();
+    this.env = this.env.enterScope();
     this.env.addIdent(identDecl(comp.iterVar, { type: varType }));
     // Check the variable references in the condition and step.
     this.checkExpr(comp.loopCondition);
@@ -632,10 +622,10 @@ export class CELChecker {
     this.checkExpr(comp.loopStep);
     this._assertType(comp.loopStep!, accuType!);
     // Exit the loop's block scope before checking the result.
-    this.env.exitScope();
+    this.env = this.env.exitScope();
     this.checkExpr(comp.result);
     // Exit the comprehension scope.
-    this.env.exitScope();
+    this.env = this.env.exitScope();
     this.setType(expr.id, this.getType(comp.result!.id)!);
     return expr;
   }
@@ -695,29 +685,16 @@ export class CELChecker {
         resultType = targetType.typeKind.value.valueType!;
         break;
       case 'messageType':
-        // Objects yield their field type declaration as the selection result type, but only if
-        // the field is defined.
-        const fieldType = this.env.lookupFieldType(
+        // Objects yield their field type declaration as the selection result
+        // type, but only if the field is defined.
+        const fieldType = this._lookupFieldType(
+          expr.id,
+          expr.id,
           targetType.typeKind.value,
           field
         );
         if (!isNil(fieldType)) {
           resultType = fieldType;
-        } else {
-          const msg = this.env.lookupStructType(targetType.typeKind.value);
-          if (isNil(msg)) {
-            this.#errors.reportUnexpectedFailedResolution(
-              expr.id,
-              this.getLocationById(expr.id),
-              targetType.typeKind.value
-            );
-          } else {
-            this.#errors.reportUndefinedField(
-              expr.id,
-              this.getLocationById(expr.id),
-              field
-            );
-          }
         }
         break;
       case 'wellKnown':
@@ -835,5 +812,32 @@ export class CELChecker {
         this.getType(e.id)!
       );
     }
+  }
+
+  private _lookupFieldType(
+    messageId: bigint,
+    fieldId: bigint,
+    structType: string,
+    fieldName: string
+  ) {
+    const st = this.env.lookupIdent(structType);
+    if (isNil(st)) {
+      this.#errors.reportUnexpectedFailedResolution(
+        messageId,
+        this.getLocationById(messageId),
+        structType
+      );
+      return null;
+    }
+    const ft = this.env.provider.findFieldType(structType, fieldName);
+    if (ft instanceof Error) {
+      this.#errors.reportUndefinedField(
+        fieldId,
+        this.getLocationById(fieldId),
+        fieldName
+      );
+      return null;
+    }
+    return ft.type;
   }
 }

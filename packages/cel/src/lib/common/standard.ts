@@ -273,7 +273,7 @@ export const STANDARD_DESCRIPTORS: (
   DurationSchema,
 ];
 
-export const STANDARD_IDENTS: Decl[] = [
+export const STANDARD_IDENT_DECLARATIONS: Decl[] = [
   identDecl('bool', { type: typeType(BOOL_TYPE) }),
   identDecl('bytes', { type: typeType(BYTES_TYPE) }),
   identDecl('double', { type: typeType(DOUBLE_TYPE) }),
