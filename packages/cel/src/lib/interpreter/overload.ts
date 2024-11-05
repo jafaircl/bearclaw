@@ -15,7 +15,7 @@ export type BinaryOp = (left: Value, right: Value) => Value;
  * A function which accepts zero or more arguments and produces a value or
  * error as a result
  */
-export type FunctionOp = (values: Value[]) => Value;
+export type FunctionOp = (...values: Value[]) => Value;
 
 /**
  * Defines a named overload of a function, indicating an operand trait

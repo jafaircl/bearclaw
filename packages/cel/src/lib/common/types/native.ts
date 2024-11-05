@@ -10,6 +10,7 @@ import {
   StringValueSchema,
   StructSchema,
   TimestampSchema,
+  UInt32ValueSchema,
   UInt64ValueSchema,
 } from '@bufbuild/protobuf/wkt';
 
@@ -37,4 +38,5 @@ export type NativeType =
   | typeof StringValueSchema
   | typeof StructSchema
   | typeof TimestampSchema
+  | typeof UInt32ValueSchema
   | typeof UInt64ValueSchema;

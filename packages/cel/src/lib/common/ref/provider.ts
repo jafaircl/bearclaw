@@ -10,7 +10,7 @@ export interface TypeProvider {
   /**
    * EnumValue returns the numeric value of the given enum value name.
    */
-  enumValue(enumName: string): Value;
+  enumValue(enumName: string): Value | Error;
 
   /**
    * FindIdent takes a qualified identifier name and returns a Value if one
@@ -32,7 +32,7 @@ export interface TypeProvider {
    *
    * <p>Used during type-checking only.
    */
-  findFieldType(messageType: string, fieldName: string): FieldType | null;
+  findFieldType(messageType: string, fieldName: string): FieldType | Error;
 
   /**
    * NewValue creates a new type value from a qualified name and map of field

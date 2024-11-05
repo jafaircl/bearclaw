@@ -2,7 +2,12 @@ import {
   Type,
   TypeSchema,
 } from '@buf/google_cel-spec.bufbuild_es/cel/expr/checked_pb.js';
+import {
+  Value,
+  ValueSchema,
+} from '@buf/google_cel-spec.bufbuild_es/cel/expr/value_pb';
 import { create } from '@bufbuild/protobuf';
+import { formatCELType } from '../format';
 
 export function typeType(value: Type) {
   return create(TypeSchema, {
@@ -32,4 +37,19 @@ export function unwrapTypeType(value: Type) {
     return value.typeKind.value;
   }
   return null;
+}
+
+export function typeValue(value: Type) {
+  return create(ValueSchema, {
+    kind: {
+      case: 'typeValue',
+      value: formatCELType(value),
+    },
+  });
+}
+
+export function isTypeValue(value: Value): value is Value & {
+  kind: { case: 'typeValue'; value: string };
+} {
+  return value.kind.case === 'typeValue';
 }

@@ -18,6 +18,10 @@ import {
   anyPack,
   anyUnpack,
 } from '@bufbuild/protobuf/wkt';
+import {
+  toSeconds as durationToSeconds,
+  parse as parseDuration,
+} from 'iso8601-duration';
 import { formatCELType } from '../format';
 import { int64Value } from './int';
 import { NativeType } from './native';
@@ -109,4 +113,27 @@ export function convertDurationValueToType(value: Value, type: Type) {
       DURATION_TYPE
     )}' to '${formatCELType(type)}'`
   );
+}
+
+export function parseISO8061DurationString(text: string) {
+  try {
+    const duration = parseDuration(`P${text.toUpperCase()}`);
+    const seconds = durationToSeconds(duration);
+    return create(DurationSchema, {
+      seconds: BigInt(Math.trunc(seconds)),
+      nanos: Math.trunc((seconds % 1) * 1e9),
+    });
+  } catch {
+    try {
+      const duration = parseDuration(`PT${text.toUpperCase()}`);
+      const seconds = durationToSeconds(duration);
+      return create(DurationSchema, {
+        seconds: BigInt(Math.trunc(seconds)),
+        nanos: Math.trunc((seconds % 1) * 1e9),
+      });
+    } catch (e) {
+      console.log(e);
+      return new Error(`cannot parse duration: ${text}`);
+    }
+  }
 }

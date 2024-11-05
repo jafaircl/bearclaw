@@ -3,7 +3,7 @@ import { negateBoolValue } from '../bool';
 import { negateDoubleValue } from '../double';
 import { negateInt64Value } from '../int';
 
-export function negate(value: Value) {
+export function negater(value: Value) {
   switch (value.kind.case) {
     case 'boolValue':
       return negateBoolValue(value);

@@ -60,6 +60,7 @@
     "dequal": "^2.0.3",
     "fast-json-stable-stringify": "^2.1.0",
     "immer": "^9.0.15",
+    "iso8601-duration": "^2.1.2",
     "just-extend": "^6.1.1",
     "tslib": "^2.0.0"
   },

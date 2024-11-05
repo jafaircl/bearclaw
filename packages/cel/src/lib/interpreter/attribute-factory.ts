@@ -1,18 +1,37 @@
+import { NULL_VALUE, isNullValue } from './../common/types/null';
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { isFunction, isNil } from '@bearclaw/is';
-import { Type } from '@buf/google_cel-spec.bufbuild_es/cel/expr/checked_pb.js';
-import { ExprValue } from '@buf/google_cel-spec.bufbuild_es/cel/expr/eval_pb.js';
-import { Value } from '@buf/google_cel-spec.bufbuild_es/cel/expr/value_pb.js';
-import { CELContainer } from '../cel';
 import {
-  isExprValueError,
-  isExprValueUnknown,
-  isExprValueValue,
-} from '../common/expr-value';
+  isArray,
+  isBigInt,
+  isBoolean,
+  isFunction,
+  isNil,
+  isNumber,
+  isString,
+} from '@bearclaw/is';
+import { Type } from '@buf/google_cel-spec.bufbuild_es/cel/expr/checked_pb.js';
+import {
+  Value,
+  ValueSchema,
+} from '@buf/google_cel-spec.bufbuild_es/cel/expr/value_pb.js';
+import { isMessage } from '@bufbuild/protobuf';
+import { NullValue } from '@bufbuild/protobuf/wkt';
+import { CELContainer } from '../cel';
 import { TypeAdapter } from '../common/ref/adapter';
+import { FieldType } from '../common/ref/field-type';
 import { TypeProvider } from '../common/ref/provider';
-import { isBoolValue } from '../common/types/bool';
-import { isStringValue } from '../common/types/string';
+import { boolValue, equalBoolValue, isBoolValue } from '../common/types/bool';
+import { doubleValue, equalDoubleValue } from '../common/types/double';
+import { equalInt64Value, int64Value } from '../common/types/int';
+import { isMessageType } from '../common/types/message';
+import {
+  equalStringValue,
+  isStringValue,
+  stringValue,
+} from '../common/types/string';
+import { equalUint64Value } from '../common/types/uint';
+import { isUnknownValue } from '../common/types/unknown';
+import { valueOf } from '../common/types/value';
 import { Activation } from './activation';
 import { QualifierValueEquator } from './attribute-pattern';
 import { Cost, Coster } from './coster';
@@ -93,7 +112,11 @@ export interface Qualifier {
    * Qualify performs a qualification, e.g. field selection, on the input
    * object and returns the value or error that results.
    */
-  qualify(vars: Activation, obj: any): ExprValue;
+  qualify(vars: Activation, obj: any): Value | Error;
+}
+
+export function isQualifier(value: any): value is Qualifier {
+  return isFunction(value.id) && isFunction(value.qualify);
 }
 
 /**
@@ -103,7 +126,14 @@ export interface Qualifier {
  * Non-constant qualifiers are of Attribute type.
  */
 export interface ConstantQualifier extends Qualifier {
+  /**
+   * Value returns the constant value of the qualifier.
+   */
   value(): Value;
+}
+
+export function isConstantQualifier(value: any): value is ConstantQualifier {
+  return isFunction(value.value) && isQualifier(value);
 }
 
 export interface ConstantQualifierEquator
@@ -114,7 +144,7 @@ export interface ConstantQualifierEquator
  * Attribute values are a variable or value with an optional set of qualifiers,
  * such as field, key, or index accesses.
  */
-interface Attribute extends Qualifier {
+export interface Attribute extends Qualifier {
   /**
    * AddQualifier adds a qualifier on the Attribute or error if the
    * qualification is not a valid qualifier type.
@@ -124,7 +154,15 @@ interface Attribute extends Qualifier {
   /**
    * Resolve returns the value of the Attribute given the current Activation.
    */
-  resolve(a: Activation): ExprValue;
+  resolve(a: Activation): Value | Error;
+}
+
+export function isAttribute(value: any): value is Attribute {
+  return (
+    isFunction(value.addQualifier) &&
+    isFunction(value.resolve) &&
+    isQualifier(value)
+  );
 }
 
 /**
@@ -148,7 +186,7 @@ export interface NamespacedAttribute extends Attribute {
    * will be returned immediately. If the attribute cannot be resolved within
    * the Activation, the result must be: `nil`, `false`, `nil`.
    */
-  tryResolve(a: Activation): ExprValue | null;
+  tryResolve(a: Activation): Value | Error | null;
 }
 
 export class AttrFactory implements AttributeFactory {
@@ -200,8 +238,20 @@ export class AttrFactory implements AttributeFactory {
     return new RelativeAttribute(id, operand, [], this.#adapter, this);
   }
 
-  newQualifier(objType: Type, qualID: bigint, val: any): Qualifier {
-    throw new Error('Method not implemented.');
+  newQualifier(objType: Type | null, qualID: bigint, val: any): Qualifier {
+    // Before creating a new qualifier check to see if this is a protobuf
+    // message field access.
+    // If so, use the precomputed GetFrom qualification method rather than the
+    // standard  stringQualifier.
+    if (isString(val)) {
+      if (!isNil(objType) && isMessageType(objType)) {
+        const ft = this.#provider.findFieldType(objType.typeKind.value, val);
+        if (!isNil(ft) && ft instanceof FieldType) {
+          return new FieldQualifier(qualID, val, ft, this.#adapter);
+        }
+      }
+    }
+    return newQualifier(this.#adapter, qualID, val);
   }
 }
 
@@ -268,20 +318,23 @@ export class AbsoluteAttribute
     return this.#namespacedNames;
   }
 
-  qualify(vars: Activation, obj: any): any {
+  qualify(vars: Activation, obj: any) {
     const val = this.resolve(vars);
-    if (isExprValueUnknown(val)) {
+    if (val instanceof Error) {
+      return val;
+    }
+    if (isUnknownValue(val)) {
       return val;
     }
     const qual = this.#fac.newQualifier(null, this.#id, val);
     return qual.qualify(vars, obj);
   }
 
-  resolve<T = any>(vars: Activation): T {
+  resolve(vars: Activation): Value | Error {
     return this.tryResolve(vars);
   }
 
-  tryResolve<T = any>(vars: Activation): T {
+  tryResolve(vars: Activation): Value | Error {
     for (const nm of this.#namespacedNames) {
       // If the variable is found, process it. Otherwise, wait until the checks\
       // to determine whether the type is unknown before returning.
@@ -291,21 +344,21 @@ export class AbsoluteAttribute
         for (const qual of this.#qualifiers) {
           const op2 = qual.qualify(vars, op);
           if (op2 instanceof Error) {
-            return op2 as T;
+            return op2;
           }
           if (op2 == null) {
             break;
           }
           op = op2;
         }
-        return op as T;
+        return valueOf(op);
       }
       // Attempt to resolve the qualified type name if the name is not a
       // variable identifier.
       const typ = this.#provider.findIdent(nm);
       if (!isNil(typ)) {
         if (this.#qualifiers.length === 0) {
-          return typ as T;
+          return typ;
         }
         throw noSuchAttributeException(this.toString());
       }
@@ -376,7 +429,10 @@ export class ConditionalAttribute implements Qualifier, Attribute, Coster {
 
   qualify(vars: Activation, obj: any) {
     const val = this.resolve(vars);
-    if (isExprValueUnknown(val)) {
+    if (val instanceof Error) {
+      return val;
+    }
+    if (isUnknownValue(val)) {
       return val;
     }
     const qual = this.#fac.newQualifier(null, this.#id, val);
@@ -385,26 +441,20 @@ export class ConditionalAttribute implements Qualifier, Attribute, Coster {
 
   resolve(vars: Activation) {
     const val = this.#expr.eval(vars);
-    if (isExprValueError(val)) {
-      throw new Error(
-        `messsage: ${val.kind.value.errors.map((e) => e.message).join(', ')}`
-      );
+    if (val instanceof Error) {
+      throw new Error(`messsage: ${val.message}`);
     }
-    if (isExprValueValue(val)) {
-      const v = val.kind.value;
-      if (!isBoolValue(v)) {
-        // This should never happen
-        throw new Error('conditional expression must be a boolean');
-      }
-      if (v.kind.value) {
-        return this.#truthy.resolve(vars);
-      }
-      return this.#falsy.resolve(vars);
-    }
-    if (isExprValueUnknown(val)) {
+    if (isUnknownValue(val)) {
       return val;
     }
-    return val;
+    if (!isBoolValue(val)) {
+      // This should never happen
+      throw new Error('conditional expression must be a boolean');
+    }
+    if (val.kind.value) {
+      return this.#truthy.resolve(vars);
+    }
+    return this.#falsy.resolve(vars);
   }
 
   toString() {
@@ -516,7 +566,10 @@ export class MaybeAttribute implements Coster, Attribute, Qualifier {
 
   qualify(vars: Activation, obj: any) {
     const val = this.resolve(vars);
-    if (isExprValueUnknown(val)) {
+    if (val instanceof Error) {
+      return val;
+    }
+    if (isUnknownValue(val)) {
       return val;
     }
     const qual = this.#fac.newQualifier(null, this.#id, val);
@@ -584,35 +637,36 @@ export class RelativeAttribute implements Coster, Qualifier, Attribute {
     return this;
   }
 
-  qualify(vars: Activation, obj: any): ExprValue {
+  qualify(vars: Activation, obj: any) {
     const val = this.resolve(vars);
-    if (isExprValueUnknown(val)) {
+    if (val instanceof Error) {
+      return val;
+    }
+    if (isUnknownValue(val)) {
       return val;
     }
     const qual = this.#fac.newQualifier(null, this.#id, val);
     return qual.qualify(vars, obj);
   }
 
-  resolve(vars: Activation): ExprValue {
+  resolve(vars: Activation) {
     // First, evaluate the operand.
     const v = this.#operand.eval(vars);
-    if (isExprValueError(v)) {
-      throw new Error(
-        `message: ${v.kind.value.errors.map((e) => e.message).join(', ')}`
-      );
+    if (v instanceof Error) {
+      throw new Error(`message: ${v.message}`);
     }
-    if (isExprValueUnknown(v)) {
+    if (isUnknownValue(v)) {
       return v;
     }
     // Next, qualify it. Qualification handles unkonwns as well, so there's no
     // need to recheck.
-    let obj = v;
+    let obj: Value | Error = v;
     for (const qual of this.#qualifiers) {
       if (isNil(obj)) {
         throw noSuchAttributeException(this.toString());
       }
       obj = qual.qualify(vars, obj);
-      if (isExprValueError(obj)) {
+      if (obj instanceof Error) {
         return obj;
       }
     }
@@ -627,6 +681,626 @@ export class RelativeAttribute implements Coster, Qualifier, Attribute {
   }
 }
 
+export function newQualifier(
+  adapter: TypeAdapter,
+  id: bigint,
+  v: any
+): Qualifier {
+  if (isAttribute(v)) {
+    return v;
+  }
+
+  if (isMessage(ValueSchema, v)) {
+    switch (v.kind.case) {
+      case 'stringValue':
+        return new StringQualifier(id, v.kind.value, v, adapter);
+      case 'doubleValue':
+        return new DoubleQualifier(id, v.kind.value, v, adapter);
+      case 'int64Value':
+        return new IntQualifier(id, v.kind.value, v, adapter);
+      case 'uint64Value':
+        return new UintQualifier(id, v.kind.value, v, adapter);
+      case 'boolValue':
+        return new BoolQualifier(id, v.kind.value, v, adapter);
+      case 'nullValue':
+        return new NullQualifier(id, v, adapter);
+      default:
+        throw new Error('unsupported value type');
+    }
+  }
+  if (isString(v)) {
+    return new StringQualifier(id, v, stringValue(v), adapter);
+  }
+  if (isNumber(v)) {
+    return new DoubleQualifier(id, v, doubleValue(v), adapter);
+  }
+  if (isBigInt(v)) {
+    return new IntQualifier(id, v, int64Value(v), adapter);
+  }
+  if (isBoolean(v)) {
+    return new BoolQualifier(id, v, boolValue(v), adapter);
+  }
+  throw new Error(`invalid qualifier type: ${v}`);
+}
+
+export class AttrQualifier implements Coster, Attribute {
+  readonly #id: bigint;
+  readonly #attribute: Attribute;
+
+  constructor(id: bigint, attribute: Attribute) {
+    this.#id = id;
+    this.#attribute = attribute;
+  }
+
+  id(): bigint {
+    return this.#id;
+  }
+
+  /**
+   * Cost returns zero for constant field qualifiers
+   */
+  cost(): Cost {
+    return Cost.estimateCost(this.#attribute);
+  }
+
+  addQualifier(q: Qualifier): Attribute {
+    return this.#attribute.addQualifier(q);
+  }
+
+  resolve(vars: Activation) {
+    return this.#attribute.resolve(vars);
+  }
+
+  qualify(vars: Activation, obj: any) {
+    return this.#attribute.qualify(vars, obj);
+  }
+
+  toString() {
+    return `AttrQualifier{id=${this.id()}, attribute=${this.#attribute.toString()}};`;
+  }
+}
+
+export class StringQualifier
+  implements Coster, ConstantQualifierEquator, QualifierValueEquator
+{
+  readonly #id: bigint;
+  readonly #value: string;
+  readonly #celValue: Value;
+  readonly #adapter: TypeAdapter;
+
+  constructor(
+    id: bigint,
+    value: string,
+    celValue: Value,
+    adapter: TypeAdapter
+  ) {
+    this.#id = id;
+    this.#value = value;
+    this.#celValue = celValue;
+    this.#adapter = adapter;
+  }
+
+  id(): bigint {
+    return this.#id;
+  }
+
+  /**
+   * Cost returns zero for constant field qualifiers
+   */
+  cost(): Cost {
+    return Cost.None;
+  }
+
+  value(): Value {
+    return this.#celValue;
+  }
+
+  qualifierValueEquals(value: any): boolean {
+    if (isMessage(ValueSchema, value)) {
+      return equalStringValue(this.#celValue, value).kind.value as boolean;
+    }
+    if (isString(value)) {
+      return this.#value === value;
+    }
+    return false;
+  }
+
+  qualify(vars: Activation, obj: any) {
+    if (obj instanceof Map) {
+      const found = obj.get(this.#value);
+      if (isNil(found)) {
+        if (obj.has(this.#value)) {
+          return NULL_VALUE;
+        }
+        throw noSuchKeyException(this.#value);
+      }
+    } else if (obj instanceof Object) {
+      if (this.#value in obj) {
+        if (isNil(obj[this.#value])) {
+          return NULL_VALUE;
+        }
+        return obj[this.#value];
+      }
+      throw noSuchKeyException(this.#value);
+    } else if (isUnknownValue(obj)) {
+      return obj;
+    }
+    return refResolve(this.#adapter, this.#celValue, obj);
+  }
+
+  toString() {
+    return `StringQualifier{id=${this.#id}, value=${this.#value}}`;
+  }
+}
+
+export class DoubleQualifier
+  implements Coster, ConstantQualifierEquator, QualifierValueEquator
+{
+  readonly #id: bigint;
+  readonly #value: number;
+  readonly #celValue: Value;
+  readonly #adapter: TypeAdapter;
+
+  constructor(
+    id: bigint,
+    value: number,
+    celValue: Value,
+    adapter: TypeAdapter
+  ) {
+    this.#id = id;
+    this.#value = value;
+    this.#celValue = celValue;
+    this.#adapter = adapter;
+  }
+
+  id(): bigint {
+    return this.#id;
+  }
+
+  value(): Value {
+    return this.#celValue;
+  }
+
+  /**
+   * Cost returns zero for constant field qualifiers
+   */
+  cost(): Cost {
+    return Cost.None;
+  }
+
+  qualify(vars: Activation, obj: any) {
+    const i = this.#value;
+    if (obj instanceof Map) {
+      const found = obj.get(i);
+      if (isNil(found)) {
+        if (obj.has(i)) {
+          return NULL_VALUE;
+        }
+        throw noSuchKeyException(i.toString());
+      }
+      return obj;
+    } else if (obj instanceof Object) {
+      if (i in obj) {
+        if (isNil(obj[i])) {
+          return NULL_VALUE;
+        }
+        return obj[i];
+      }
+      throw noSuchKeyException(i.toString());
+    } else if (isArray(obj)) {
+      if (i < 0 || i >= obj.length) {
+        throw indexOutOfBoundsException(i);
+      }
+      return obj[i];
+    }
+    if (isUnknownValue(obj)) {
+      return obj;
+    }
+    return refResolve(this.#adapter, this.#celValue, obj);
+  }
+
+  qualifierValueEquals(value: any): boolean {
+    if (isMessage(ValueSchema, value)) {
+      return equalDoubleValue(this.#celValue, value).kind.value as boolean;
+    }
+    if (isNumber(value)) {
+      return this.#value === value;
+    }
+    return false;
+  }
+
+  toString() {
+    return `DoubleQualifier{id=${this.#id}, value=${this.#value}}`;
+  }
+}
+
+export class IntQualifier
+  implements Coster, ConstantQualifierEquator, QualifierValueEquator
+{
+  readonly #id: bigint;
+  readonly #value: bigint;
+  readonly #celValue: Value;
+  readonly #adapter: TypeAdapter;
+
+  constructor(
+    id: bigint,
+    value: bigint,
+    celValue: Value,
+    adapter: TypeAdapter
+  ) {
+    this.#id = id;
+    this.#value = value;
+    this.#celValue = celValue;
+    this.#adapter = adapter;
+  }
+
+  id(): bigint {
+    return this.#id;
+  }
+
+  value(): Value {
+    return this.#celValue;
+  }
+
+  /**
+   * Cost returns zero for constant field qualifiers
+   */
+  cost(): Cost {
+    return Cost.None;
+  }
+
+  qualify(vars: Activation, obj: any) {
+    const i = this.#value;
+    if (obj instanceof Map) {
+      const found = obj.get(i);
+      if (isNil(found)) {
+        if (obj.has(i)) {
+          return NULL_VALUE;
+        }
+        throw noSuchKeyException(i.toString());
+      }
+      return obj;
+    } else if (obj instanceof Object) {
+      if (Number(i) in obj) {
+        if (isNil(obj[Number(i)])) {
+          return NULL_VALUE;
+        }
+        return obj[Number(i)];
+      }
+      throw noSuchKeyException(i.toString());
+    } else if (isArray(obj)) {
+      if (i < 0 || i >= obj.length) {
+        throw indexOutOfBoundsException(Number(i));
+      }
+      return obj[Number(i)];
+    }
+    if (isUnknownValue(obj)) {
+      return obj;
+    }
+    return refResolve(this.#adapter, this.#celValue, obj);
+  }
+
+  qualifierValueEquals(value: any): boolean {
+    if (isMessage(ValueSchema, value)) {
+      return equalInt64Value(this.#celValue, value).kind.value as boolean;
+    }
+    if (isBigInt(value)) {
+      return this.#value === value;
+    }
+    return false;
+  }
+
+  toString() {
+    return `IntQualifier{id=${this.#id}, value=${this.#value}}`;
+  }
+}
+
+export class UintQualifier
+  implements Coster, ConstantQualifierEquator, QualifierValueEquator
+{
+  readonly #id: bigint;
+  readonly #value: bigint;
+  readonly #celValue: Value;
+  readonly #adapter: TypeAdapter;
+
+  constructor(
+    id: bigint,
+    value: bigint,
+    celValue: Value,
+    adapter: TypeAdapter
+  ) {
+    this.#id = id;
+    this.#value = value;
+    this.#celValue = celValue;
+    this.#adapter = adapter;
+  }
+
+  id(): bigint {
+    return this.#id;
+  }
+
+  value(): Value {
+    return this.#celValue;
+  }
+
+  /**
+   * Cost returns zero for constant field qualifiers
+   */
+  cost(): Cost {
+    return Cost.None;
+  }
+
+  qualify(vars: Activation, obj: any) {
+    const i = this.#value;
+    if (obj instanceof Map) {
+      const found = obj.get(i);
+      if (isNil(found)) {
+        if (obj.has(i)) {
+          return NULL_VALUE;
+        }
+        throw noSuchKeyException(i.toString());
+      }
+      return obj;
+    } else if (obj instanceof Object) {
+      if (Number(i) in obj) {
+        if (isNil(obj[Number(i)])) {
+          return NULL_VALUE;
+        }
+        return obj[Number(i)];
+      }
+      throw noSuchKeyException(i.toString());
+    } else if (isArray(obj)) {
+      if (i < 0 || i >= obj.length) {
+        throw indexOutOfBoundsException(Number(i));
+      }
+      return obj[Number(i)];
+    }
+    if (isUnknownValue(obj)) {
+      return obj;
+    }
+    return refResolve(this.#adapter, this.#celValue, obj);
+  }
+
+  qualifierValueEquals(value: any): boolean {
+    if (isMessage(ValueSchema, value)) {
+      return equalUint64Value(this.#celValue, value).kind.value as boolean;
+    }
+    if (isBigInt(value)) {
+      return this.#value === value;
+    }
+    return false;
+  }
+
+  toString() {
+    return `UintQualifier{id=${this.#id}, value=${this.#value}}`;
+  }
+}
+
+export class BoolQualifier
+  implements Coster, ConstantQualifierEquator, QualifierValueEquator
+{
+  readonly #id: bigint;
+  readonly #value: boolean;
+  readonly #celValue: Value;
+  readonly #adapter: TypeAdapter;
+
+  constructor(
+    id: bigint,
+    value: boolean,
+    celValue: Value,
+    adapter: TypeAdapter
+  ) {
+    this.#id = id;
+    this.#value = value;
+    this.#celValue = celValue;
+    this.#adapter = adapter;
+  }
+
+  id(): bigint {
+    return this.#id;
+  }
+
+  /**
+   * Cost returns zero for constant field qualifiers
+   */
+  cost(): Cost {
+    return Cost.None;
+  }
+
+  value(): Value {
+    return this.#celValue;
+  }
+
+  qualifierValueEquals(value: any): boolean {
+    if (isMessage(ValueSchema, value)) {
+      return equalBoolValue(this.#celValue, value).kind.value as boolean;
+    }
+    if (isBoolean(value)) {
+      return this.#value === value;
+    }
+    return false;
+  }
+
+  qualify(vars: Activation, obj: any) {
+    const valString = this.#value.toString();
+    if (obj instanceof Map) {
+      const found = obj.get(valString);
+      if (isNil(found)) {
+        if (obj.has(valString)) {
+          return NULL_VALUE;
+        }
+        throw noSuchKeyException(valString);
+      }
+    } else if (obj instanceof Object) {
+      if (valString in obj) {
+        if (isNil(obj[valString])) {
+          return NULL_VALUE;
+        }
+        return obj[valString];
+      }
+      throw noSuchKeyException(valString);
+    } else if (isUnknownValue(obj)) {
+      return obj;
+    }
+    return refResolve(this.#adapter, this.#celValue, obj);
+  }
+
+  toString() {
+    return `BoolQualifier{id=${this.#id}, value=${this.#value}}`;
+  }
+}
+
+/**
+ * Not actually a qualifier, but conformance-tests require this, although it's
+ * actually an error condition.
+ */
+export class NullQualifier
+  implements Coster, ConstantQualifierEquator, QualifierValueEquator
+{
+  readonly #id: bigint;
+  readonly #celValue: Value;
+  readonly #adapter: TypeAdapter;
+
+  constructor(id: bigint, celValue: Value, adapter: TypeAdapter) {
+    this.#id = id;
+    this.#celValue = celValue;
+    this.#adapter = adapter;
+  }
+
+  id(): bigint {
+    return this.#id;
+  }
+
+  /**
+   * Cost returns zero for constant field qualifiers
+   */
+  cost(): Cost {
+    return Cost.None;
+  }
+
+  value(): Value {
+    return this.#celValue;
+  }
+
+  qualifierValueEquals(value: any): boolean {
+    return (
+      value === null || value === NullValue.NULL_VALUE || isNullValue(value)
+    );
+  }
+
+  qualify(vars: Activation, obj: any) {
+    return null as any;
+  }
+
+  toString() {
+    return `NullQualifier{id=${this.#id}}`;
+  }
+}
+
+/**
+ * FieldQualifier indicates that the qualification is a well-defined field with
+ * a known field type. When the field type is known this can be used to improve
+ * the speed and efficiency of field resolution.
+ */
+export class FieldQualifier implements Coster, ConstantQualifierEquator {
+  readonly #id: bigint;
+  readonly #name: string;
+  readonly #fieldType: FieldType;
+  readonly #adapter: TypeAdapter;
+
+  constructor(
+    id: bigint,
+    name: string,
+    fieldType: FieldType,
+    adapter: TypeAdapter
+  ) {
+    this.#id = id;
+    this.#name = name;
+    this.#fieldType = fieldType;
+    this.#adapter = adapter;
+  }
+
+  id(): bigint {
+    return this.#id;
+  }
+
+  /**
+   * Cost returns zero for constant field qualifiers
+   */
+  cost(): Cost {
+    return Cost.None;
+  }
+
+  value(): Value {
+    return stringValue(this.#name);
+  }
+
+  qualifierValueEquals(value: any): boolean {
+    if (isMessage(ValueSchema, value)) {
+      return equalStringValue(this.value(), value).kind.value as boolean;
+    }
+    if (isString(value)) {
+      return this.#name === value;
+    }
+    return false;
+  }
+
+  qualify(vars: Activation, obj: any) {
+    const valString = this.#name;
+    if (obj instanceof Map) {
+      const found = obj.get(valString);
+      if (isNil(found)) {
+        if (obj.has(valString)) {
+          return NULL_VALUE;
+        }
+        throw noSuchKeyException(valString);
+      }
+    } else if (obj instanceof Object) {
+      if (valString in obj) {
+        if (isNil(obj[valString])) {
+          return NULL_VALUE;
+        }
+        return obj[valString];
+      }
+      throw noSuchKeyException(valString);
+    } else if (isUnknownValue(obj)) {
+      return obj;
+    }
+    return refResolve(this.#adapter, this.value(), obj);
+  }
+
+  toString() {
+    return `FieldQualifier{id=${this.#id}, value=${this.#name}}`;
+  }
+}
+
 function noSuchAttributeException(context: string) {
   return new Error(`undeclared reference to '${context}' (in container '')`);
+}
+
+function noSuchKeyException(key: string) {
+  return new Error(`no such key: ${key}`);
+}
+
+function indexOutOfBoundsException(index: number) {
+  return new Error(`index out of bounds: ${index}`);
+}
+
+/**
+ * refResolve attempts to convert the value to a CEL value and then uses
+ * reflection methods to try and resolve the qualifier.
+ */
+function refResolve(adapter: TypeAdapter, idx: Value, obj: any) {
+  const celVal = adapter.nativeToValue(obj);
+  if (isFunction((celVal as any).find)) {
+    const elem = (celVal as any).find(idx);
+    if (isNil(elem)) {
+      return new Error(`no such key: ${idx}`);
+    }
+    return elem as Value;
+  }
+  if (celVal instanceof Error || isUnknownValue(celVal)) {
+    return celVal;
+  }
+  return new Error('no such overload');
 }

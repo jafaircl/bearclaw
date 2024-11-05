@@ -33,7 +33,7 @@ export interface Activation {
 export class MapActivation implements Activation {
   #bindings: Map<string, any>;
 
-  constructor(bindings: Map<string, any> | Record<string, any>) {
+  constructor(bindings: Map<string, any> | Record<string, any> = new Map()) {
     this.#bindings = isMap<string, any>(bindings)
       ? bindings
       : objectToMap(bindings);

@@ -9,5 +9,5 @@ export interface TypeAdapter {
   /**
    * NativeToValue converts the input `value` to a CEL `Value`.
    */
-  nativeToValue(value: any): Value;
+  nativeToValue(value: any): Value | Error;
 }
