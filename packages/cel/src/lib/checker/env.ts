@@ -3,14 +3,17 @@ import { isNil } from '@bearclaw/is';
 import { Decl } from '@buf/google_cel-spec.bufbuild_es/cel/expr/checked_pb';
 import { dequal } from 'dequal';
 import { CELContainer } from '../common/container';
-import { mergeFunctionDecls } from '../common/decls/function-decl';
+import {
+  mergeFunctionDecls,
+  unwrapFunctionDecl,
+} from '../common/decls/function-decl';
 import { identDecl } from '../common/decls/ident-decl';
 import { TypeProvider } from '../common/ref/provider';
 import { DYN_TYPE } from '../common/types/dyn';
-import { INT64_TYPE } from '../common/types/int';
-import { mapType } from '../common/types/map';
-import { STRING_TYPE } from '../common/types/string';
+import { unwrapEnumValue } from '../common/types/enum';
+import { INT64_TYPE, int64Constant } from '../common/types/int';
 import { LESS_DOUBLE_INT64_OVERLOAD } from '../overloads';
+import { STANDARD_MACRO_DECLARATIONS } from '../parser/macros';
 import {
   GREATER_DOUBLE_INT64_OVERLOAD,
   GREATER_DOUBLE_UINT64_OVERLOAD,
@@ -185,11 +188,10 @@ export class CheckerEnv {
       // type prefix and the enum inside.
       const enumValue = this.#provider.enumValue(candidate);
       if (!(enumValue instanceof Error)) {
+        const unwrappedEnum = unwrapEnumValue(enumValue)!;
         const decl = identDecl(candidate, {
-          type: mapType({
-            keyType: STRING_TYPE,
-            valueType: INT64_TYPE,
-          }),
+          type: INT64_TYPE,
+          value: int64Constant(BigInt(unwrappedEnum.value)),
         });
         this.#declarations.addIdent(decl);
         return decl;
@@ -232,15 +234,27 @@ export class CheckerEnv {
     } else {
       current = fn;
     }
-    // TODO: check for existing macro names
-    // const currentDecl = unwrapFunctionDecl(current)!;
-    // for (const overload of currentDecl.overloads) {
-    //     for (const macro of STANDARD_MACROS) {
-    //         if (macro === current.name) {
-    //             errors.push(new Error(`function '${overload.name}' is a reserved macro name`));
-    //         }
-    //     }
-    // }
+    const currentDecl = unwrapFunctionDecl(current)!;
+    for (const overload of currentDecl.overloads) {
+      for (const macroDecl of STANDARD_MACRO_DECLARATIONS) {
+        const macro = unwrapFunctionDecl(macroDecl)!;
+        const macroOverload = macro.overloads[0];
+        if (
+          macroDecl.name === current.name &&
+          macroOverload.isInstanceFunction === overload.isInstanceFunction &&
+          macroOverload.params.length === overload.params.length
+        ) {
+          errors.push(
+            new Error(
+              `overlapping macro for name '${current.name}' with ${overload.params.length} args`
+            )
+          );
+        }
+      }
+      if (errors.length > 0) {
+        return errors;
+      }
+    }
     this.#declarations.setFunction(current);
     return errors;
   }

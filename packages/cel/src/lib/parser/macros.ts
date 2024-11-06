@@ -4,9 +4,11 @@ import { Expr } from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb.js';
 import { ParserRuleContext, Token } from 'antlr4';
 import { Location, OffsetRange } from '../common/ast';
 import { ACCUMULATOR_VAR } from '../common/constants';
-import { boolExpr } from '../common/types/bool';
+import { functionDecl, overloadDecl } from '../common/decls/function-decl';
+import { BOOL_TYPE, boolExpr } from '../common/types/bool';
 import { callExpr } from '../common/types/call';
 import { comprehensionExpr } from '../common/types/comprehension';
+import { DYN_TYPE } from '../common/types/dyn';
 import { identExpr, unwrapIdentExpr } from '../common/types/ident';
 import { int64Expr } from '../common/types/int';
 import { listExpr } from '../common/types/list';
@@ -28,18 +30,87 @@ import {
 } from '../operators';
 import { ParserHelper } from './parser-helper';
 
-export const STANDARD_MACROS = new Set([
-  HAS_MACRO,
-  ALL_MACRO,
-  EXISTS_MACRO,
-  EXISTS_ONE_MACRO,
-  MAP_MACRO,
-  // MAP_FILTER_MACRO, // TODO: Implement this
-  FILTER_MACRO,
+export const STANDARD_MACRO_DECLARATIONS = new Set([
+  // HasMacro expands "has(m.f)" which tests the presence of a field, avoiding
+  // the need to specify the field as a string.
+  functionDecl(HAS_MACRO, {
+    overloads: [
+      overloadDecl({
+        isInstanceFunction: false,
+        params: [DYN_TYPE],
+        resultType: BOOL_TYPE,
+      }),
+    ],
+  }),
+  // AllMacro expands "range.all(var, predicate)" into a comprehension which
+  // ensures that all elements in the range satisfy the predicate.
+  functionDecl(ALL_MACRO, {
+    overloads: [
+      overloadDecl({
+        isInstanceFunction: true,
+        params: [DYN_TYPE, DYN_TYPE],
+        resultType: BOOL_TYPE,
+      }),
+    ],
+  }),
+  // ExistsMacro expands "range.exists(var, predicate)" into a comprehension
+  // which ensures that some element in the range satisfies the predicate.
+  functionDecl(EXISTS_MACRO, {
+    overloads: [
+      overloadDecl({
+        isInstanceFunction: true,
+        params: [DYN_TYPE, DYN_TYPE],
+        resultType: BOOL_TYPE,
+      }),
+    ],
+  }),
+  // ExistsOneMacro expands "range.exists_one(var, predicate)", which is true
+  // if for exactly one element in range the predicate holds.
+  functionDecl(EXISTS_ONE_MACRO, {
+    overloads: [
+      overloadDecl({
+        isInstanceFunction: true,
+        params: [DYN_TYPE, DYN_TYPE],
+        resultType: BOOL_TYPE,
+      }),
+    ],
+  }),
+  // MapMacro expands "range.map(var, function)" into a comprehension which
+  // applies the function to each element in the range to produce a new list.
+  functionDecl(MAP_MACRO, {
+    overloads: [
+      overloadDecl({
+        isInstanceFunction: true,
+        params: [DYN_TYPE, DYN_TYPE],
+        resultType: DYN_TYPE,
+      }),
+    ],
+  }),
+  // MapFilterMacro expands "range.map(var, predicate, function)" into a
+  // comprehension which first filters the elements in the range by the
+  // predicate, then applies the transform function to produce a new list.
+  // // MAP_FILTER_MACRO, // TODO: Implement this
+  // FilterMacro expands "range.filter(var, predicate)" into a comprehension
+  // which filters elements in the range, producing a new list from the
+  // elements that satisfy the predicate.
+  functionDecl(FILTER_MACRO, {
+    overloads: [
+      overloadDecl({
+        isInstanceFunction: true,
+        params: [DYN_TYPE, DYN_TYPE],
+        resultType: DYN_TYPE,
+      }),
+    ],
+  }),
 ]);
 
 export function findMacro(name: string) {
-  return STANDARD_MACROS.has(name) ? name : undefined;
+  for (const macro of STANDARD_MACRO_DECLARATIONS) {
+    if (macro.name === name) {
+      return name;
+    }
+  }
+  return null;
 }
 
 export function expandMacro(
