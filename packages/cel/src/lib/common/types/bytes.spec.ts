@@ -5,23 +5,18 @@ import {
 import { ValueSchema } from '@buf/google_cel-spec.bufbuild_es/cel/expr/value_pb';
 import { create } from '@bufbuild/protobuf';
 import { AnySchema, BytesValueSchema, anyPack } from '@bufbuild/protobuf/wkt';
-import { boolValue } from './bool';
+import { BOOL_REF_TYPE, BoolRefVal } from './bool';
 import {
-  BYTES_TYPE,
-  addBytesValue,
+  BYTES_REF_TYPE,
+  BytesRefVal,
   bytesConstant,
   bytesExpr,
   bytesValue,
-  compareBytesValue,
-  convertBytesValueToNative,
-  convertBytesValueToType,
-  equalBytesValue,
-  isZeroBytesValue,
-  sizeBytesValue,
 } from './bytes';
-import { int64Value } from './int';
-import { STRING_TYPE, stringValue } from './string';
-import { TYPE_TYPE } from './type';
+import { ErrorRefVal } from './error';
+import { IntRefVal } from './int';
+import { STRING_REF_TYPE, StringRefVal } from './string';
+import { TYPE_REF_TYPE, TypeRefVal } from './type';
 
 describe('bytes', () => {
   it('bytesConstant', () => {
@@ -66,146 +61,116 @@ describe('bytes', () => {
   // TODO: validations
 
   it('convertBytesValueToNative - js Uint8Array', () => {
-    expect(() => {
-      convertBytesValueToNative(stringValue('foo'), Uint8Array);
-    }).toThrow();
     expect(
-      convertBytesValueToNative(
-        bytesValue(new Uint8Array([1, 2, 3])),
-        Uint8Array
-      )
-    ).toEqual(new Uint8Array([1, 2, 3]));
+      new BytesRefVal(new Uint8Array([1, 2, 3])).convertToNative(Uint8Array)
+    ).toStrictEqual(new Uint8Array([1, 2, 3]));
   });
 
   it('convertBytesValueToNative - anyPack', () => {
-    const value = bytesValue(new Uint8Array([1, 2, 3]));
+    const value = new BytesRefVal(new Uint8Array([1, 2, 3]));
     const packed = anyPack(
       BytesValueSchema,
       create(BytesValueSchema, { value: new Uint8Array([1, 2, 3]) })
     );
-    expect(convertBytesValueToNative(value, AnySchema)).toEqual(packed);
+    expect(value.convertToNative(AnySchema)).toStrictEqual(packed);
   });
 
   it('convertBytesValueToNative - bytes wrapper', () => {
-    const value = bytesValue(new Uint8Array([1, 2, 3]));
-    expect(convertBytesValueToNative(value, BytesValueSchema)).toEqual(
+    const value = new BytesRefVal(new Uint8Array([1, 2, 3]));
+    expect(value.convertToNative(BytesValueSchema)).toStrictEqual(
       create(BytesValueSchema, { value: new Uint8Array([1, 2, 3]) })
     );
   });
 
   it('convertBytesValueToNative - invalid type', () => {
-    const value = bytesValue(new Uint8Array([1, 2, 3]));
-    expect(convertBytesValueToNative(value, Boolean)).toEqual(
-      new Error(`type conversion error from 'bytes' to 'Boolean'`)
+    const value = new BytesRefVal(new Uint8Array([1, 2, 3]));
+    expect(value.convertToNative(Boolean)).toStrictEqual(
+      ErrorRefVal.nativeTypeConversionError(value, Boolean)
     );
   });
 
   it('convertBytesValueToType', () => {
-    expect(() => {
-      convertBytesValueToType(stringValue('true'), BYTES_TYPE);
-    }).toThrow();
-    const value = bytesValue(new TextEncoder().encode('helloworld'));
-    expect(convertBytesValueToType(value, BYTES_TYPE)).toEqual(value);
-    expect(convertBytesValueToType(value, STRING_TYPE)).toEqual(
-      stringValue('helloworld')
+    const value = new BytesRefVal(new TextEncoder().encode('helloworld'));
+    expect(value.convertToType(BYTES_REF_TYPE)).toStrictEqual(value);
+    expect(value.convertToType(STRING_REF_TYPE)).toStrictEqual(
+      new StringRefVal('helloworld')
     );
-    expect(convertBytesValueToType(value, TYPE_TYPE)).toEqual(BYTES_TYPE);
+    expect(value.convertToType(TYPE_REF_TYPE)).toStrictEqual(
+      new TypeRefVal(BYTES_REF_TYPE)
+    );
+    expect(value.convertToType(BOOL_REF_TYPE)).toStrictEqual(
+      ErrorRefVal.typeConversionError(value, BOOL_REF_TYPE)
+    );
   });
 
   it('equalBytesValue', () => {
-    expect(() => {
-      equalBytesValue(
-        stringValue('foo'),
-        bytesValue(new Uint8Array([1, 2, 3]))
-      );
-    }).toThrow();
+    const value = new BytesRefVal(new Uint8Array([1, 2, 3]));
     expect(
-      equalBytesValue(
-        bytesValue(new Uint8Array([1, 2, 3])),
-        bytesValue(new Uint8Array([1, 2, 3]))
-      )
-    ).toEqual(boolValue(true));
+      value.equal(new BytesRefVal(new Uint8Array([1, 2, 3])))
+    ).toStrictEqual(new BoolRefVal(true));
     expect(
-      equalBytesValue(
-        bytesValue(new Uint8Array([1, 2, 3])),
-        bytesValue(new Uint8Array([1, 2]))
-      )
-    ).toEqual(boolValue(false));
-    expect(
-      equalBytesValue(bytesValue(new Uint8Array([1, 2, 3])), stringValue(''))
-    ).toEqual(boolValue(false));
+      value.equal(new BytesRefVal(new Uint8Array([1, 2, 4])))
+    ).toStrictEqual(new BoolRefVal(false));
+    expect(value.equal(new BoolRefVal(true))).toStrictEqual(BoolRefVal.False);
   });
 
   it('isZeroBytesValue', () => {
-    expect(() => {
-      isZeroBytesValue(stringValue('foo'));
-    }).toThrow();
-    expect(isZeroBytesValue(bytesValue(new Uint8Array([1, 2, 3])))).toEqual(
-      boolValue(false)
+    expect(new BytesRefVal(new Uint8Array([1, 2, 3])).isZeroValue()).toEqual(
+      false
     );
-    expect(isZeroBytesValue(bytesValue(new Uint8Array([])))).toEqual(
-      boolValue(true)
-    );
+    expect(new BytesRefVal(new Uint8Array([])).isZeroValue()).toEqual(true);
   });
 
   it('addBytesValue', () => {
-    expect(() => {
-      addBytesValue(stringValue('foo'), bytesValue(new Uint8Array([1, 2, 3])));
-    }).toThrow();
     expect(
-      addBytesValue(
-        bytesValue(new TextEncoder().encode('foo')),
-        bytesValue(new TextEncoder().encode('bar'))
+      new BytesRefVal(new Uint8Array([1, 2, 3])).add(
+        new BytesRefVal(new Uint8Array([4, 5, 6]))
       )
-    ).toEqual(bytesValue(new TextEncoder().encode('foobar')));
+    ).toStrictEqual(new BytesRefVal(new Uint8Array([1, 2, 3, 4, 5, 6])));
     expect(
-      addBytesValue(
-        bytesValue(new TextEncoder().encode('foo')),
-        stringValue('bar')
+      new BytesRefVal(new Uint8Array([1, 2, 3])).add(
+        new BytesRefVal(new Uint8Array([]))
       )
-    ).toEqual(new Error('no such overload'));
+    ).toStrictEqual(new BytesRefVal(new Uint8Array([1, 2, 3])));
+    expect(
+      new BytesRefVal(new Uint8Array([])).add(
+        new BytesRefVal(new Uint8Array([1, 2, 3]))
+      )
+    ).toStrictEqual(new BytesRefVal(new Uint8Array([1, 2, 3])));
+    expect(
+      new BytesRefVal(new Uint8Array([])).add(new StringRefVal('foo'))
+    ).toStrictEqual(ErrorRefVal.errNoSuchOverload);
   });
 
   it('compareBytesValue', () => {
-    expect(() => {
-      compareBytesValue(
-        stringValue('foo'),
-        bytesValue(new Uint8Array([1, 2, 3]))
-      );
-    }).toThrow();
     expect(
-      compareBytesValue(
-        bytesValue(new TextEncoder().encode('1234')),
-        bytesValue(new TextEncoder().encode('2345'))
+      new BytesRefVal(new Uint8Array([1, 2, 3, 4])).compare(
+        new BytesRefVal(new Uint8Array([2, 3, 4, 5]))
       )
-    ).toEqual(int64Value(BigInt(-1)));
+    ).toStrictEqual(IntRefVal.IntNegOne);
     expect(
-      compareBytesValue(
-        bytesValue(new TextEncoder().encode('1234')),
-        bytesValue(new TextEncoder().encode('1234'))
+      new BytesRefVal(new Uint8Array([1, 2, 3, 4])).compare(
+        new BytesRefVal(new Uint8Array([1, 2, 3, 4]))
       )
-    ).toEqual(int64Value(BigInt(0)));
+    ).toStrictEqual(IntRefVal.IntZero);
     expect(
-      compareBytesValue(
-        bytesValue(new TextEncoder().encode('2345')),
-        bytesValue(new TextEncoder().encode('1234'))
+      new BytesRefVal(new Uint8Array([2, 3, 4, 5])).compare(
+        new BytesRefVal(new Uint8Array([1, 2, 3, 4]))
       )
-    ).toEqual(int64Value(BigInt(1)));
+    ).toStrictEqual(IntRefVal.IntOne);
     expect(
-      compareBytesValue(
-        bytesValue(new TextEncoder().encode('1234')),
-        stringValue('1234')
+      new BytesRefVal(new Uint8Array([1, 2, 3, 4])).compare(
+        new StringRefVal('foo')
       )
-    ).toEqual(new Error('no such overload'));
+    ).toStrictEqual(ErrorRefVal.errNoSuchOverload);
   });
 
   it('sizeBytesValue', () => {
-    expect(() => {
-      sizeBytesValue(stringValue('foo'));
-    }).toThrow();
-    expect(
-      sizeBytesValue(bytesValue(new TextEncoder().encode('1234567890'))).kind
-        .value
-    ).toEqual(BigInt(10));
+    expect(new BytesRefVal(new Uint8Array([1, 2, 3])).size()).toStrictEqual(
+      new IntRefVal(BigInt(3))
+    );
+    expect(new BytesRefVal(new Uint8Array([])).size()).toStrictEqual(
+      new IntRefVal(BigInt(0))
+    );
   });
 });

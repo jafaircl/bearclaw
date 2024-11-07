@@ -21,19 +21,19 @@ import {
 import { formatCELType } from '../format';
 import { FieldType } from '../ref/field-type';
 import { STANDARD_DESCRIPTORS } from '../standard';
-import { BOOL_TYPE, isBoolValue } from '../types/bool';
-import { BYTES_TYPE } from '../types/bytes';
-import { DOUBLE_TYPE } from '../types/double';
+import { BOOL_CEL_TYPE, isBoolValue } from '../types/bool';
+import { BYTES_CEL_TYPE } from '../types/bytes';
+import { DOUBLE_CEL_TYPE } from '../types/double';
 import { enumValue } from '../types/enum';
-import { INT64_TYPE } from '../types/int';
+import { INT_CEL_TYPE } from '../types/int';
 import { LIST_TYPE } from '../types/list';
 import { MAP_TYPE } from '../types/map';
 import { messageType } from '../types/message';
 import { NULL_TYPE } from '../types/null';
-import { STRING_TYPE } from '../types/string';
+import { STRING_CEL_TYPE } from '../types/string';
 import { isZeroValue } from '../types/traits/zeroer';
 import { TYPE_TYPE } from '../types/type';
-import { UINT64_TYPE } from '../types/uint';
+import { UINT_CEL_TYPE } from '../types/uint';
 import { getFieldDescriptorType } from '../types/utils';
 import { valueOf } from '../types/value';
 import { DURATION_TYPE, TIMESTAMP_TYPE } from '../types/wkt';
@@ -51,18 +51,18 @@ export class ProtoTypeRegistry implements TypeRegistry {
       }
     }
     this.registerType(
-      BOOL_TYPE,
-      BYTES_TYPE,
-      DOUBLE_TYPE,
+      BOOL_CEL_TYPE,
+      BYTES_CEL_TYPE,
+      DOUBLE_CEL_TYPE,
       DURATION_TYPE,
-      INT64_TYPE,
+      INT_CEL_TYPE,
       LIST_TYPE,
       MAP_TYPE,
       NULL_TYPE,
-      STRING_TYPE,
+      STRING_CEL_TYPE,
       TIMESTAMP_TYPE,
       TYPE_TYPE,
-      UINT64_TYPE
+      UINT_CEL_TYPE
     );
     for (const [k, v] of typeMap) {
       this.#refTypeMap.set(k, v);
@@ -139,7 +139,7 @@ export class ProtoTypeRegistry implements TypeRegistry {
           );
         }
         return new FieldType(
-          INT64_TYPE,
+          INT_CEL_TYPE,
           (obj) => {
             const zero = desc.values.find((v) => v.number === 0);
             return obj.kind.value === zero?.name;

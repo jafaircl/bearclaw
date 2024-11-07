@@ -6,7 +6,7 @@ import {
   STANDARD_FUNCTION_DECLARATIONS,
   STANDARD_IDENT_DECLARATIONS,
 } from '../common/standard';
-import { BOOL_TYPE } from '../common/types/bool';
+import { BOOL_CEL_TYPE } from '../common/types/bool';
 import { DYN_TYPE } from '../common/types/dyn';
 import { TYPE_TYPE } from '../common/types/type';
 import { CheckerEnv } from './env';
@@ -27,7 +27,7 @@ describe('CheckerEnv', () => {
           overloadDecl({
             isInstanceFunction: false,
             params: [DYN_TYPE],
-            resultType: BOOL_TYPE,
+            resultType: BOOL_CEL_TYPE,
           }),
         ],
       })

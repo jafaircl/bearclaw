@@ -234,18 +234,18 @@ import {
 import { functionDecl } from './decls/function-decl';
 import { identDecl } from './decls/ident-decl';
 import { ABSTRACT_TYPE_TYPE } from './types/abstract';
-import { BOOL_TYPE } from './types/bool';
-import { BYTES_TYPE } from './types/bytes';
-import { DOUBLE_TYPE } from './types/double';
+import { BOOL_CEL_TYPE } from './types/bool';
+import { BYTES_CEL_TYPE } from './types/bytes';
+import { DOUBLE_CEL_TYPE } from './types/double';
 import { DYN_TYPE } from './types/dyn';
-import { INT64_TYPE } from './types/int';
+import { INT_CEL_TYPE } from './types/int';
 import { listType } from './types/list';
 import { mapType } from './types/map';
 import { NULL_TYPE } from './types/null';
-import { STRING_TYPE } from './types/string';
+import { STRING_CEL_TYPE } from './types/string';
 import { typeType } from './types/type';
 import { typeParamType } from './types/type-param';
-import { UINT64_TYPE } from './types/uint';
+import { UINT_CEL_TYPE } from './types/uint';
 import { DURATION_TYPE, TIMESTAMP_TYPE } from './types/wkt';
 
 export const STANDARD_DESCRIPTORS: (
@@ -274,15 +274,15 @@ export const STANDARD_DESCRIPTORS: (
 ];
 
 export const STANDARD_IDENT_DECLARATIONS: Decl[] = [
-  identDecl('bool', { type: typeType(BOOL_TYPE) }),
-  identDecl('bytes', { type: typeType(BYTES_TYPE) }),
-  identDecl('double', { type: typeType(DOUBLE_TYPE) }),
+  identDecl('bool', { type: typeType(BOOL_CEL_TYPE) }),
+  identDecl('bytes', { type: typeType(BYTES_CEL_TYPE) }),
+  identDecl('double', { type: typeType(DOUBLE_CEL_TYPE) }),
   identDecl('duration', { type: typeType(DURATION_TYPE) }),
   identDecl('dyn', { type: typeType(DYN_TYPE) }),
-  identDecl('int', { type: typeType(INT64_TYPE) }),
-  identDecl('string', { type: typeType(STRING_TYPE) }),
+  identDecl('int', { type: typeType(INT_CEL_TYPE) }),
+  identDecl('string', { type: typeType(STRING_CEL_TYPE) }),
   identDecl('timestamp', { type: typeType(TIMESTAMP_TYPE) }),
-  identDecl('uint', { type: typeType(UINT64_TYPE) }),
+  identDecl('uint', { type: typeType(UINT_CEL_TYPE) }),
   identDecl('list', { type: typeType(listType({ elemType: DYN_TYPE })) }),
   identDecl('map', {
     type: typeType(mapType({ keyType: DYN_TYPE, valueType: DYN_TYPE })),
@@ -306,7 +306,7 @@ export const CONDITIONAL_FUNCTION_DECL = functionDecl(CONDITIONAL_OPERATOR, {
   overloads: [
     {
       overloadId: CONDITIONAL_OVERLOAD,
-      params: [BOOL_TYPE, paramA, paramA],
+      params: [BOOL_CEL_TYPE, paramA, paramA],
       resultType: paramA,
       typeParams: typeParamAList,
     },
@@ -316,8 +316,8 @@ export const LOGICAL_AND_FUNCTION_DECL = functionDecl(LOGICAL_AND_OPERATOR, {
   overloads: [
     {
       overloadId: LOGICAL_AND_OVERLOAD,
-      params: [BOOL_TYPE, BOOL_TYPE],
-      resultType: BOOL_TYPE,
+      params: [BOOL_CEL_TYPE, BOOL_CEL_TYPE],
+      resultType: BOOL_CEL_TYPE,
     },
   ],
 });
@@ -325,8 +325,8 @@ export const LOGICAL_OR_FUNCTION_DECL = functionDecl(LOGICAL_OR_OPERATOR, {
   overloads: [
     {
       overloadId: LOGICAL_OR_OVERLOAD,
-      params: [BOOL_TYPE, BOOL_TYPE],
-      resultType: BOOL_TYPE,
+      params: [BOOL_CEL_TYPE, BOOL_CEL_TYPE],
+      resultType: BOOL_CEL_TYPE,
     },
   ],
 });
@@ -334,8 +334,8 @@ export const LOGICAL_NOT_FUNCTION_DECL = functionDecl(LOGICAL_NOT_OPERATOR, {
   overloads: [
     {
       overloadId: LOGICAL_NOT_OVERLOAD,
-      params: [BOOL_TYPE],
-      resultType: BOOL_TYPE,
+      params: [BOOL_CEL_TYPE],
+      resultType: BOOL_CEL_TYPE,
     },
   ],
 });
@@ -347,8 +347,8 @@ export const NOT_STRICTLY_FALSE_FUNCTION_DECL = functionDecl(
     overloads: [
       {
         overloadId: NOT_STRICTLY_FALSE_OVERLOAD,
-        params: [BOOL_TYPE],
-        resultType: BOOL_TYPE,
+        params: [BOOL_CEL_TYPE],
+        resultType: BOOL_CEL_TYPE,
       },
     ],
   }
@@ -360,7 +360,7 @@ export const EQUALS_FUNCTION_DECL = functionDecl(EQUALS_OPERATOR, {
     {
       overloadId: EQUALS_OVERLOAD,
       params: [paramA, paramB],
-      resultType: BOOL_TYPE,
+      resultType: BOOL_CEL_TYPE,
       typeParams: typeParamABList,
     },
   ],
@@ -370,7 +370,7 @@ export const NOT_EQUALS_FUNCTION_DECL = functionDecl(NOT_EQUALS_OPERATOR, {
     {
       overloadId: NOT_EQUALS_OVERLOAD,
       params: [paramA, paramA],
-      resultType: BOOL_TYPE,
+      resultType: BOOL_CEL_TYPE,
       typeParams: typeParamABList,
     },
   ],
@@ -381,13 +381,13 @@ export const ADD_FUNCTION_DECL = functionDecl(ADD_OPERATOR, {
   overloads: [
     {
       overloadId: ADD_BYTES_OVERLOAD,
-      params: [BYTES_TYPE, BYTES_TYPE],
-      resultType: BYTES_TYPE,
+      params: [BYTES_CEL_TYPE, BYTES_CEL_TYPE],
+      resultType: BYTES_CEL_TYPE,
     },
     {
       overloadId: ADD_DOUBLE_OVERLOAD,
-      params: [DOUBLE_TYPE, DOUBLE_TYPE],
-      resultType: DOUBLE_TYPE,
+      params: [DOUBLE_CEL_TYPE, DOUBLE_CEL_TYPE],
+      resultType: DOUBLE_CEL_TYPE,
     },
     {
       overloadId: ADD_DURATION_DURATION_OVERLOAD,
@@ -406,8 +406,8 @@ export const ADD_FUNCTION_DECL = functionDecl(ADD_OPERATOR, {
     },
     {
       overloadId: ADD_INT64_OVERLOAD,
-      params: [INT64_TYPE, INT64_TYPE],
-      resultType: INT64_TYPE,
+      params: [INT_CEL_TYPE, INT_CEL_TYPE],
+      resultType: INT_CEL_TYPE,
     },
     {
       overloadId: ADD_LIST_OVERLOAD,
@@ -417,13 +417,13 @@ export const ADD_FUNCTION_DECL = functionDecl(ADD_OPERATOR, {
     },
     {
       overloadId: ADD_STRING_OVERLOAD,
-      params: [STRING_TYPE, STRING_TYPE],
-      resultType: STRING_TYPE,
+      params: [STRING_CEL_TYPE, STRING_CEL_TYPE],
+      resultType: STRING_CEL_TYPE,
     },
     {
       overloadId: ADD_UINT64_OVERLOAD,
-      params: [UINT64_TYPE, UINT64_TYPE],
-      resultType: UINT64_TYPE,
+      params: [UINT_CEL_TYPE, UINT_CEL_TYPE],
+      resultType: UINT_CEL_TYPE,
     },
   ],
 });
@@ -431,18 +431,18 @@ export const DIVIDE_FUNCTION_DECL = functionDecl(DIVIDE_OPERATOR, {
   overloads: [
     {
       overloadId: DIVIDE_DOUBLE_OVERLOAD,
-      params: [DOUBLE_TYPE, DOUBLE_TYPE],
-      resultType: DOUBLE_TYPE,
+      params: [DOUBLE_CEL_TYPE, DOUBLE_CEL_TYPE],
+      resultType: DOUBLE_CEL_TYPE,
     },
     {
       overloadId: DIVIDE_INT64_OVERLOAD,
-      params: [INT64_TYPE, INT64_TYPE],
-      resultType: INT64_TYPE,
+      params: [INT_CEL_TYPE, INT_CEL_TYPE],
+      resultType: INT_CEL_TYPE,
     },
     {
       overloadId: DIVIDE_UINT64_OVERLOAD,
-      params: [UINT64_TYPE, UINT64_TYPE],
-      resultType: UINT64_TYPE,
+      params: [UINT_CEL_TYPE, UINT_CEL_TYPE],
+      resultType: UINT_CEL_TYPE,
     },
   ],
 });
@@ -450,13 +450,13 @@ export const MODULO_FUNCTION_DECL = functionDecl(MODULO_OPERATOR, {
   overloads: [
     {
       overloadId: MODULO_INT64_OVERLOAD,
-      params: [INT64_TYPE, INT64_TYPE],
-      resultType: INT64_TYPE,
+      params: [INT_CEL_TYPE, INT_CEL_TYPE],
+      resultType: INT_CEL_TYPE,
     },
     {
       overloadId: MODULO_UINT64_OVERLOAD,
-      params: [UINT64_TYPE, UINT64_TYPE],
-      resultType: UINT64_TYPE,
+      params: [UINT_CEL_TYPE, UINT_CEL_TYPE],
+      resultType: UINT_CEL_TYPE,
     },
   ],
 });
@@ -464,18 +464,18 @@ export const MULTIPLY_FUNCTION_DECL = functionDecl(MULTIPLY_OPERATOR, {
   overloads: [
     {
       overloadId: MULTIPLY_DOUBLE_OVERLOAD,
-      params: [DOUBLE_TYPE, DOUBLE_TYPE],
-      resultType: DOUBLE_TYPE,
+      params: [DOUBLE_CEL_TYPE, DOUBLE_CEL_TYPE],
+      resultType: DOUBLE_CEL_TYPE,
     },
     {
       overloadId: MULTIPLY_INT64_OVERLOAD,
-      params: [INT64_TYPE, INT64_TYPE],
-      resultType: INT64_TYPE,
+      params: [INT_CEL_TYPE, INT_CEL_TYPE],
+      resultType: INT_CEL_TYPE,
     },
     {
       overloadId: MULTIPLY_UINT64_OVERLOAD,
-      params: [UINT64_TYPE, UINT64_TYPE],
-      resultType: UINT64_TYPE,
+      params: [UINT_CEL_TYPE, UINT_CEL_TYPE],
+      resultType: UINT_CEL_TYPE,
     },
   ],
 });
@@ -483,13 +483,13 @@ export const NEGATE_FUNCTION_DECL = functionDecl(NEGATE_OPERATOR, {
   overloads: [
     {
       overloadId: NEGATE_DOUBLE_OVERLOAD,
-      params: [DOUBLE_TYPE],
-      resultType: DOUBLE_TYPE,
+      params: [DOUBLE_CEL_TYPE],
+      resultType: DOUBLE_CEL_TYPE,
     },
     {
       overloadId: NEGATE_INT64_OVERLOAD,
-      params: [INT64_TYPE],
-      resultType: INT64_TYPE,
+      params: [INT_CEL_TYPE],
+      resultType: INT_CEL_TYPE,
     },
   ],
 });
@@ -497,18 +497,18 @@ export const SUBTRACT_FUNCTION_DECL = functionDecl(SUBTRACT_OPERATOR, {
   overloads: [
     {
       overloadId: SUBTRACT_DOUBLE_OVERLOAD,
-      params: [DOUBLE_TYPE, DOUBLE_TYPE],
-      resultType: DOUBLE_TYPE,
+      params: [DOUBLE_CEL_TYPE, DOUBLE_CEL_TYPE],
+      resultType: DOUBLE_CEL_TYPE,
     },
     {
       overloadId: SUBTRACT_INT64_OVERLOAD,
-      params: [INT64_TYPE, INT64_TYPE],
-      resultType: INT64_TYPE,
+      params: [INT_CEL_TYPE, INT_CEL_TYPE],
+      resultType: INT_CEL_TYPE,
     },
     {
       overloadId: SUBTRACT_UINT64_OVERLOAD,
-      params: [UINT64_TYPE, UINT64_TYPE],
-      resultType: UINT64_TYPE,
+      params: [UINT_CEL_TYPE, UINT_CEL_TYPE],
+      resultType: UINT_CEL_TYPE,
     },
     {
       overloadId: SUBTRACT_DURATION_DURATION_OVERLOAD,
@@ -533,73 +533,73 @@ export const LESS_FUNCTION_DECL = functionDecl(LESS_OPERATOR, {
   overloads: [
     {
       overloadId: LESS_BOOL_OVERLOAD,
-      params: [BOOL_TYPE, BOOL_TYPE],
-      resultType: BOOL_TYPE,
+      params: [BOOL_CEL_TYPE, BOOL_CEL_TYPE],
+      resultType: BOOL_CEL_TYPE,
     },
     {
       overloadId: LESS_INT64_OVERLOAD,
-      params: [INT64_TYPE, INT64_TYPE],
-      resultType: BOOL_TYPE,
+      params: [INT_CEL_TYPE, INT_CEL_TYPE],
+      resultType: BOOL_CEL_TYPE,
     },
     {
       overloadId: LESS_INT64_DOUBLE_OVERLOAD,
-      params: [INT64_TYPE, DOUBLE_TYPE],
-      resultType: BOOL_TYPE,
+      params: [INT_CEL_TYPE, DOUBLE_CEL_TYPE],
+      resultType: BOOL_CEL_TYPE,
     },
     {
       overloadId: LESS_INT64_UINT64_OVERLOAD,
-      params: [INT64_TYPE, UINT64_TYPE],
-      resultType: BOOL_TYPE,
+      params: [INT_CEL_TYPE, UINT_CEL_TYPE],
+      resultType: BOOL_CEL_TYPE,
     },
     {
       overloadId: LESS_UINT64_OVERLOAD,
-      params: [UINT64_TYPE, UINT64_TYPE],
-      resultType: BOOL_TYPE,
+      params: [UINT_CEL_TYPE, UINT_CEL_TYPE],
+      resultType: BOOL_CEL_TYPE,
     },
     {
       overloadId: LESS_UINT64_DOUBLE_OVERLOAD,
-      params: [UINT64_TYPE, DOUBLE_TYPE],
-      resultType: BOOL_TYPE,
+      params: [UINT_CEL_TYPE, DOUBLE_CEL_TYPE],
+      resultType: BOOL_CEL_TYPE,
     },
     {
       overloadId: LESS_UINT64_INT64_OVERLOAD,
-      params: [UINT64_TYPE, INT64_TYPE],
-      resultType: BOOL_TYPE,
+      params: [UINT_CEL_TYPE, INT_CEL_TYPE],
+      resultType: BOOL_CEL_TYPE,
     },
     {
       overloadId: LESS_DOUBLE_OVERLOAD,
-      params: [DOUBLE_TYPE, DOUBLE_TYPE],
-      resultType: BOOL_TYPE,
+      params: [DOUBLE_CEL_TYPE, DOUBLE_CEL_TYPE],
+      resultType: BOOL_CEL_TYPE,
     },
     {
       overloadId: LESS_DOUBLE_INT64_OVERLOAD,
-      params: [DOUBLE_TYPE, INT64_TYPE],
-      resultType: BOOL_TYPE,
+      params: [DOUBLE_CEL_TYPE, INT_CEL_TYPE],
+      resultType: BOOL_CEL_TYPE,
     },
     {
       overloadId: LESS_DOUBLE_UINT64_OVERLOAD,
-      params: [DOUBLE_TYPE, UINT64_TYPE],
-      resultType: BOOL_TYPE,
+      params: [DOUBLE_CEL_TYPE, UINT_CEL_TYPE],
+      resultType: BOOL_CEL_TYPE,
     },
     {
       overloadId: LESS_STRING_OVERLOAD,
-      params: [STRING_TYPE, STRING_TYPE],
-      resultType: BOOL_TYPE,
+      params: [STRING_CEL_TYPE, STRING_CEL_TYPE],
+      resultType: BOOL_CEL_TYPE,
     },
     {
       overloadId: LESS_BYTES_OVERLOAD,
-      params: [BYTES_TYPE, BYTES_TYPE],
-      resultType: BOOL_TYPE,
+      params: [BYTES_CEL_TYPE, BYTES_CEL_TYPE],
+      resultType: BOOL_CEL_TYPE,
     },
     {
       overloadId: LESS_TIMESTAMP_OVERLOAD,
       params: [TIMESTAMP_TYPE, TIMESTAMP_TYPE],
-      resultType: BOOL_TYPE,
+      resultType: BOOL_CEL_TYPE,
     },
     {
       overloadId: LESS_DURATION_OVERLOAD,
       params: [DURATION_TYPE, DURATION_TYPE],
-      resultType: BOOL_TYPE,
+      resultType: BOOL_CEL_TYPE,
     },
   ],
 });
@@ -607,68 +607,68 @@ export const LESS_EQUALS_FUNCTION_DECL = functionDecl(LESS_EQUALS_OPERATOR, {
   overloads: [
     {
       overloadId: LESS_EQUALS_INT64_OVERLOAD,
-      params: [INT64_TYPE, INT64_TYPE],
-      resultType: BOOL_TYPE,
+      params: [INT_CEL_TYPE, INT_CEL_TYPE],
+      resultType: BOOL_CEL_TYPE,
     },
     {
       overloadId: LESS_EQUALS_INT64_DOUBLE_OVERLOAD,
-      params: [INT64_TYPE, DOUBLE_TYPE],
-      resultType: BOOL_TYPE,
+      params: [INT_CEL_TYPE, DOUBLE_CEL_TYPE],
+      resultType: BOOL_CEL_TYPE,
     },
     {
       overloadId: LESS_EQUALS_INT64_UINT64_OVERLOAD,
-      params: [INT64_TYPE, UINT64_TYPE],
-      resultType: BOOL_TYPE,
+      params: [INT_CEL_TYPE, UINT_CEL_TYPE],
+      resultType: BOOL_CEL_TYPE,
     },
     {
       overloadId: LESS_EQUALS_UINT64_OVERLOAD,
-      params: [UINT64_TYPE, UINT64_TYPE],
-      resultType: BOOL_TYPE,
+      params: [UINT_CEL_TYPE, UINT_CEL_TYPE],
+      resultType: BOOL_CEL_TYPE,
     },
     {
       overloadId: LESS_EQUALS_UINT64_DOUBLE_OVERLOAD,
-      params: [UINT64_TYPE, DOUBLE_TYPE],
-      resultType: BOOL_TYPE,
+      params: [UINT_CEL_TYPE, DOUBLE_CEL_TYPE],
+      resultType: BOOL_CEL_TYPE,
     },
     {
       overloadId: LESS_EQUALS_UINT64_INT64_OVERLOAD,
-      params: [UINT64_TYPE, INT64_TYPE],
-      resultType: BOOL_TYPE,
+      params: [UINT_CEL_TYPE, INT_CEL_TYPE],
+      resultType: BOOL_CEL_TYPE,
     },
     {
       overloadId: LESS_EQUALS_DOUBLE_OVERLOAD,
-      params: [DOUBLE_TYPE, DOUBLE_TYPE],
-      resultType: BOOL_TYPE,
+      params: [DOUBLE_CEL_TYPE, DOUBLE_CEL_TYPE],
+      resultType: BOOL_CEL_TYPE,
     },
     {
       overloadId: LESS_EQUALS_DOUBLE_INT64_OVERLOAD,
-      params: [DOUBLE_TYPE, INT64_TYPE],
-      resultType: BOOL_TYPE,
+      params: [DOUBLE_CEL_TYPE, INT_CEL_TYPE],
+      resultType: BOOL_CEL_TYPE,
     },
     {
       overloadId: LESS_EQUALS_DOUBLE_UINT64_OVERLOAD,
-      params: [DOUBLE_TYPE, UINT64_TYPE],
-      resultType: BOOL_TYPE,
+      params: [DOUBLE_CEL_TYPE, UINT_CEL_TYPE],
+      resultType: BOOL_CEL_TYPE,
     },
     {
       overloadId: LESS_EQUALS_STRING_OVERLOAD,
-      params: [STRING_TYPE, STRING_TYPE],
-      resultType: BOOL_TYPE,
+      params: [STRING_CEL_TYPE, STRING_CEL_TYPE],
+      resultType: BOOL_CEL_TYPE,
     },
     {
       overloadId: LESS_EQUALS_BYTES_OVERLOAD,
-      params: [BYTES_TYPE, BYTES_TYPE],
-      resultType: BOOL_TYPE,
+      params: [BYTES_CEL_TYPE, BYTES_CEL_TYPE],
+      resultType: BOOL_CEL_TYPE,
     },
     {
       overloadId: LESS_EQUALS_DURATION_OVERLOAD,
       params: [DURATION_TYPE, DURATION_TYPE],
-      resultType: BOOL_TYPE,
+      resultType: BOOL_CEL_TYPE,
     },
     {
       overloadId: LESS_EQUALS_TIMESTAMP_OVERLOAD,
       params: [TIMESTAMP_TYPE, TIMESTAMP_TYPE],
-      resultType: BOOL_TYPE,
+      resultType: BOOL_CEL_TYPE,
     },
   ],
 });
@@ -676,73 +676,73 @@ export const GREATER_FUNCTION_DECL = functionDecl(GREATER_OPERATOR, {
   overloads: [
     {
       overloadId: GREATER_BOOL_OVERLOAD,
-      params: [BOOL_TYPE, BOOL_TYPE],
-      resultType: BOOL_TYPE,
+      params: [BOOL_CEL_TYPE, BOOL_CEL_TYPE],
+      resultType: BOOL_CEL_TYPE,
     },
     {
       overloadId: GREATER_INT64_OVERLOAD,
-      params: [INT64_TYPE, INT64_TYPE],
-      resultType: BOOL_TYPE,
+      params: [INT_CEL_TYPE, INT_CEL_TYPE],
+      resultType: BOOL_CEL_TYPE,
     },
     {
       overloadId: GREATER_INT64_DOUBLE_OVERLOAD,
-      params: [INT64_TYPE, DOUBLE_TYPE],
-      resultType: BOOL_TYPE,
+      params: [INT_CEL_TYPE, DOUBLE_CEL_TYPE],
+      resultType: BOOL_CEL_TYPE,
     },
     {
       overloadId: GREATER_INT64_UINT64_OVERLOAD,
-      params: [INT64_TYPE, UINT64_TYPE],
-      resultType: BOOL_TYPE,
+      params: [INT_CEL_TYPE, UINT_CEL_TYPE],
+      resultType: BOOL_CEL_TYPE,
     },
     {
       overloadId: GREATER_UINT64_OVERLOAD,
-      params: [UINT64_TYPE, UINT64_TYPE],
-      resultType: BOOL_TYPE,
+      params: [UINT_CEL_TYPE, UINT_CEL_TYPE],
+      resultType: BOOL_CEL_TYPE,
     },
     {
       overloadId: GREATER_UINT64_DOUBLE_OVERLOAD,
-      params: [UINT64_TYPE, DOUBLE_TYPE],
-      resultType: BOOL_TYPE,
+      params: [UINT_CEL_TYPE, DOUBLE_CEL_TYPE],
+      resultType: BOOL_CEL_TYPE,
     },
     {
       overloadId: GREATER_UINT64_INT64_OVERLOAD,
-      params: [UINT64_TYPE, INT64_TYPE],
-      resultType: BOOL_TYPE,
+      params: [UINT_CEL_TYPE, INT_CEL_TYPE],
+      resultType: BOOL_CEL_TYPE,
     },
     {
       overloadId: GREATER_DOUBLE_OVERLOAD,
-      params: [DOUBLE_TYPE, DOUBLE_TYPE],
-      resultType: BOOL_TYPE,
+      params: [DOUBLE_CEL_TYPE, DOUBLE_CEL_TYPE],
+      resultType: BOOL_CEL_TYPE,
     },
     {
       overloadId: GREATER_DOUBLE_INT64_OVERLOAD,
-      params: [DOUBLE_TYPE, INT64_TYPE],
-      resultType: BOOL_TYPE,
+      params: [DOUBLE_CEL_TYPE, INT_CEL_TYPE],
+      resultType: BOOL_CEL_TYPE,
     },
     {
       overloadId: GREATER_DOUBLE_UINT64_OVERLOAD,
-      params: [DOUBLE_TYPE, UINT64_TYPE],
-      resultType: BOOL_TYPE,
+      params: [DOUBLE_CEL_TYPE, UINT_CEL_TYPE],
+      resultType: BOOL_CEL_TYPE,
     },
     {
       overloadId: GREATER_STRING_OVERLOAD,
-      params: [STRING_TYPE, STRING_TYPE],
-      resultType: BOOL_TYPE,
+      params: [STRING_CEL_TYPE, STRING_CEL_TYPE],
+      resultType: BOOL_CEL_TYPE,
     },
     {
       overloadId: GREATER_BYTES_OVERLOAD,
-      params: [BYTES_TYPE, BYTES_TYPE],
-      resultType: BOOL_TYPE,
+      params: [BYTES_CEL_TYPE, BYTES_CEL_TYPE],
+      resultType: BOOL_CEL_TYPE,
     },
     {
       overloadId: GREATER_TIMESTAMP_OVERLOAD,
       params: [TIMESTAMP_TYPE, TIMESTAMP_TYPE],
-      resultType: BOOL_TYPE,
+      resultType: BOOL_CEL_TYPE,
     },
     {
       overloadId: GREATER_DURATION_OVERLOAD,
       params: [DURATION_TYPE, DURATION_TYPE],
-      resultType: BOOL_TYPE,
+      resultType: BOOL_CEL_TYPE,
     },
   ],
 });
@@ -752,73 +752,73 @@ export const GREATER_EQUALS_FUNCTION_DECL = functionDecl(
     overloads: [
       {
         overloadId: GREATER_EQUALS_BOOL_OVERLOAD,
-        params: [BOOL_TYPE, BOOL_TYPE],
-        resultType: BOOL_TYPE,
+        params: [BOOL_CEL_TYPE, BOOL_CEL_TYPE],
+        resultType: BOOL_CEL_TYPE,
       },
       {
         overloadId: GREATER_EQUALS_INT64_OVERLOAD,
-        params: [INT64_TYPE, INT64_TYPE],
-        resultType: BOOL_TYPE,
+        params: [INT_CEL_TYPE, INT_CEL_TYPE],
+        resultType: BOOL_CEL_TYPE,
       },
       {
         overloadId: GREATER_EQUALS_INT64_DOUBLE_OVERLOAD,
-        params: [INT64_TYPE, DOUBLE_TYPE],
-        resultType: BOOL_TYPE,
+        params: [INT_CEL_TYPE, DOUBLE_CEL_TYPE],
+        resultType: BOOL_CEL_TYPE,
       },
       {
         overloadId: GREATER_EQUALS_INT64_UINT64_OVERLOAD,
-        params: [INT64_TYPE, UINT64_TYPE],
-        resultType: BOOL_TYPE,
+        params: [INT_CEL_TYPE, UINT_CEL_TYPE],
+        resultType: BOOL_CEL_TYPE,
       },
       {
         overloadId: GREATER_EQUALS_UINT64_OVERLOAD,
-        params: [UINT64_TYPE, UINT64_TYPE],
-        resultType: BOOL_TYPE,
+        params: [UINT_CEL_TYPE, UINT_CEL_TYPE],
+        resultType: BOOL_CEL_TYPE,
       },
       {
         overloadId: GREATER_EQUALS_UINT64_DOUBLE_OVERLOAD,
-        params: [UINT64_TYPE, DOUBLE_TYPE],
-        resultType: BOOL_TYPE,
+        params: [UINT_CEL_TYPE, DOUBLE_CEL_TYPE],
+        resultType: BOOL_CEL_TYPE,
       },
       {
         overloadId: GREATER_EQUALS_UINT64_INT64_OVERLOAD,
-        params: [UINT64_TYPE, INT64_TYPE],
-        resultType: BOOL_TYPE,
+        params: [UINT_CEL_TYPE, INT_CEL_TYPE],
+        resultType: BOOL_CEL_TYPE,
       },
       {
         overloadId: GREATER_EQUALS_DOUBLE_OVERLOAD,
-        params: [DOUBLE_TYPE, DOUBLE_TYPE],
-        resultType: BOOL_TYPE,
+        params: [DOUBLE_CEL_TYPE, DOUBLE_CEL_TYPE],
+        resultType: BOOL_CEL_TYPE,
       },
       {
         overloadId: GREATER_EQUALS_DOUBLE_INT64_OVERLOAD,
-        params: [DOUBLE_TYPE, INT64_TYPE],
-        resultType: BOOL_TYPE,
+        params: [DOUBLE_CEL_TYPE, INT_CEL_TYPE],
+        resultType: BOOL_CEL_TYPE,
       },
       {
         overloadId: GREATER_EQUALS_DOUBLE_UINT64_OVERLOAD,
-        params: [DOUBLE_TYPE, UINT64_TYPE],
-        resultType: BOOL_TYPE,
+        params: [DOUBLE_CEL_TYPE, UINT_CEL_TYPE],
+        resultType: BOOL_CEL_TYPE,
       },
       {
         overloadId: GREATER_EQUALS_STRING_OVERLOAD,
-        params: [STRING_TYPE, STRING_TYPE],
-        resultType: BOOL_TYPE,
+        params: [STRING_CEL_TYPE, STRING_CEL_TYPE],
+        resultType: BOOL_CEL_TYPE,
       },
       {
         overloadId: GREATER_EQUALS_BYTES_OVERLOAD,
-        params: [BYTES_TYPE, BYTES_TYPE],
-        resultType: BOOL_TYPE,
+        params: [BYTES_CEL_TYPE, BYTES_CEL_TYPE],
+        resultType: BOOL_CEL_TYPE,
       },
       {
         overloadId: GREATER_EQUALS_DURATION_OVERLOAD,
         params: [DURATION_TYPE, DURATION_TYPE],
-        resultType: BOOL_TYPE,
+        resultType: BOOL_CEL_TYPE,
       },
       {
         overloadId: GREATER_EQUALS_TIMESTAMP_OVERLOAD,
         params: [TIMESTAMP_TYPE, TIMESTAMP_TYPE],
-        resultType: BOOL_TYPE,
+        resultType: BOOL_CEL_TYPE,
       },
     ],
   }
@@ -835,7 +835,7 @@ export const INDEX_FUNCTION_DECL = functionDecl(INDEX_OPERATOR, {
     },
     {
       overloadId: INDEX_LIST_OVERLOAD,
-      params: [listOfA, INT64_TYPE],
+      params: [listOfA, INT_CEL_TYPE],
       resultType: paramA,
       typeParams: typeParamAList,
     },
@@ -848,13 +848,13 @@ export const IN_FUNCTION_DECL = functionDecl(IN_OPERATOR, {
     {
       overloadId: IN_LIST_OVERLOAD,
       params: [paramA, listOfA],
-      resultType: BOOL_TYPE,
+      resultType: BOOL_CEL_TYPE,
       typeParams: typeParamAList,
     },
     {
       overloadId: IN_MAP_OVERLOAD,
       params: [paramA, mapOfAB],
-      resultType: BOOL_TYPE,
+      resultType: BOOL_CEL_TYPE,
       typeParams: typeParamABList,
     },
   ],
@@ -863,50 +863,50 @@ export const SIZE_FUNCTION_DECL = functionDecl(SIZE_OVERLOAD, {
   overloads: [
     {
       overloadId: SIZE_BYTES_OVERLOAD,
-      params: [BYTES_TYPE],
-      resultType: INT64_TYPE,
+      params: [BYTES_CEL_TYPE],
+      resultType: INT_CEL_TYPE,
     },
     {
       overloadId: SIZE_BYTES_INST_OVERLOAD,
-      params: [BYTES_TYPE],
-      resultType: INT64_TYPE,
+      params: [BYTES_CEL_TYPE],
+      resultType: INT_CEL_TYPE,
       isInstanceFunction: true,
     },
     {
       overloadId: SIZE_LIST_OVERLOAD,
       params: [listOfA],
-      resultType: INT64_TYPE,
+      resultType: INT_CEL_TYPE,
       typeParams: typeParamAList,
     },
     {
       overloadId: SIZE_LIST_INST_OVERLOAD,
       params: [listOfA],
-      resultType: INT64_TYPE,
+      resultType: INT_CEL_TYPE,
       typeParams: typeParamAList,
       isInstanceFunction: true,
     },
     {
       overloadId: SIZE_MAP_OVERLOAD,
       params: [mapOfAB],
-      resultType: INT64_TYPE,
+      resultType: INT_CEL_TYPE,
       typeParams: typeParamABList,
     },
     {
       overloadId: SIZE_MAP_INST_OVERLOAD,
       params: [mapOfAB],
-      resultType: INT64_TYPE,
+      resultType: INT_CEL_TYPE,
       typeParams: typeParamABList,
       isInstanceFunction: true,
     },
     {
       overloadId: SIZE_STRING_OVERLOAD,
-      params: [STRING_TYPE],
-      resultType: INT64_TYPE,
+      params: [STRING_CEL_TYPE],
+      resultType: INT_CEL_TYPE,
     },
     {
       overloadId: SIZE_STRING_INST_OVERLOAD,
-      params: [STRING_TYPE],
-      resultType: INT64_TYPE,
+      params: [STRING_CEL_TYPE],
+      resultType: INT_CEL_TYPE,
       isInstanceFunction: true,
     },
   ],
@@ -934,13 +934,13 @@ export const TYPE_CONVERT_BOOL_FUNCTION_DECL = functionDecl(
     overloads: [
       {
         overloadId: BOOL_TO_BOOL_OVERLOAD,
-        params: [BOOL_TYPE],
-        resultType: BOOL_TYPE,
+        params: [BOOL_CEL_TYPE],
+        resultType: BOOL_CEL_TYPE,
       },
       {
         overloadId: STRING_TO_BOOL_OVERLOAD,
-        params: [STRING_TYPE],
-        resultType: BOOL_TYPE,
+        params: [STRING_CEL_TYPE],
+        resultType: BOOL_CEL_TYPE,
       },
     ],
   }
@@ -953,13 +953,13 @@ export const TYPE_CONVERT_BYTES_FUNCTION_DECL = functionDecl(
     overloads: [
       {
         overloadId: BYTES_TO_BYTES_OVERLOAD,
-        params: [BYTES_TYPE],
-        resultType: BYTES_TYPE,
+        params: [BYTES_CEL_TYPE],
+        resultType: BYTES_CEL_TYPE,
       },
       {
         overloadId: STRING_TO_BYTES_OVERLOAD,
-        params: [STRING_TYPE],
-        resultType: BYTES_TYPE,
+        params: [STRING_CEL_TYPE],
+        resultType: BYTES_CEL_TYPE,
       },
     ],
   }
@@ -972,23 +972,23 @@ export const TYPE_CONVERT_DOUBLE_FUNCTION_DECL = functionDecl(
     overloads: [
       {
         overloadId: DOUBLE_TO_DOUBLE_OVERLOAD,
-        params: [DOUBLE_TYPE],
-        resultType: DOUBLE_TYPE,
+        params: [DOUBLE_CEL_TYPE],
+        resultType: DOUBLE_CEL_TYPE,
       },
       {
         overloadId: INT_TO_DOUBLE_OVERLOAD,
-        params: [INT64_TYPE],
-        resultType: DOUBLE_TYPE,
+        params: [INT_CEL_TYPE],
+        resultType: DOUBLE_CEL_TYPE,
       },
       {
         overloadId: STRING_TO_DOUBLE_OVERLOAD,
-        params: [STRING_TYPE],
-        resultType: DOUBLE_TYPE,
+        params: [STRING_CEL_TYPE],
+        resultType: DOUBLE_CEL_TYPE,
       },
       {
         overloadId: UINT_TO_DOUBLE_OVERLOAD,
-        params: [UINT64_TYPE],
-        resultType: DOUBLE_TYPE,
+        params: [UINT_CEL_TYPE],
+        resultType: DOUBLE_CEL_TYPE,
       },
     ],
   }
@@ -1006,12 +1006,12 @@ export const TYPE_CONVERT_DURATION_FUNCTION_DECL = functionDecl(
       },
       {
         overloadId: INT_TO_DURATION_OVERLOAD,
-        params: [INT64_TYPE],
+        params: [INT_CEL_TYPE],
         resultType: DURATION_TYPE,
       },
       {
         overloadId: STRING_TO_DURATION_OVERLOAD,
-        params: [STRING_TYPE],
+        params: [STRING_CEL_TYPE],
         resultType: DURATION_TYPE,
       },
     ],
@@ -1040,33 +1040,33 @@ export const TYPE_CONVERT_INT_FUNCTION_DECL = functionDecl(
     overloads: [
       {
         overloadId: INT_TO_INT_OVERLOAD,
-        params: [INT64_TYPE],
-        resultType: INT64_TYPE,
+        params: [INT_CEL_TYPE],
+        resultType: INT_CEL_TYPE,
       },
       {
         overloadId: DOUBLE_TO_INT_OVERLOAD,
-        params: [DOUBLE_TYPE],
-        resultType: INT64_TYPE,
+        params: [DOUBLE_CEL_TYPE],
+        resultType: INT_CEL_TYPE,
       },
       {
         overloadId: DURATION_TO_INT_OVERLOAD,
         params: [DURATION_TYPE],
-        resultType: INT64_TYPE,
+        resultType: INT_CEL_TYPE,
       },
       {
         overloadId: STRING_TO_INT_OVERLOAD,
-        params: [STRING_TYPE],
-        resultType: INT64_TYPE,
+        params: [STRING_CEL_TYPE],
+        resultType: INT_CEL_TYPE,
       },
       {
         overloadId: TIMESTAMP_TO_INT_OVERLOAD,
         params: [TIMESTAMP_TYPE],
-        resultType: INT64_TYPE,
+        resultType: INT_CEL_TYPE,
       },
       {
         overloadId: UINT_TO_INT_OVERLOAD,
-        params: [UINT64_TYPE],
-        resultType: INT64_TYPE,
+        params: [UINT_CEL_TYPE],
+        resultType: INT_CEL_TYPE,
       },
     ],
   }
@@ -1079,43 +1079,43 @@ export const TYPE_CONVERT_STRING_FUNCTION_DECL = functionDecl(
     overloads: [
       {
         overloadId: STRING_TO_STRING_OVERLOAD,
-        params: [STRING_TYPE],
-        resultType: STRING_TYPE,
+        params: [STRING_CEL_TYPE],
+        resultType: STRING_CEL_TYPE,
       },
       {
         overloadId: BOOL_TO_STRING_OVERLOAD,
-        params: [BOOL_TYPE],
-        resultType: STRING_TYPE,
+        params: [BOOL_CEL_TYPE],
+        resultType: STRING_CEL_TYPE,
       },
       {
         overloadId: BYTES_TO_STRING_OVERLOAD,
-        params: [BYTES_TYPE],
-        resultType: STRING_TYPE,
+        params: [BYTES_CEL_TYPE],
+        resultType: STRING_CEL_TYPE,
       },
       {
         overloadId: DOUBLE_TO_STRING_OVERLOAD,
-        params: [DOUBLE_TYPE],
-        resultType: STRING_TYPE,
+        params: [DOUBLE_CEL_TYPE],
+        resultType: STRING_CEL_TYPE,
       },
       {
         overloadId: INT_TO_STRING_OVERLOAD,
-        params: [INT64_TYPE],
-        resultType: STRING_TYPE,
+        params: [INT_CEL_TYPE],
+        resultType: STRING_CEL_TYPE,
       },
       {
         overloadId: UINT_TO_STRING_OVERLOAD,
-        params: [UINT64_TYPE],
-        resultType: STRING_TYPE,
+        params: [UINT_CEL_TYPE],
+        resultType: STRING_CEL_TYPE,
       },
       {
         overloadId: DURATION_TO_STRING_OVERLOAD,
         params: [DURATION_TYPE],
-        resultType: STRING_TYPE,
+        resultType: STRING_CEL_TYPE,
       },
       {
         overloadId: TIMESTAMP_TO_STRING_OVERLOAD,
         params: [TIMESTAMP_TYPE],
-        resultType: STRING_TYPE,
+        resultType: STRING_CEL_TYPE,
       },
     ],
   }
@@ -1133,12 +1133,12 @@ export const TYPE_CONVERT_TIMESTAMP_FUNCTION_DECL = functionDecl(
       },
       {
         overloadId: INT_TO_TIMESTAMP_OVERLOAD,
-        params: [INT64_TYPE],
+        params: [INT_CEL_TYPE],
         resultType: TIMESTAMP_TYPE,
       },
       {
         overloadId: STRING_TO_TIMESTAMP_OVERLOAD,
-        params: [STRING_TYPE],
+        params: [STRING_CEL_TYPE],
         resultType: TIMESTAMP_TYPE,
       },
     ],
@@ -1152,23 +1152,23 @@ export const TYPE_CONVERT_UINT_FUNCTION_DECL = functionDecl(
     overloads: [
       {
         overloadId: UINT_TO_UINT_OVERLOAD,
-        params: [UINT64_TYPE],
-        resultType: UINT64_TYPE,
+        params: [UINT_CEL_TYPE],
+        resultType: UINT_CEL_TYPE,
       },
       {
         overloadId: DOUBLE_TO_UINT_OVERLOAD,
-        params: [DOUBLE_TYPE],
-        resultType: UINT64_TYPE,
+        params: [DOUBLE_CEL_TYPE],
+        resultType: UINT_CEL_TYPE,
       },
       {
         overloadId: INT_TO_UINT_OVERLOAD,
-        params: [INT64_TYPE],
-        resultType: UINT64_TYPE,
+        params: [INT_CEL_TYPE],
+        resultType: UINT_CEL_TYPE,
       },
       {
         overloadId: STRING_TO_UINT_OVERLOAD,
-        params: [STRING_TYPE],
-        resultType: UINT64_TYPE,
+        params: [STRING_CEL_TYPE],
+        resultType: UINT_CEL_TYPE,
       },
     ],
   }
@@ -1179,8 +1179,8 @@ export const STRING_CONTAINS_FUNCTION_DECL = functionDecl(CONTAINS_OVERLOAD, {
   overloads: [
     {
       overloadId: CONTAINS_STRING_OVERLOAD,
-      params: [STRING_TYPE, STRING_TYPE],
-      resultType: BOOL_TYPE,
+      params: [STRING_CEL_TYPE, STRING_CEL_TYPE],
+      resultType: BOOL_CEL_TYPE,
     },
   ],
 });
@@ -1188,8 +1188,8 @@ export const STRING_ENDSWITH_FUNCTION_DECL = functionDecl(ENDS_WITH_OVERLOAD, {
   overloads: [
     {
       overloadId: ENDS_WITH_STRING_OVERLOAD,
-      params: [STRING_TYPE, STRING_TYPE],
-      resultType: BOOL_TYPE,
+      params: [STRING_CEL_TYPE, STRING_CEL_TYPE],
+      resultType: BOOL_CEL_TYPE,
     },
   ],
 });
@@ -1199,8 +1199,8 @@ export const STRING_STARTSWITH_FUNCTION_DECL = functionDecl(
     overloads: [
       {
         overloadId: STARTS_WITH_STRING_OVERLOAD,
-        params: [STRING_TYPE, STRING_TYPE],
-        resultType: BOOL_TYPE,
+        params: [STRING_CEL_TYPE, STRING_CEL_TYPE],
+        resultType: BOOL_CEL_TYPE,
       },
     ],
   }
@@ -1209,13 +1209,13 @@ export const STRING_MATCHES_FUNCTION_DECL = functionDecl(MATCHES_OVERLOAD, {
   overloads: [
     {
       overloadId: MATCHES_OVERLOAD,
-      params: [STRING_TYPE, STRING_TYPE],
-      resultType: BOOL_TYPE,
+      params: [STRING_CEL_TYPE, STRING_CEL_TYPE],
+      resultType: BOOL_CEL_TYPE,
     },
     {
       overloadId: MATCHES_STRING_OVERLOAD,
-      params: [STRING_TYPE, STRING_TYPE],
-      resultType: BOOL_TYPE,
+      params: [STRING_CEL_TYPE, STRING_CEL_TYPE],
+      resultType: BOOL_CEL_TYPE,
     },
   ],
 });
@@ -1228,13 +1228,13 @@ export const TIME_GET_FULL_YEAR_FUNCTION_DECL = functionDecl(
       {
         overloadId: TIMESTAMP_TO_YEAR_OVERLOAD,
         params: [TIMESTAMP_TYPE],
-        resultType: INT64_TYPE,
+        resultType: INT_CEL_TYPE,
         isInstanceFunction: true,
       },
       {
         overloadId: TIMESTAMP_TO_YEAR_WITH_TZ_OVERLOAD,
         params: [TIMESTAMP_TYPE],
-        resultType: STRING_TYPE,
+        resultType: STRING_CEL_TYPE,
         isInstanceFunction: true,
       },
     ],
@@ -1247,13 +1247,13 @@ export const TIME_GET_MONTH_FUNCTION_DECL = functionDecl(
       {
         overloadId: TIMESTAMP_TO_MONTH_OVERLOAD,
         params: [TIMESTAMP_TYPE],
-        resultType: INT64_TYPE,
+        resultType: INT_CEL_TYPE,
         isInstanceFunction: true,
       },
       {
         overloadId: TIMESTAMP_TO_MONTH_WITH_TZ_OVERLOAD,
         params: [TIMESTAMP_TYPE],
-        resultType: STRING_TYPE,
+        resultType: STRING_CEL_TYPE,
         isInstanceFunction: true,
       },
     ],
@@ -1266,13 +1266,13 @@ export const TIME_GET_DAY_OF_YEAR_FUNCTION_DECL = functionDecl(
       {
         overloadId: TIMESTAMP_TO_DAY_OF_YEAR_OVERLOAD,
         params: [TIMESTAMP_TYPE],
-        resultType: INT64_TYPE,
+        resultType: INT_CEL_TYPE,
         isInstanceFunction: true,
       },
       {
         overloadId: TIMESTAMP_TO_DAY_OF_YEAR_WITH_TZ_OVERLOAD,
         params: [TIMESTAMP_TYPE],
-        resultType: STRING_TYPE,
+        resultType: STRING_CEL_TYPE,
         isInstanceFunction: true,
       },
     ],
@@ -1285,13 +1285,13 @@ export const TIME_GET_DAY_OF_MONTH_FUNCTION_DECL = functionDecl(
       {
         overloadId: TIMESTAMP_TO_DAY_OF_MONTH_ZERO_BASED_OVERLOAD,
         params: [TIMESTAMP_TYPE],
-        resultType: INT64_TYPE,
+        resultType: INT_CEL_TYPE,
         isInstanceFunction: true,
       },
       {
         overloadId: TIMESTAMP_TO_DAY_OF_MONTH_ZERO_BASED_WITH_TZ_OVERLOAD,
         params: [TIMESTAMP_TYPE],
-        resultType: STRING_TYPE,
+        resultType: STRING_CEL_TYPE,
         isInstanceFunction: true,
       },
     ],
@@ -1304,13 +1304,13 @@ export const TIME_GET_DATE_FUNCTION_DECL = functionDecl(
       {
         overloadId: TIMESTAMP_TO_DAY_OF_MONTH_ONE_BASED_OVERLOAD,
         params: [TIMESTAMP_TYPE],
-        resultType: INT64_TYPE,
+        resultType: INT_CEL_TYPE,
         isInstanceFunction: true,
       },
       {
         overloadId: TIMESTAMP_TO_DAY_OF_MONTH_ONE_BASED_WITH_TZ_OVERLOAD,
         params: [TIMESTAMP_TYPE],
-        resultType: STRING_TYPE,
+        resultType: STRING_CEL_TYPE,
         isInstanceFunction: true,
       },
     ],
@@ -1323,13 +1323,13 @@ export const TIME_GET_DAY_OF_WEEK_FUNCTION_DECL = functionDecl(
       {
         overloadId: TIMESTAMP_TO_DAY_OF_WEEK_OVERLOAD,
         params: [TIMESTAMP_TYPE],
-        resultType: INT64_TYPE,
+        resultType: INT_CEL_TYPE,
         isInstanceFunction: true,
       },
       {
         overloadId: TIMESTAMP_TO_DAY_OF_WEEK_WITH_TZ_OVERLOAD,
         params: [TIMESTAMP_TYPE],
-        resultType: STRING_TYPE,
+        resultType: STRING_CEL_TYPE,
         isInstanceFunction: true,
       },
     ],
@@ -1342,19 +1342,19 @@ export const TIME_GET_HOURS_FUNCTION_DECL = functionDecl(
       {
         overloadId: TIMESTAMP_TO_HOURS_OVERLOAD,
         params: [TIMESTAMP_TYPE],
-        resultType: INT64_TYPE,
+        resultType: INT_CEL_TYPE,
         isInstanceFunction: true,
       },
       {
         overloadId: TIMESTAMP_TO_HOURS_WITH_TZ_OVERLOAD,
         params: [TIMESTAMP_TYPE],
-        resultType: STRING_TYPE,
+        resultType: STRING_CEL_TYPE,
         isInstanceFunction: true,
       },
       {
         overloadId: DURATION_TO_HOURS_OVERLOAD,
         params: [DURATION_TYPE],
-        resultType: INT64_TYPE,
+        resultType: INT_CEL_TYPE,
         isInstanceFunction: true,
       },
     ],
@@ -1367,19 +1367,19 @@ export const TIME_GET_MINUTES_FUNCTION_DECL = functionDecl(
       {
         overloadId: TIMESTAMP_TO_MINUTES_OVERLOAD,
         params: [TIMESTAMP_TYPE],
-        resultType: INT64_TYPE,
+        resultType: INT_CEL_TYPE,
         isInstanceFunction: true,
       },
       {
         overloadId: TIMESTAMP_TO_MINUTES_WITH_TZ_OVERLOAD,
         params: [TIMESTAMP_TYPE],
-        resultType: STRING_TYPE,
+        resultType: STRING_CEL_TYPE,
         isInstanceFunction: true,
       },
       {
         overloadId: DURATION_TO_MINUTES_OVERLOAD,
         params: [DURATION_TYPE],
-        resultType: INT64_TYPE,
+        resultType: INT_CEL_TYPE,
         isInstanceFunction: true,
       },
     ],
@@ -1392,19 +1392,19 @@ export const TIME_GET_SECONDS_FUNCTION_DECL = functionDecl(
       {
         overloadId: TIMESTAMP_TO_SECONDS_OVERLOAD,
         params: [TIMESTAMP_TYPE],
-        resultType: INT64_TYPE,
+        resultType: INT_CEL_TYPE,
         isInstanceFunction: true,
       },
       {
         overloadId: TIMESTAMP_TO_SECONDS_WITH_TZ_OVERLOAD,
         params: [TIMESTAMP_TYPE],
-        resultType: STRING_TYPE,
+        resultType: STRING_CEL_TYPE,
         isInstanceFunction: true,
       },
       {
         overloadId: DURATION_TO_SECONDS_OVERLOAD,
         params: [DURATION_TYPE],
-        resultType: INT64_TYPE,
+        resultType: INT_CEL_TYPE,
         isInstanceFunction: true,
       },
     ],
@@ -1417,19 +1417,19 @@ export const TIME_GET_MILLISECONDS_FUNCTION_DECL = functionDecl(
       {
         overloadId: TIMESTAMP_TO_MILLISECONDS_OVERLOAD,
         params: [TIMESTAMP_TYPE],
-        resultType: INT64_TYPE,
+        resultType: INT_CEL_TYPE,
         isInstanceFunction: true,
       },
       {
         overloadId: TIMESTAMP_TO_MILLISECONDS_WITH_TZ_OVERLOAD,
         params: [TIMESTAMP_TYPE],
-        resultType: STRING_TYPE,
+        resultType: STRING_CEL_TYPE,
         isInstanceFunction: true,
       },
       {
         overloadId: DURATION_TO_MILLISECONDS_OVERLOAD,
         params: [DURATION_TYPE],
-        resultType: INT64_TYPE,
+        resultType: INT_CEL_TYPE,
         isInstanceFunction: true,
       },
     ],

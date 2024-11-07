@@ -24,21 +24,21 @@ import {
   STANDARD_IDENT_DECLARATIONS,
 } from '../common/standard';
 import { abstractType } from '../common/types/abstract';
-import { BOOL_TYPE } from '../common/types/bool';
-import { BYTES_TYPE } from '../common/types/bytes';
-import { DOUBLE_TYPE } from '../common/types/double';
+import { BOOL_CEL_TYPE } from '../common/types/bool';
+import { BYTES_CEL_TYPE } from '../common/types/bytes';
+import { DOUBLE_CEL_TYPE } from '../common/types/double';
 import { DYN_TYPE } from '../common/types/dyn';
 import { ERROR_TYPE } from '../common/types/error';
-import { INT64_TYPE } from '../common/types/int';
+import { INT_CEL_TYPE } from '../common/types/int';
 import { listType } from '../common/types/list';
 import { mapType } from '../common/types/map';
 import { messageType } from '../common/types/message';
 import { NULL_TYPE } from '../common/types/null';
 import { nullableType } from '../common/types/nullable';
 import { ABSTRACT_OPTIONAL_TYPE, optionalType } from '../common/types/optional';
-import { STRING_TYPE } from '../common/types/string';
+import { STRING_CEL_TYPE } from '../common/types/string';
 import { typeParamType } from '../common/types/type-param';
-import { UINT64_TYPE } from '../common/types/uint';
+import { UINT_CEL_TYPE } from '../common/types/uint';
 import { CELParser, CELParserOptions } from '../parser/parser';
 import { CELChecker } from './checker';
 import { CheckerEnv } from './env';
@@ -85,12 +85,12 @@ function getDefaultEnv() {
   const env = new CheckerEnv(container, provider);
   env.addIdents(
     ...STANDARD_IDENT_DECLARATIONS,
-    identDecl('is', { type: STRING_TYPE }),
-    identDecl('ii', { type: INT64_TYPE }),
-    identDecl('iu', { type: UINT64_TYPE }),
-    identDecl('iz', { type: BOOL_TYPE }),
-    identDecl('ib', { type: BYTES_TYPE }),
-    identDecl('id', { type: DOUBLE_TYPE }),
+    identDecl('is', { type: STRING_CEL_TYPE }),
+    identDecl('ii', { type: INT_CEL_TYPE }),
+    identDecl('iu', { type: UINT_CEL_TYPE }),
+    identDecl('iz', { type: BOOL_CEL_TYPE }),
+    identDecl('ib', { type: BYTES_CEL_TYPE }),
+    identDecl('id', { type: DOUBLE_CEL_TYPE }),
     identDecl('ix', { type: NULL_TYPE })
   );
   env.addFunctions(
@@ -99,7 +99,7 @@ function getDefaultEnv() {
       overloads: [
         {
           overloadId: 'fg_s_0',
-          resultType: STRING_TYPE,
+          resultType: STRING_CEL_TYPE,
         },
       ],
     }),
@@ -107,8 +107,8 @@ function getDefaultEnv() {
       overloads: [
         {
           overloadId: 'fi_s_s_0',
-          params: [STRING_TYPE],
-          resultType: STRING_TYPE,
+          params: [STRING_CEL_TYPE],
+          resultType: STRING_CEL_TYPE,
           isInstanceFunction: true,
         },
       ],
@@ -143,13 +143,13 @@ const testCases: TestInfo[] = [
   {
     in: `a.b`,
     out: `a.b~bool`,
-    outType: STRING_TYPE,
+    outType: STRING_CEL_TYPE,
     env: extendEnv(getDefaultEnv(), {
       idents: [
         identDecl('a', {
           type: mapType({
-            keyType: STRING_TYPE,
-            valueType: STRING_TYPE,
+            keyType: STRING_CEL_TYPE,
+            valueType: STRING_CEL_TYPE,
           }),
         }),
       ],
@@ -159,32 +159,32 @@ const testCases: TestInfo[] = [
   {
     in: `"A"`,
     out: `"A"~string`,
-    outType: STRING_TYPE,
+    outType: STRING_CEL_TYPE,
   },
   {
     in: `12`,
     out: `12~int`,
-    outType: INT64_TYPE,
+    outType: INT_CEL_TYPE,
   },
   {
     in: `12u`,
     out: `12u~uint`,
-    outType: UINT64_TYPE,
+    outType: UINT_CEL_TYPE,
   },
   {
     in: `true`,
     out: `true~bool`,
-    outType: BOOL_TYPE,
+    outType: BOOL_CEL_TYPE,
   },
   {
     in: `false`,
     out: `false~bool`,
-    outType: BOOL_TYPE,
+    outType: BOOL_CEL_TYPE,
   },
   {
     in: `12.23`,
     out: `12.23~double`,
-    outType: DOUBLE_TYPE,
+    outType: DOUBLE_CEL_TYPE,
   },
   {
     in: `null`,
@@ -194,37 +194,37 @@ const testCases: TestInfo[] = [
   {
     in: `b"ABC"`,
     out: `b"ABC"~bytes`,
-    outType: BYTES_TYPE,
+    outType: BYTES_CEL_TYPE,
   },
   // Ident types
   {
     in: `is`,
     out: `is~string^is`,
-    outType: STRING_TYPE,
+    outType: STRING_CEL_TYPE,
     env: getDefaultEnv(),
   },
   {
     in: `ii`,
     out: `ii~int^ii`,
-    outType: INT64_TYPE,
+    outType: INT_CEL_TYPE,
     env: getDefaultEnv(),
   },
   {
     in: `iu`,
     out: `iu~uint^iu`,
-    outType: UINT64_TYPE,
+    outType: UINT_CEL_TYPE,
     env: getDefaultEnv(),
   },
   {
     in: `iz`,
     out: `iz~bool^iz`,
-    outType: BOOL_TYPE,
+    outType: BOOL_CEL_TYPE,
     env: getDefaultEnv(),
   },
   {
     in: `id`,
     out: `id~double^id`,
-    outType: DOUBLE_TYPE,
+    outType: DOUBLE_CEL_TYPE,
     env: getDefaultEnv(),
   },
   {
@@ -236,13 +236,13 @@ const testCases: TestInfo[] = [
   {
     in: `ib`,
     out: `ib~bytes^ib`,
-    outType: BYTES_TYPE,
+    outType: BYTES_CEL_TYPE,
     env: getDefaultEnv(),
   },
   {
     in: `id`,
     out: `id~double^id`,
-    outType: DOUBLE_TYPE,
+    outType: DOUBLE_CEL_TYPE,
     env: getDefaultEnv(),
   },
   {
@@ -253,7 +253,7 @@ const testCases: TestInfo[] = [
   {
     in: `[1]`,
     out: `[1~int]~list(int)`,
-    outType: listType({ elemType: INT64_TYPE }),
+    outType: listType({ elemType: INT_CEL_TYPE }),
   },
   {
     in: `[1, "A"]`,
@@ -272,36 +272,36 @@ const testCases: TestInfo[] = [
   {
     in: `fg_s()`,
     out: `fg_s()~string^fg_s_0`,
-    outType: STRING_TYPE,
+    outType: STRING_CEL_TYPE,
     env: getDefaultEnv(),
   },
   {
     in: `is.fi_s_s()`,
     out: `is~string^is.fi_s_s()~string^fi_s_s_0`,
-    outType: STRING_TYPE,
+    outType: STRING_CEL_TYPE,
     env: getDefaultEnv(),
   },
   {
     in: `1 + 2`,
     out: `_+_(1~int, 2~int)~int^add_int64`,
-    outType: INT64_TYPE,
+    outType: INT_CEL_TYPE,
     env: getDefaultEnv(),
   },
   {
     in: `1 + ii`,
     out: `_+_(1~int, ii~int^ii)~int^add_int64`,
-    outType: INT64_TYPE,
+    outType: INT_CEL_TYPE,
     env: getDefaultEnv(),
   },
   {
     in: `[1] + [2]`,
     out: `_+_([1~int]~list(int), [2~int]~list(int))~list(int)^add_list`,
-    outType: listType({ elemType: INT64_TYPE }),
+    outType: listType({ elemType: INT_CEL_TYPE }),
     env: getDefaultEnv(),
   },
   {
     in: `[] + [1,2,3,] + [4]`,
-    outType: listType({ elemType: INT64_TYPE }),
+    outType: listType({ elemType: INT_CEL_TYPE }),
     out: `
 _+_(
   _+_(
@@ -324,12 +324,12 @@ _+_(
   },
   {
     in: `{1:2u, 2:3u}`,
-    outType: mapType({ keyType: INT64_TYPE, valueType: UINT64_TYPE }),
+    outType: mapType({ keyType: INT_CEL_TYPE, valueType: UINT_CEL_TYPE }),
     out: `{1~int : 2u~uint, 2~int : 3u~uint}~map(int, uint)`,
   },
   {
     in: `{"a":1, "b":2}.a`,
-    outType: INT64_TYPE,
+    outType: INT_CEL_TYPE,
     out: `{"a"~string : 1~int, "b"~string : 2~int}~map(string, int).a~int`,
   },
   {
@@ -378,9 +378,9 @@ ERROR: <input>:1:40: undefined field 'undefined'
 _==_(size(x~list(int)^x)~int^size_list, x~list(int)^x.size()~int^list_size)
 ~bool^equals`,
     env: extendEnv(getDefaultEnv(), {
-      idents: [identDecl('x', { type: listType({ elemType: INT64_TYPE }) })],
+      idents: [identDecl('x', { type: listType({ elemType: INT_CEL_TYPE }) })],
     }),
-    outType: BOOL_TYPE,
+    outType: BOOL_CEL_TYPE,
   },
   {
     in: `int(1u) + int(uint("1"))`,
@@ -388,7 +388,7 @@ _==_(size(x~list(int)^x)~int^size_list, x~list(int)^x.size()~int^list_size)
 _+_(int(1u~uint)~int^uint64_to_int64,
 int(uint("1"~string)~uint^string_to_uint64)~int^uint64_to_int64)
 ~int^add_int64`,
-    outType: INT64_TYPE,
+    outType: INT_CEL_TYPE,
   },
   {
     in: `false && !true || false ? 2 : 3`,
@@ -400,12 +400,12 @@ _?_:_(_||_(_&&_(false~bool, !_(true~bool)~bool^logical_not)~bool^logical_and,
 3~int)
 ~int^conditional
 `,
-    outType: INT64_TYPE,
+    outType: INT_CEL_TYPE,
   },
   {
     in: `b"abc" + b"def"`,
     out: `_+_(b"abc"~bytes, b"def"~bytes)~bytes^add_bytes`,
-    outType: BYTES_TYPE,
+    outType: BYTES_CEL_TYPE,
   },
   {
     in: `1.0 + 2.0 * 3.0 - 1.0 / 2.20202 != 66.6`,
@@ -416,7 +416,7 @@ _!=_(_-_(_+_(1~double, _*_(2~double, 3~double)~double^multiply_double)
  ~double^subtract_double,
 66.6~double)
 ~bool^not_equals`,
-    outType: BOOL_TYPE,
+    outType: BOOL_CEL_TYPE,
   },
   {
     in: `null == null && null != null`,
@@ -431,7 +431,7 @@ _!=_(_-_(_+_(1~double, _*_(2~double, 3~double)~double^multiply_double)
           null~null
       )~bool^not_equals
   )~bool^logical_and`,
-    outType: BOOL_TYPE,
+    outType: BOOL_CEL_TYPE,
   },
   {
     in: `1 == 1 && 2 != 1`,
@@ -446,17 +446,17 @@ _!=_(_-_(_+_(1~double, _*_(2~double, 3~double)~double^multiply_double)
           1~int
       )~bool^not_equals
   )~bool^logical_and`,
-    outType: BOOL_TYPE,
+    outType: BOOL_CEL_TYPE,
   },
   {
     in: `1 + 2 * 3 - 1 / 2 == 6 % 1`,
     out: ` _==_(_-_(_+_(1~int, _*_(2~int, 3~int)~int^multiply_int64)~int^add_int64, _/_(1~int, 2~int)~int^divide_int64)~int^subtract_int64, _%_(6~int, 1~int)~int^modulo_int64)~bool^equals`,
-    outType: BOOL_TYPE,
+    outType: BOOL_CEL_TYPE,
   },
   {
     in: `"abc" + "def"`,
     out: `_+_("abc"~string, "def"~string)~string^add_string`,
-    outType: STRING_TYPE,
+    outType: STRING_CEL_TYPE,
   },
   {
     in: `1u + 2u * 3u - 1u / 2u == 6u % 1u`,
@@ -466,7 +466,7 @@ _!=_(_-_(_+_(1~double, _*_(2~double, 3~double)~double^multiply_double)
    ~uint^subtract_uint64,
   _%_(6u~uint, 1u~uint)~uint^modulo_uint64)
 ~bool^equals`,
-    outType: BOOL_TYPE,
+    outType: BOOL_CEL_TYPE,
   },
   {
     in: `x.single_int32 != null`,
@@ -502,7 +502,7 @@ ERROR: <input>:1:2: unexpected failed resolution of 'google.api.expr.test.v1.pro
         )~int^add_int64,
         23~int
       )~bool^equals`,
-    outType: BOOL_TYPE,
+    outType: BOOL_CEL_TYPE,
   },
   {
     in: `x.single_value[23] + x.single_struct['y']`,
@@ -536,12 +536,12 @@ ERROR: <input>:1:2: unexpected failed resolution of 'google.api.expr.test.v1.pro
    ~int^google.api.expr.test.v1.proto3.TestAllTypes.NestedEnum.BAR,
   99~int)
   ~bool^not_equals`,
-    outType: BOOL_TYPE,
+    outType: BOOL_CEL_TYPE,
   },
   {
     in: `size([] + [1])`,
     out: `size(_+_([]~list(int), [1~int]~list(int))~list(int)^add_list)~int^size_list`,
-    outType: INT64_TYPE,
+    outType: INT_CEL_TYPE,
   },
   {
     in: `x["claims"]["groups"][0].name == "dummy"
@@ -594,7 +594,7 @@ ERROR: <input>:1:2: unexpected failed resolution of 'google.api.expr.test.v1.pro
         identDecl('z', { type: messageType('google.protobuf.Value') }),
       ],
     }),
-    outType: BOOL_TYPE,
+    outType: BOOL_CEL_TYPE,
   },
   {
     in: `x + y`,
@@ -607,7 +607,7 @@ ERROR: <input>:1:2: unexpected failed resolution of 'google.api.expr.test.v1.pro
             ),
           }),
         }),
-        identDecl('y', { type: listType({ elemType: INT64_TYPE }) }),
+        identDecl('y', { type: listType({ elemType: INT_CEL_TYPE }) }),
       ],
     }),
     err: `
@@ -660,7 +660,7 @@ ERROR: <input>:1:2: found no matching overload for '_[_]' applied to '(list(goog
     size(x~list(google.api.expr.test.v1.proto3.TestAllTypes)^x)~int^size_list)
     ~bool^equals
     `,
-    outType: BOOL_TYPE,
+    outType: BOOL_CEL_TYPE,
   },
   {
     in: `x.repeated_int64[x.single_int32] == 23`,
@@ -677,7 +677,7 @@ ERROR: <input>:1:2: found no matching overload for '_[_]' applied to '(list(goog
   ~int^index_list,
   23~int)
   ~bool^equals`,
-    outType: BOOL_TYPE,
+    outType: BOOL_CEL_TYPE,
   },
   {
     in: `size(x.map_int64_nested_type) == 0`,
@@ -695,12 +695,12 @@ ERROR: <input>:1:2: found no matching overload for '_[_]' applied to '(list(goog
   0~int)
   ~bool^equals
   `,
-    outType: BOOL_TYPE,
+    outType: BOOL_CEL_TYPE,
   },
   {
     in: `x.all(y, y == true)`,
     env: extendEnv(getDefaultEnv(), {
-      idents: [identDecl('x', { type: BOOL_TYPE })],
+      idents: [identDecl('x', { type: BOOL_CEL_TYPE })],
     }),
     out: `
   __comprehension__(
@@ -764,7 +764,7 @@ ERROR: <input>:1:2: found no matching overload for '_[_]' applied to '(list(goog
             // Result
             __result__~list(double)^__result__)~list(double)
       `,
-    outType: listType({ elemType: DOUBLE_TYPE }),
+    outType: listType({ elemType: DOUBLE_CEL_TYPE }),
   },
   {
     in: `x[2].single_int32 == 23`,
@@ -772,7 +772,7 @@ ERROR: <input>:1:2: found no matching overload for '_[_]' applied to '(list(goog
       idents: [
         identDecl('x', {
           type: mapType({
-            keyType: STRING_TYPE,
+            keyType: STRING_CEL_TYPE,
             valueType: messageType(
               'google.api.expr.test.v1.proto3.TestAllTypes'
             ),
@@ -792,7 +792,7 @@ ERROR: <input>:1:2: found no matching overload for '_[_]' applied to '(list(goog
       idents: [
         identDecl('x', {
           type: mapType({
-            keyType: STRING_TYPE,
+            keyType: STRING_CEL_TYPE,
             valueType: messageType(
               'google.api.expr.test.v1.proto3.TestAllTypes'
             ),
@@ -808,7 +808,7 @@ ERROR: <input>:1:2: found no matching overload for '_[_]' applied to '(list(goog
     ~int,
     23~int)
     ~bool^equals`,
-    outType: BOOL_TYPE,
+    outType: BOOL_CEL_TYPE,
   },
   {
     in: `x.single_nested_message.bb == 43 && has(x.single_nested_message)`,
@@ -827,7 +827,7 @@ ERROR: <input>:1:2: found no matching overload for '_[_]' applied to '(list(goog
     		  )~bool^equals,
     		  x~google.api.expr.test.v1.proto3.TestAllTypes^x.single_nested_message~test-only~~bool
     		)~bool^logical_and`,
-    outType: BOOL_TYPE,
+    outType: BOOL_CEL_TYPE,
   },
   {
     in: `x.single_nested_message.undefined == x.undefined && has(x.single_int32) && has(x.repeated_int32)`,
@@ -861,7 +861,7 @@ ERROR: <input>:1:39: undefined field 'undefined'
   null~null)
   ~bool^not_equals
   `,
-    outType: BOOL_TYPE,
+    outType: BOOL_CEL_TYPE,
   },
   {
     in: `x.single_int64 != null`,
@@ -893,7 +893,7 @@ ERROR: <input>:1:16: found no matching overload for '_!=_' applied to '(int, nul
   null~null)
   ~bool^equals
   `,
-    outType: BOOL_TYPE,
+    outType: BOOL_CEL_TYPE,
   },
   {
     in: `x.single_bool_wrapper
@@ -962,7 +962,7 @@ ERROR: <input>:1:16: found no matching overload for '_!=_' applied to '(int, nul
           )~bool^logical_and
       )~bool^logical_and
   )~bool^logical_and`,
-    outType: BOOL_TYPE,
+    outType: BOOL_CEL_TYPE,
   },
   {
     in: `x.single_timestamp == google.protobuf.Timestamp{seconds: 20} &&
@@ -974,7 +974,7 @@ ERROR: <input>:1:16: found no matching overload for '_!=_' applied to '(int, nul
         }),
       ],
     }),
-    outType: BOOL_TYPE,
+    outType: BOOL_CEL_TYPE,
   },
   {
     in: `x.single_bool_wrapper == google.protobuf.BoolValue{value: true}
@@ -994,7 +994,7 @@ ERROR: <input>:1:16: found no matching overload for '_!=_' applied to '(int, nul
         }),
       ],
     }),
-    outType: BOOL_TYPE,
+    outType: BOOL_CEL_TYPE,
   },
   {
     in: `x.repeated_int64.exists(y, y > 10) && y < 5`,
@@ -1098,7 +1098,7 @@ ERROR: <input>:1:16: found no matching overload for '_!=_' applied to '(int, nul
           1~int
         )~bool^equals)~bool
     )~bool^logical_and`,
-    outType: BOOL_TYPE,
+    outType: BOOL_CEL_TYPE,
   },
   {
     in: `x.all(e, 0)`,
@@ -1199,7 +1199,7 @@ ERROR: <input>:1:5: undeclared reference to 'x' (in container '')
   //     env: extendEnv(getDefaultEnv(), {
   //       idents: [
   //         identDecl('x', { type: ANY_TYPE }),
-  //         identDecl('y', { type: nullableType(INT64_TYPE) }),
+  //         identDecl('y', { type: nullableType(INT_CEL_TYPE) }),
   //       ],
   //     }),
   //     out: `
@@ -1234,7 +1234,7 @@ ERROR: <input>:1:5: undeclared reference to 'x' (in container '')
   //     )~bool^logical_or
   // )~bool^logical_or
   // `,
-  //     outType: BOOL_TYPE,
+  //     outType: BOOL_CEL_TYPE,
   //   },
   //   {
   //     in: `x == google.protobuf.Any{
@@ -1246,7 +1246,7 @@ ERROR: <input>:1:5: undeclared reference to 'x' (in container '')
   //     env: extendEnv(getDefaultEnv(), {
   //       idents: [
   //         identDecl('x', { type: ANY_TYPE }),
-  //         identDecl('y', { type: nullableType(INT64_TYPE) }),
+  //         identDecl('y', { type: nullableType(INT_CEL_TYPE) }),
   //       ],
   //     }),
   //     out: `
@@ -1304,7 +1304,7 @@ _==_(map~type(map(dyn, dyn))^map,
 ~bool^equals)
 ~bool^logical_and
 `,
-    outType: BOOL_TYPE,
+    outType: BOOL_CEL_TYPE,
   },
   {
     in: `size(x) > 4`,
@@ -1322,13 +1322,13 @@ _==_(map~type(map(dyn, dyn))^map,
               params: [
                 messageType('google.api.expr.test.v1.proto3.TestAllTypes'),
               ],
-              resultType: INT64_TYPE,
+              resultType: INT_CEL_TYPE,
             }),
           ],
         }),
       ],
     }),
-    outType: BOOL_TYPE,
+    outType: BOOL_CEL_TYPE,
   },
   {
     in: `x.single_int64_wrapper + 1 != 23`,
@@ -1347,7 +1347,7 @@ _!=_(_+_(x~google.api.expr.test.v1.proto3.TestAllTypes^x.single_int64_wrapper
 23~int)
 ~bool^not_equals
 `,
-    outType: BOOL_TYPE,
+    outType: BOOL_CEL_TYPE,
   },
   {
     in: `x.single_int64_wrapper + y != 23`,
@@ -1368,7 +1368,7 @@ _!=_(
     23~int
   )~bool^not_equals
 `,
-    outType: BOOL_TYPE,
+    outType: BOOL_CEL_TYPE,
   },
   {
     in: `1 in [1, 2, 3]`,
@@ -1380,7 +1380,7 @@ _!=_(
         3~int
       ]~list(int)
     )~bool^in_list`,
-    outType: BOOL_TYPE,
+    outType: BOOL_CEL_TYPE,
   },
   {
     in: `1 in dyn([1, 2, 3])`,
@@ -1394,7 +1394,7 @@ _!=_(
       ]~list(int)
     )~dyn^to_dyn
   )~bool^in_list|in_map`,
-    outType: BOOL_TYPE,
+    outType: BOOL_CEL_TYPE,
   },
   {
     in: `type(null) == null_type`,
@@ -1404,7 +1404,7 @@ _!=_(
       )~type(null)^type,
       null_type~type(null)^null_type
     )~bool^equals`,
-    outType: BOOL_TYPE,
+    outType: BOOL_CEL_TYPE,
   },
   {
     in: `type(type) == type`,
@@ -1414,7 +1414,7 @@ _!=_(
   )~type(type(type))^type,
   type~type(type)^type
 )~bool^equals`,
-    outType: BOOL_TYPE,
+    outType: BOOL_CEL_TYPE,
   },
   {
     in: `([[[1]], [[2]], [[3]]][0][0] + [2, 3, {'four': {'five': 'six'}}])[3]`,
@@ -1528,7 +1528,7 @@ _!=_(
     env: extendEnv(getDefaultEnv(), {
       idents: [
         identDecl('args', {
-          type: mapType({ keyType: STRING_TYPE, valueType: DYN_TYPE }),
+          type: mapType({ keyType: STRING_CEL_TYPE, valueType: DYN_TYPE }),
         }),
       ],
     }),
@@ -1549,7 +1549,7 @@ _!=_(
     env: extendEnv(getDefaultEnv(), {
       idents: [identDecl('a', { type: typeParamType('T') })],
     }),
-    outType: BOOL_TYPE,
+    outType: BOOL_CEL_TYPE,
   },
   {
     in: `!has(pb2.single_int64)
@@ -1597,7 +1597,7 @@ _!=_(
         )~bool^logical_not
       )~bool^logical_and
     )~bool^logical_and`,
-    outType: BOOL_TYPE,
+    outType: BOOL_CEL_TYPE,
   },
   {
     in: `TestAllTypes{}.repeated_nested_message`,
@@ -1633,8 +1633,8 @@ google.api.expr.test.v1.proto2.TestAllTypes.repeated_nested_message
           overloads: [
             overloadDecl({
               overloadId: 'base64_encode_string',
-              params: [STRING_TYPE],
-              resultType: STRING_TYPE,
+              params: [STRING_CEL_TYPE],
+              resultType: STRING_CEL_TYPE,
             }),
           ],
         }),
@@ -1644,7 +1644,7 @@ google.api.expr.test.v1.proto2.TestAllTypes.repeated_nested_message
   base64.encode(
       "hello"~string
   )~string^base64_encode_string`,
-    outType: STRING_TYPE,
+    outType: STRING_CEL_TYPE,
   },
   // TODO: namespaced functions
   //   {
@@ -1656,8 +1656,8 @@ google.api.expr.test.v1.proto2.TestAllTypes.repeated_nested_message
   //           overloads: [
   //             overloadDecl({
   //               overloadId: 'base64_encode_string',
-  //               params: [STRING_TYPE],
-  //               resultType: STRING_TYPE,
+  //               params: [STRING_CEL_TYPE],
+  //               resultType: STRING_CEL_TYPE,
   //             }),
   //           ],
   //         }),
@@ -1667,7 +1667,7 @@ google.api.expr.test.v1.proto2.TestAllTypes.repeated_nested_message
   // base64.encode(
   //     "hello"~string
   // )~string^base64_encode_string`,
-  //     outType: STRING_TYPE,
+  //     outType: STRING_CEL_TYPE,
   //   },
   {
     in: `{}`,
@@ -1700,7 +1700,7 @@ set(
         }),
       ],
     }),
-    outType: abstractType({ name: 'set', parameterTypes: [INT64_TYPE] }),
+    outType: abstractType({ name: 'set', parameterTypes: [INT_CEL_TYPE] }),
   },
   {
     in: `set([1, 2]) == set([2, 1])`,
@@ -1725,7 +1725,7 @@ set(
         }),
       ],
     }),
-    outType: BOOL_TYPE,
+    outType: BOOL_CEL_TYPE,
   },
   {
     in: `set([1, 2]) == x`,
@@ -1758,7 +1758,7 @@ _==_(
         }),
       ],
     }),
-    outType: BOOL_TYPE,
+    outType: BOOL_CEL_TYPE,
   },
   {
     in: `int{}`,
@@ -1828,7 +1828,7 @@ _==_(
   {
     in: `1 <= 1.0 && 1u <= 1.0 && 1.0 <= 1 && 1.0 <= 1u && 1 <= 1u && 1u <= 1`,
     // opts:    []Option{CrossTypeNumericComparisons(true)},
-    outType: BOOL_TYPE,
+    outType: BOOL_CEL_TYPE,
     out: `
   _&&_(
       _&&_(
@@ -1868,7 +1868,7 @@ _==_(
   {
     in: `1 < 1.0 && 1u < 1.0 && 1.0 < 1 && 1.0 < 1u && 1 < 1u && 1u < 1`,
     // opts:    []Option{CrossTypeNumericComparisons(true)},
-    outType: BOOL_TYPE,
+    outType: BOOL_CEL_TYPE,
     out: `
   _&&_(
       _&&_(
@@ -1908,7 +1908,7 @@ _==_(
   {
     in: `1 > 1.0 && 1u > 1.0 && 1.0 > 1 && 1.0 > 1u && 1 > 1u && 1u > 1`,
     // opts:    []Option{CrossTypeNumericComparisons(true)},
-    outType: BOOL_TYPE,
+    outType: BOOL_CEL_TYPE,
     out: `
   _&&_(
       _&&_(
@@ -1948,7 +1948,7 @@ _==_(
   {
     in: `1 >= 1.0 && 1u >= 1.0 && 1.0 >= 1 && 1.0 >= 1u && 1 >= 1u && 1u >= 1`,
     // opts:    []Option{CrossTypeNumericComparisons(true)},
-    outType: BOOL_TYPE,
+    outType: BOOL_CEL_TYPE,
     out: `
   _&&_(
       _&&_(
@@ -1990,7 +1990,7 @@ _==_(
     in: `1 >= 1.0 && 1u >= 1.0 && 1.0 >= 1 && 1.0 >= 1u && 1 >= 1u && 1u >= 1`,
     // opts:    []Option{CrossTypeNumericComparisons(true)},
     // env:     testEnv{variadicASTs: true},
-    outType: BOOL_TYPE,
+    outType: BOOL_CEL_TYPE,
     out: `
   _&&_(
       _>=_(
@@ -2022,7 +2022,7 @@ _==_(
   {
     in: `[1].map(x, [x, x]).map(x, [x, x])`,
     outType: listType({
-      elemType: listType({ elemType: listType({ elemType: INT64_TYPE }) }),
+      elemType: listType({ elemType: listType({ elemType: INT_CEL_TYPE }) }),
     }),
     out: `__comprehension__(
     // Variable
@@ -2075,12 +2075,15 @@ _==_(
   },
   {
     in: `values.filter(i, i.content != "").map(i, i.content)`,
-    outType: listType({ elemType: STRING_TYPE }),
+    outType: listType({ elemType: STRING_CEL_TYPE }),
     env: extendEnv(getDefaultEnv(), {
       idents: [
         identDecl('values', {
           type: listType({
-            elemType: mapType({ keyType: STRING_TYPE, valueType: STRING_TYPE }),
+            elemType: mapType({
+              keyType: STRING_CEL_TYPE,
+              valueType: STRING_CEL_TYPE,
+            }),
           }),
         }),
       ],
@@ -2135,7 +2138,7 @@ _==_(
   // TODO: Not sure the 3rd param for map is implemented
   //   {
   //     in: `[{}.map(c,c,c)]+[{}.map(c,c,c)]`,
-  //     outType: listType({ elemType: listType({ elemType: BOOL_TYPE }) }),
+  //     outType: listType({ elemType: listType({ elemType: BOOL_CEL_TYPE }) }),
   //     out: `_+_(
   //     [
   //       __comprehension__(
@@ -2201,7 +2204,7 @@ _==_(
   //         }),
   //       ],
   //     }),
-  //     outType: BOOL_TYPE,
+  //     outType: BOOL_CEL_TYPE,
   //     out: `_==_(
   // 			type(
   // 			  testAllTypes~google.api.expr.test.v1.proto3.TestAllTypes^testAllTypes.nestedgroup~google.api.expr.test.v1.proto3.TestAllTypes.NestedGroup.nested_id~int
@@ -2216,14 +2219,14 @@ _==_(
       idents: [
         identDecl('a', {
           type: mapType({
-            keyType: STRING_TYPE,
-            valueType: STRING_TYPE,
+            keyType: STRING_CEL_TYPE,
+            valueType: STRING_CEL_TYPE,
           }),
         }),
       ],
     }),
     parserOptions: { enableOptionalSyntax: true },
-    outType: optionalType(STRING_TYPE),
+    outType: optionalType(STRING_CEL_TYPE),
     out: `_?._(
   			a~map(string, string)^a,
   			"b"
@@ -2236,14 +2239,14 @@ _==_(
         identDecl('optional_type', { type: ABSTRACT_OPTIONAL_TYPE }),
         identDecl('a', {
           type: mapType({
-            keyType: STRING_TYPE,
-            valueType: STRING_TYPE,
+            keyType: STRING_CEL_TYPE,
+            valueType: STRING_CEL_TYPE,
           }),
         }),
       ],
     }),
     parserOptions: { enableOptionalSyntax: true },
-    outType: BOOL_TYPE,
+    outType: BOOL_CEL_TYPE,
     out: `_==_(
           type(
             _?._(
@@ -2261,14 +2264,14 @@ _==_(
         identDecl('a', {
           type: optionalType(
             mapType({
-              keyType: STRING_TYPE,
-              valueType: STRING_TYPE,
+              keyType: STRING_CEL_TYPE,
+              valueType: STRING_CEL_TYPE,
             })
           ),
         }),
       ],
     }),
-    outType: optionalType(STRING_TYPE),
+    outType: optionalType(STRING_CEL_TYPE),
     out: `a~optional_type(map(string, string))^a.b~optional_type(string)`,
   },
   {
@@ -2292,7 +2295,7 @@ _==_(
         }),
       ],
     }),
-    outType: BOOL_TYPE,
+    outType: BOOL_CEL_TYPE,
     out: `a~optional_type(dyn)^a.dynamic~test-only~~bool`,
   },
   {
@@ -2302,7 +2305,7 @@ _==_(
         identDecl('a', {
           type: optionalType(
             mapType({
-              keyType: STRING_TYPE,
+              keyType: STRING_CEL_TYPE,
               valueType: DYN_TYPE,
             })
           ),
@@ -2310,7 +2313,7 @@ _==_(
       ],
     }),
     parserOptions: { enableOptionalSyntax: true },
-    outType: BOOL_TYPE,
+    outType: BOOL_CEL_TYPE,
     out: `_?._(
       a~optional_type(map(string, dyn))^a,
       "b"
@@ -2320,9 +2323,9 @@ _==_(
     in: `{?'key': {'a': 'b'}.?value}`,
     parserOptions: { enableOptionalSyntax: true },
     outType: mapType({
-      keyType: STRING_TYPE,
+      keyType: STRING_CEL_TYPE,
       // TODO: the go test has this as just a string type, but it seems like it should be optional. And the test passes with this change
-      valueType: optionalType(STRING_TYPE),
+      valueType: optionalType(STRING_CEL_TYPE),
     }),
     out: `{
       ?"key"~string:_?._(
@@ -2337,7 +2340,7 @@ _==_(
     in: `{?'key': {'a': 'b'}.?value}.key`,
     parserOptions: { enableOptionalSyntax: true },
     // TODO: the go test has this as just a string type, but it seems like it should be optional. And the test passes with this change
-    outType: optionalType(STRING_TYPE),
+    outType: optionalType(STRING_CEL_TYPE),
     out: `{
       ?"key"~string:_?._(
         {
@@ -2355,17 +2358,17 @@ _==_(
         identDecl('a', {
           type: optionalType(
             mapType({
-              keyType: STRING_TYPE,
-              valueType: STRING_TYPE,
+              keyType: STRING_CEL_TYPE,
+              valueType: STRING_CEL_TYPE,
             })
           ),
         }),
       ],
     }),
     outType: mapType({
-      keyType: STRING_TYPE,
+      keyType: STRING_CEL_TYPE,
       // TODO: the go test has this as just a string type, but it seems like it should be optional. And the test passes with this change
-      valueType: optionalType(STRING_TYPE),
+      valueType: optionalType(STRING_CEL_TYPE),
     }),
     out: `{
       ?"nested"~string:a~optional_type(map(string, string))^a.b~optional_type(string)
@@ -2386,14 +2389,14 @@ _==_(
   //     env: extendEnv(getDefaultEnv(), {
   //       idents: [
   //         identDecl('a', {
-  //           type: optionalType(STRING_TYPE),
+  //           type: optionalType(STRING_CEL_TYPE),
   //         }),
   //         identDecl('b', {
-  //           type: optionalType(STRING_TYPE),
+  //           type: optionalType(STRING_CEL_TYPE),
   //         }),
   //       ],
   //     }),
-  //     outType: listType({ elemType: STRING_TYPE }),
+  //     outType: listType({ elemType: STRING_CEL_TYPE }),
   //     out: `[
   //       a~optional_type(string)^a,
   //       b~optional_type(string)^b,
@@ -2445,7 +2448,7 @@ _==_(
     in: `null_int == null || null == null_int || null_msg == null || null == null_msg`,
     env: extendEnv(getDefaultEnv(), {
       idents: [
-        identDecl('null_int', { type: nullableType(INT64_TYPE) }),
+        identDecl('null_int', { type: nullableType(INT_CEL_TYPE) }),
         identDecl('null_msg', {
           type: nullableType(
             messageType('google.api.expr.test.v1.proto2.TestAllTypes')
@@ -2453,13 +2456,13 @@ _==_(
         }),
       ],
     }),
-    outType: BOOL_TYPE,
+    outType: BOOL_CEL_TYPE,
   },
   // TODO: nullables
   //   {
   //     in: `NotAMessage{}`,
   //     env: extendEnv(getDefaultEnv(), {
-  //       idents: [identDecl('NotAMessage', { type: nullableType(INT64_TYPE) })],
+  //       idents: [identDecl('NotAMessage', { type: nullableType(INT_CEL_TYPE) })],
   //     }),
   //     err: `ERROR: <input>:1:12: 'wrapper(int)' is not a type
   //       | NotAMessage{}

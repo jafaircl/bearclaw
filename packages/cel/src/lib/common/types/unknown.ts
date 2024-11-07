@@ -1,6 +1,12 @@
+import { Type } from '@buf/google_cel-spec.bufbuild_es/cel/expr/checked_pb';
 import { Value } from '@buf/google_cel-spec.bufbuild_es/cel/expr/value_pb.js';
 import { create } from '@bufbuild/protobuf';
 import { ValueSchema } from '@bufbuild/protobuf/wkt';
+import { RefType, RefTypeEnum, RefVal } from '../ref/reference';
+import { BoolRefVal } from './bool';
+import { ErrorRefVal } from './error';
+import { NativeType } from './native';
+import { Trait } from './traits/trait';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function unknownValue(value: any) {
@@ -16,4 +22,68 @@ export function isUnknownValue(value: Value): value is Value & {
   kind: { case: undefined };
 } {
   return value.kind.case === undefined;
+}
+
+export class UnknownRefType implements RefType {
+  readonly #traits = new Set<Trait>();
+
+  celType(): Type {
+    throw new Error('Method not implemented.');
+  }
+
+  hasTrait(trait: Trait): boolean {
+    return this.#traits.has(trait);
+  }
+
+  typeName(): string {
+    return RefTypeEnum.UNKNOWN;
+  }
+}
+
+export const UNKNOWN_REF_TYPE = new UnknownRefType();
+
+/**
+ * Unknown type implementation which collects expression ids which caused the
+ * current value to become unknown.
+ */
+export class UnknownRefVal implements RefVal {
+  readonly #value: bigint;
+
+  constructor(value: bigint) {
+    this.#value = value;
+  }
+
+  celValue(): Value {
+    throw new Error('Method not implemented.');
+  }
+
+  convertToNative(typeDesc: NativeType) {
+    switch (typeDesc) {
+      case Number:
+        return Number(this.#value);
+      case BigInt:
+        return this.#value;
+      case String:
+        return this.#value.toString();
+      default:
+        return ErrorRefVal.nativeTypeConversionError(this, typeDesc);
+    }
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  convertToType(typeValue: RefType): RefVal {
+    return this;
+  }
+
+  equal(other: RefVal): RefVal {
+    return new BoolRefVal(this.type().typeName() === other.type().typeName());
+  }
+
+  type(): RefType {
+    return UNKNOWN_REF_TYPE;
+  }
+
+  value() {
+    return this.#value;
+  }
 }

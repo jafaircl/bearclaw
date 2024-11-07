@@ -15,14 +15,20 @@ import {
 import { create } from '@bufbuild/protobuf';
 import { AnySchema, BoolValueSchema, anyPack } from '@bufbuild/protobuf/wkt';
 import { formatCELType } from '../format';
+import { RefType, RefTypeEnum, RefVal } from '../ref/reference';
 import { isConstExpr } from './constant';
-import { int64Value } from './int';
+import { ErrorRefVal } from './error';
+import { IntRefVal, int64Value } from './int';
 import { NativeType } from './native';
 import { primitiveType } from './primitive';
-import { stringValue } from './string';
+import { StringRefVal, stringValue } from './string';
+import { Comparer } from './traits/comparer';
+import { Negater } from './traits/math';
 import { Trait } from './traits/trait';
+import { Zeroer } from './traits/zeroer';
+import { TypeRefVal } from './type';
 
-export const BOOL_TYPE = primitiveType(Type_PrimitiveType.BOOL);
+export const BOOL_CEL_TYPE = primitiveType(Type_PrimitiveType.BOOL);
 
 export function isBoolType(type: Type) {
   return (
@@ -99,7 +105,9 @@ export function convertBoolValueToNative(value: Value, type: NativeType) {
       break;
   }
   return new Error(
-    `type conversion error from '${formatCELType(BOOL_TYPE)}' to '${type.name}'`
+    `type conversion error from '${formatCELType(BOOL_CEL_TYPE)}' to '${
+      type.name
+    }'`
   );
 }
 
@@ -120,13 +128,13 @@ export function convertBoolValueToType(value: Value, type: Type) {
       }
       break;
     case 'type':
-      return BOOL_TYPE;
+      return BOOL_CEL_TYPE;
     default:
       break;
   }
   return new Error(
     `type conversion error from '${formatCELType(
-      BOOL_TYPE
+      BOOL_CEL_TYPE
     )}' to '${formatCELType(type)}'`
   );
 }
@@ -175,4 +183,112 @@ export function negateBoolValue(value: Value) {
     throw new Error('value is not a bool');
   }
   return boolValue(!value.kind.value);
+}
+
+export class BoolRefType implements RefType {
+  // This has to be a TS private field instead of a # private field because
+  // otherwise the tests will not be able to access it to check for equality.
+  // TODO: do we want to alter the tests to use the getter instead?
+  readonly _traits = BOOL_TRAITS;
+
+  celType(): Type {
+    return BOOL_CEL_TYPE;
+  }
+
+  hasTrait(trait: Trait): boolean {
+    return this._traits.has(trait);
+  }
+
+  typeName(): string {
+    return 'bool';
+  }
+}
+
+export const BOOL_REF_TYPE = new BoolRefType();
+
+export class BoolRefVal implements RefVal, Comparer, Zeroer, Negater {
+  // This has to be a TS private field instead of a # private field because
+  // otherwise the tests will not be able to access it to check for equality.
+  // TODO: do we want to alter the tests to use the getter instead?
+  private readonly _value: boolean;
+
+  constructor(value: boolean) {
+    this._value = value;
+  }
+
+  static True = new BoolRefVal(true);
+  static False = new BoolRefVal(false);
+
+  celValue(): Value {
+    return boolValue(this._value);
+  }
+
+  convertToNative(type: NativeType) {
+    switch (type) {
+      case Boolean:
+        return this._value;
+      case AnySchema:
+        return anyPack(
+          BoolValueSchema,
+          create(BoolValueSchema, { value: this._value })
+        );
+      case BoolValueSchema:
+        return create(BoolValueSchema, { value: this._value });
+      default:
+        return ErrorRefVal.nativeTypeConversionError(this, type);
+    }
+  }
+
+  convertToType(type: RefType): RefVal {
+    switch (type.typeName()) {
+      case RefTypeEnum.BOOL:
+        return new BoolRefVal(this._value);
+      case RefTypeEnum.STRING:
+        return new StringRefVal(this._value ? 'true' : 'false');
+      case RefTypeEnum.TYPE:
+        return new TypeRefVal(BOOL_REF_TYPE);
+      default:
+        return ErrorRefVal.typeConversionError(this, type);
+    }
+  }
+
+  equal(other: RefVal): RefVal {
+    switch (other.type().typeName()) {
+      case RefTypeEnum.BOOL:
+        return new BoolRefVal(this._value === other.value());
+      default:
+        return BoolRefVal.False;
+    }
+  }
+
+  type(): RefType {
+    return BOOL_REF_TYPE;
+  }
+
+  value(): boolean {
+    return this._value;
+  }
+
+  compare(other: RefVal) {
+    switch (other.type().typeName()) {
+      case RefTypeEnum.BOOL:
+        if (other.value() === this.value()) {
+          return IntRefVal.IntZero;
+        }
+        if (!this.value() && other.value()) {
+          return IntRefVal.IntNegOne;
+        }
+        return IntRefVal.IntOne;
+      default:
+        return ErrorRefVal.maybeNoSuchOverload(other);
+    }
+  }
+
+  isZeroValue(): boolean {
+    return this._value === false;
+  }
+
+  negate(): RefVal {
+    return new BoolRefVal(!this._value);
+  }
 }

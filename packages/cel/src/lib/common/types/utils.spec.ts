@@ -1,24 +1,24 @@
 import { Type_PrimitiveType } from '@buf/google_cel-spec.bufbuild_es/cel/expr/checked_pb';
 import { ScalarType } from '@bufbuild/protobuf';
-import { BOOL_TYPE } from './bool';
-import { BYTES_TYPE } from './bytes';
+import { BOOL_CEL_TYPE } from './bool';
+import { BYTES_CEL_TYPE } from './bytes';
 import { DYN_TYPE } from './dyn';
 import { ERROR_TYPE } from './error';
-import { INT64_TYPE } from './int';
+import { INT_CEL_TYPE } from './int';
 import { primitiveType } from './primitive';
-import { STRING_TYPE } from './string';
-import { UINT64_TYPE } from './uint';
+import { STRING_CEL_TYPE } from './string';
+import { UINT_CEL_TYPE } from './uint';
 import { isDynTypeOrErrorType, scalarTypeToPrimitiveType } from './utils';
 
 describe('utils', () => {
   it('isDynTypeOrErrorType', () => {
     expect(isDynTypeOrErrorType(DYN_TYPE)).toBe(true);
     expect(isDynTypeOrErrorType(ERROR_TYPE)).toBe(true);
-    expect(isDynTypeOrErrorType(BOOL_TYPE)).toBe(false);
-    expect(isDynTypeOrErrorType(BYTES_TYPE)).toBe(false);
-    expect(isDynTypeOrErrorType(INT64_TYPE)).toBe(false);
-    expect(isDynTypeOrErrorType(STRING_TYPE)).toBe(false);
-    expect(isDynTypeOrErrorType(UINT64_TYPE)).toBe(false);
+    expect(isDynTypeOrErrorType(BOOL_CEL_TYPE)).toBe(false);
+    expect(isDynTypeOrErrorType(BYTES_CEL_TYPE)).toBe(false);
+    expect(isDynTypeOrErrorType(INT_CEL_TYPE)).toBe(false);
+    expect(isDynTypeOrErrorType(STRING_CEL_TYPE)).toBe(false);
+    expect(isDynTypeOrErrorType(UINT_CEL_TYPE)).toBe(false);
   });
 
   it('scalarTypeToPrimitiveType', () => {

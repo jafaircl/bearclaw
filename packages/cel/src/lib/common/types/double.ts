@@ -1,3 +1,4 @@
+/* eslint-disable no-case-declarations */
 import {
   Type,
   Type_PrimitiveType,
@@ -20,17 +21,23 @@ import {
   anyPack,
 } from '@bufbuild/protobuf/wkt';
 import { formatCELType } from '../format';
-import { boolValue } from './bool';
-import { compareNumberValues } from './compare';
-import { int64Value, isValidInt64 } from './int';
+import { RefType, RefTypeEnum, RefVal } from '../ref/reference';
+import { BoolRefVal, boolValue } from './bool';
+import { compareNumberRefVals, compareNumberValues } from './compare';
+import { ErrorRefVal } from './error';
+import { IntRefVal, int64Value, isValidInt64 } from './int';
 import { NativeType } from './native';
 import { isNumberValue } from './number';
 import { primitiveType } from './primitive';
-import { stringValue } from './string';
+import { StringRefVal, stringValue } from './string';
+import { Comparer } from './traits/comparer';
+import { Adder, Divider, Multiplier, Negater, Subtractor } from './traits/math';
 import { Trait } from './traits/trait';
-import { isValidUint64, uint64Value } from './uint';
+import { Zeroer } from './traits/zeroer';
+import { TypeRefVal } from './type';
+import { UintRefVal, isValidUint64, uint64Value } from './uint';
 
-export const DOUBLE_TYPE = primitiveType(Type_PrimitiveType.DOUBLE);
+export const DOUBLE_CEL_TYPE = primitiveType(Type_PrimitiveType.DOUBLE);
 
 export function isDoubleType(val: Type): val is Type & {
   typeKind: { case: 'primitive'; value: Type_PrimitiveType.DOUBLE };
@@ -121,7 +128,7 @@ export function convertDoubleValueToNative(value: Value, type: NativeType) {
       break;
   }
   return new Error(
-    `type conversion error from '${formatCELType(DOUBLE_TYPE)}' to '${
+    `type conversion error from '${formatCELType(DOUBLE_CEL_TYPE)}' to '${
       type.name
     }'`
   );
@@ -162,13 +169,13 @@ export function convertDoubleValueToType(value: Value, type: Type) {
       }
       break;
     case 'type':
-      return DOUBLE_TYPE;
+      return DOUBLE_CEL_TYPE;
     default:
       break;
   }
   return new Error(
     `type conversion error from '${formatCELType(
-      DOUBLE_TYPE
+      DOUBLE_CEL_TYPE
     )}' to '${formatCELType(type)}'`
   );
 }
@@ -276,4 +283,202 @@ export function subtractDoubleValue(value: Value, other: Value) {
     return new Error('no such overload');
   }
   return doubleValue(value.kind.value - Number(other.kind.value));
+}
+
+export class DoubleRefType implements RefType {
+  // This has to be a TS private field instead of a # private field because
+  // otherwise the tests will not be able to access it to check for equality.
+  // TODO: do we want to alter the tests to use the getter instead?
+  readonly _traits = DOUBLE_TRAITS;
+
+  celType(): Type {
+    return DOUBLE_CEL_TYPE;
+  }
+
+  hasTrait(trait: Trait): boolean {
+    return this._traits.has(trait);
+  }
+
+  typeName(): string {
+    return RefTypeEnum.DOUBLE;
+  }
+}
+
+export const DOUBLE_REF_TYPE = new DoubleRefType();
+
+export class DoubleRefVal
+  implements
+    RefVal,
+    Adder,
+    Comparer,
+    Divider,
+    Multiplier,
+    Negater,
+    Subtractor,
+    Zeroer
+{
+  // This has to be a TS private field instead of a # private field because
+  // otherwise the tests will not be able to access it to check for equality.
+  // TODO: do we want to alter the tests to use the getter instead?
+  private readonly _value: number;
+
+  constructor(value: number) {
+    this._value = value;
+  }
+
+  celValue(): Value {
+    return doubleValue(this._value);
+  }
+
+  convertToNative(type: NativeType) {
+    switch (type) {
+      case Number:
+        return this._value;
+      case AnySchema:
+        return anyPack(
+          DoubleValueSchema,
+          create(DoubleValueSchema, { value: this._value })
+        );
+      case DoubleValueSchema:
+        return create(DoubleValueSchema, { value: this._value });
+      case FloatValueSchema:
+        return create(FloatValueSchema, { value: this._value });
+      default:
+        return ErrorRefVal.nativeTypeConversionError(this, type);
+    }
+  }
+
+  convertToType(type: RefType): RefVal {
+    switch (type.typeName()) {
+      case RefTypeEnum.DOUBLE:
+        return new DoubleRefVal(this._value);
+      case RefTypeEnum.INT:
+        if (
+          Number.isNaN(this._value) ||
+          this._value >= Infinity ||
+          this._value <= -Infinity ||
+          !isValidInt64(BigInt(this._value))
+        ) {
+          return ErrorRefVal.errIntOverflow;
+        }
+        return new IntRefVal(BigInt(this._value));
+      case RefTypeEnum.STRING:
+        return new StringRefVal(this._value.toString());
+      case RefTypeEnum.TYPE:
+        return new TypeRefVal(DOUBLE_REF_TYPE);
+      case RefTypeEnum.UINT:
+        if (
+          Number.isNaN(this.value()) ||
+          this.value() >= Infinity ||
+          !isValidUint64(BigInt(this.value()))
+        ) {
+          return ErrorRefVal.errUintOverflow;
+        }
+        return new UintRefVal(BigInt(this.value()));
+      default:
+        return ErrorRefVal.typeConversionError(this, type);
+    }
+  }
+
+  equal(other: RefVal): RefVal {
+    if (Number.isNaN(this._value) || Number.isNaN(other.value())) {
+      return BoolRefVal.False;
+    }
+    switch (other.type().typeName()) {
+      case RefTypeEnum.DOUBLE:
+      case RefTypeEnum.INT:
+      case RefTypeEnum.UINT:
+        const compared = compareNumberRefVals(this, other);
+        if (compared.type().typeName() === RefTypeEnum.ERR) {
+          return compared;
+        }
+        return new BoolRefVal(compared.value() === BigInt(0));
+      default:
+        return BoolRefVal.False;
+    }
+  }
+
+  type(): RefType {
+    return DOUBLE_REF_TYPE;
+  }
+
+  value() {
+    return this._value;
+  }
+
+  add(other: RefVal): RefVal {
+    switch (other.type().typeName()) {
+      case RefTypeEnum.DOUBLE:
+      case RefTypeEnum.INT:
+      case RefTypeEnum.UINT:
+        return new DoubleRefVal(this._value + Number(other.value()));
+      default:
+        return ErrorRefVal.maybeNoSuchOverload(other);
+    }
+  }
+
+  compare(other: RefVal): RefVal {
+    if (
+      Number.isNaN(Number(this._value)) ||
+      Number.isNaN(Number(other.value()))
+    ) {
+      return new ErrorRefVal('NaN values cannot be ordered');
+    }
+    switch (other.type().typeName()) {
+      case RefTypeEnum.DOUBLE:
+        if (this._value < Number.MIN_SAFE_INTEGER) {
+          return IntRefVal.IntNegOne;
+        }
+        if (this._value > Number.MAX_SAFE_INTEGER) {
+          return IntRefVal.IntOne;
+        }
+        return compareNumberRefVals(this, other);
+      case RefTypeEnum.INT:
+      case RefTypeEnum.UINT:
+        return compareNumberRefVals(this, other);
+      default:
+        return ErrorRefVal.maybeNoSuchOverload(other);
+    }
+  }
+
+  divide(denominator: RefVal): RefVal {
+    switch (denominator.type().typeName()) {
+      case RefTypeEnum.DOUBLE:
+      case RefTypeEnum.INT:
+      case RefTypeEnum.UINT:
+        return new DoubleRefVal(this._value / Number(denominator.value()));
+      default:
+        return ErrorRefVal.maybeNoSuchOverload(denominator);
+    }
+  }
+
+  multiply(other: RefVal): RefVal {
+    switch (other.type().typeName()) {
+      case RefTypeEnum.DOUBLE:
+      case RefTypeEnum.INT:
+      case RefTypeEnum.UINT:
+        return new DoubleRefVal(this._value * Number(other.value()));
+      default:
+        return ErrorRefVal.maybeNoSuchOverload(other);
+    }
+  }
+
+  negate(): RefVal {
+    return new DoubleRefVal(-this._value);
+  }
+
+  subtract(subtrahend: RefVal): RefVal {
+    switch (subtrahend.type().typeName()) {
+      case RefTypeEnum.DOUBLE:
+      case RefTypeEnum.INT:
+      case RefTypeEnum.UINT:
+        return new DoubleRefVal(this._value - Number(subtrahend.value()));
+      default:
+        return ErrorRefVal.maybeNoSuchOverload(subtrahend);
+    }
+  }
+
+  isZeroValue(): boolean {
+    return this._value === 0;
+  }
 }

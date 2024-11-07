@@ -11,7 +11,7 @@ import { identDecl } from '../common/decls/ident-decl';
 import { TypeProvider } from '../common/ref/provider';
 import { DYN_TYPE } from '../common/types/dyn';
 import { unwrapEnumValue } from '../common/types/enum';
-import { INT64_TYPE, int64Constant } from '../common/types/int';
+import { INT_CEL_TYPE, int64Constant } from '../common/types/int';
 import { LESS_DOUBLE_INT64_OVERLOAD } from '../overloads';
 import { STANDARD_MACRO_DECLARATIONS } from '../parser/macros';
 import {
@@ -190,7 +190,7 @@ export class CheckerEnv {
       if (!(enumValue instanceof Error)) {
         const unwrappedEnum = unwrapEnumValue(enumValue)!;
         const decl = identDecl(candidate, {
-          type: INT64_TYPE,
+          type: INT_CEL_TYPE,
           value: int64Constant(BigInt(unwrappedEnum.value)),
         });
         this.#declarations.addIdent(decl);

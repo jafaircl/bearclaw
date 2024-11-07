@@ -28,19 +28,28 @@ import {
 } from '../../overloads';
 import { parseBytesConstant } from '../constants';
 import { formatCELType } from '../format';
-import { boolValue } from './bool';
+import { RefType, RefTypeEnum, RefVal } from '../ref/reference';
+import { BoolRefVal, boolValue } from './bool';
 import { bytesValue } from './bytes';
 import { isConstExpr } from './constant';
-import { doubleValue } from './double';
+import { DoubleRefVal, doubleValue } from './double';
 import { durationValue, parseISO8061DurationString } from './duration';
-import { int64Value } from './int';
+import { ErrorRefVal } from './error';
+import { IntRefVal, int64Value } from './int';
 import { NativeType } from './native';
 import { primitiveType } from './primitive';
 import { timestampValue } from './timestamp';
+import { Comparer } from './traits/comparer';
+import { Matcher } from './traits/matcher';
+import { Adder } from './traits/math';
+import { Receiver } from './traits/receiver';
+import { Sizer } from './traits/sizer';
 import { Trait } from './traits/trait';
-import { uint64Value } from './uint';
+import { Zeroer } from './traits/zeroer';
+import { TypeRefVal } from './type';
+import { UintRefVal, uint64Value } from './uint';
 
-export const STRING_TYPE = primitiveType(Type_PrimitiveType.STRING);
+export const STRING_CEL_TYPE = primitiveType(Type_PrimitiveType.STRING);
 
 export function isStringType(val: Type): val is Type & {
   typeKind: { case: 'primitive'; value: Type_PrimitiveType };
@@ -130,7 +139,7 @@ export function convertStringValueToNative(value: Value, type: NativeType) {
       break;
   }
   return new Error(
-    `type conversion error from '${formatCELType(STRING_TYPE)}' to '${
+    `type conversion error from '${formatCELType(STRING_CEL_TYPE)}' to '${
       type.name
     }'`
   );
@@ -179,13 +188,13 @@ export function convertStringValueToType(value: Value, type: Type) {
       }
       break;
     case 'type':
-      return STRING_TYPE;
+      return STRING_CEL_TYPE;
     default:
       break;
   }
   return new Error(
     `type conversion error from '${formatCELType(
-      STRING_TYPE
+      STRING_CEL_TYPE
     )}' to '${formatCELType(type)}'`
   );
 }
@@ -313,4 +322,181 @@ export function sizeStringValue(value: Value) {
     throw new Error('string value is not a string');
   }
   return int64Value(BigInt(value.kind.value.length));
+}
+
+export class StringRefType implements RefType {
+  // This has to be a TS private field instead of a # private field because
+  // otherwise the tests will not be able to access it to check for equality.
+  // TODO: do we want to alter the tests to use the getter instead?
+  readonly _traits = STRING_TRAITS;
+
+  celType(): Type {
+    return STRING_CEL_TYPE;
+  }
+
+  hasTrait(trait: Trait): boolean {
+    return this._traits.has(trait);
+  }
+
+  typeName(): string {
+    return RefTypeEnum.STRING;
+  }
+}
+
+export const STRING_REF_TYPE = new StringRefType();
+
+export class StringRefVal
+  implements RefVal, Adder, Comparer, Matcher, Receiver, Sizer, Zeroer
+{
+  // This has to be a TS private field instead of a # private field because
+  // otherwise the tests will not be able to access it to check for equality.
+  // TODO: do we want to alter the tests to use the getter instead?
+  private readonly _value: string;
+
+  constructor(value: string) {
+    this._value = value;
+  }
+
+  static stringContains(str: string, substr: RefVal) {
+    switch (substr.type().typeName()) {
+      case RefTypeEnum.STRING:
+        return new BoolRefVal(str.includes(substr.value()));
+      default:
+        return ErrorRefVal.maybeNoSuchOverload(substr);
+    }
+  }
+
+  static stringStartsWith(str: string, prefix: RefVal) {
+    switch (prefix.type().typeName()) {
+      case RefTypeEnum.STRING:
+        return new BoolRefVal(str.startsWith(prefix.value()));
+      default:
+        return ErrorRefVal.maybeNoSuchOverload(prefix);
+    }
+  }
+
+  static stringEndsWith(str: string, suffix: RefVal) {
+    switch (suffix.type().typeName()) {
+      case RefTypeEnum.STRING:
+        return new BoolRefVal(str.endsWith(suffix.value()));
+      default:
+        return ErrorRefVal.maybeNoSuchOverload(suffix);
+    }
+  }
+
+  static Overloads = new Map([
+    [CONTAINS_OVERLOAD, StringRefVal.stringContains],
+    [STARTS_WITH_OVERLOAD, StringRefVal.stringStartsWith],
+    [ENDS_WITH_OVERLOAD, StringRefVal.stringEndsWith],
+  ]);
+
+  celValue(): Value {
+    return stringValue(this._value);
+  }
+
+  convertToNative(type: NativeType) {
+    switch (type) {
+      case String:
+        return this._value;
+      case Uint8Array:
+        return parseBytesConstant(`b"${this._value}"`).constantKind
+          .value as Uint8Array;
+      case AnySchema:
+        return anyPack(
+          StringValueSchema,
+          create(StringValueSchema, { value: this._value })
+        );
+      case StringValueSchema:
+        return create(StringValueSchema, { value: this._value });
+      default:
+        return ErrorRefVal.nativeTypeConversionError(this, type);
+    }
+  }
+
+  convertToType(type: RefType): RefVal {
+    switch (type.typeName()) {
+      case RefTypeEnum.BOOL:
+        return new BoolRefVal(this._value === 'true');
+      case RefTypeEnum.DOUBLE:
+        return new DoubleRefVal(parseFloat(this._value));
+      case RefTypeEnum.INT:
+        return new IntRefVal(BigInt(parseInt(this._value, 10)));
+      case RefTypeEnum.STRING:
+        return new StringRefVal(this._value);
+      case RefTypeEnum.TYPE:
+        return new TypeRefVal(STRING_REF_TYPE);
+      case RefTypeEnum.UINT:
+        return new UintRefVal(BigInt(parseInt(this._value, 10)));
+      // TODO: implement other conversions
+      default:
+        return ErrorRefVal.typeConversionError(this, type);
+    }
+  }
+
+  equal(other: RefVal): RefVal {
+    switch (other.type().typeName()) {
+      case RefTypeEnum.STRING:
+        return new BoolRefVal(this._value === other.value());
+      default:
+        return BoolRefVal.False;
+    }
+  }
+
+  type(): RefType {
+    return STRING_REF_TYPE;
+  }
+
+  value() {
+    return this._value;
+  }
+
+  add(other: RefVal): RefVal {
+    switch (other.type().typeName()) {
+      case RefTypeEnum.STRING:
+        return new StringRefVal(this._value + other.value());
+      default:
+        return ErrorRefVal.maybeNoSuchOverload(other);
+    }
+  }
+
+  compare(other: RefVal): RefVal {
+    switch (other.type().typeName()) {
+      case RefTypeEnum.STRING:
+        if (this._value < other.value()) {
+          return IntRefVal.IntNegOne;
+        }
+        if (this._value > other.value()) {
+          return IntRefVal.IntOne;
+        }
+        return IntRefVal.IntZero;
+      default:
+        return ErrorRefVal.maybeNoSuchOverload(other);
+    }
+  }
+
+  match(pattern: RefVal): RefVal {
+    switch (pattern.type().typeName()) {
+      case RefTypeEnum.STRING:
+        const regexp = new RegExp(pattern.value());
+        return new BoolRefVal(regexp.test(this._value));
+      default:
+        return ErrorRefVal.maybeNoSuchOverload(pattern);
+    }
+  }
+
+  receive(fn: string, overload: string, args: RefVal[]): RefVal {
+    const f = StringRefVal.Overloads.get(fn);
+    if (f) {
+      return f(this._value, args[0]);
+    }
+    return ErrorRefVal.errNoSuchOverload;
+  }
+
+  size(): RefVal {
+    return new IntRefVal(BigInt(this._value.length));
+  }
+
+  isZeroValue(): boolean {
+    return this._value === '';
+  }
 }

@@ -20,10 +20,10 @@ import {
   STANDARD_IDENT_DECLARATIONS,
 } from './common/standard';
 import { DYN_TYPE } from './common/types/dyn';
-import { INT64_TYPE } from './common/types/int';
+import { INT_CEL_TYPE } from './common/types/int';
 import { mapType } from './common/types/map';
 import { messageType } from './common/types/message';
-import { STRING_TYPE } from './common/types/string';
+import { STRING_CEL_TYPE } from './common/types/string';
 import { getFieldDescriptorType } from './common/types/utils';
 import {
   getCheckedWellKnownType,
@@ -274,8 +274,8 @@ export class CELEnvironment {
       if (!isNil(enumDesc)) {
         const decl = identDecl(candidateName, {
           type: mapType({
-            keyType: STRING_TYPE,
-            valueType: INT64_TYPE,
+            keyType: STRING_CEL_TYPE,
+            valueType: INT_CEL_TYPE,
           }),
         });
         this.addIdent(decl);

@@ -19,6 +19,7 @@ import {
  */
 export type NativeType =
   | typeof Boolean
+  | typeof Date
   | typeof Number
   | typeof String
   | typeof Object

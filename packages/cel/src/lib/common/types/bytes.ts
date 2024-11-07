@@ -16,15 +16,22 @@ import { create } from '@bufbuild/protobuf';
 import { AnySchema, BytesValueSchema, anyPack } from '@bufbuild/protobuf/wkt';
 import { dequal } from 'dequal';
 import { formatCELType } from '../format';
-import { boolValue } from './bool';
+import { RefType, RefTypeEnum, RefVal } from '../ref/reference';
+import { BoolRefVal, boolValue } from './bool';
 import { isConstExpr } from './constant';
-import { int64Value } from './int';
+import { ErrorRefVal } from './error';
+import { IntRefVal, int64Value } from './int';
 import { NativeType } from './native';
 import { primitiveType } from './primitive';
-import { stringValue } from './string';
+import { StringRefVal, stringValue } from './string';
+import { Comparer } from './traits/comparer';
+import { Adder } from './traits/math';
+import { Sizer } from './traits/sizer';
 import { Trait } from './traits/trait';
+import { Zeroer } from './traits/zeroer';
+import { TypeRefVal } from './type';
 
-export const BYTES_TYPE = primitiveType(Type_PrimitiveType.BYTES);
+export const BYTES_CEL_TYPE = primitiveType(Type_PrimitiveType.BYTES);
 
 export function isBytesType(val: Type) {
   return (
@@ -102,7 +109,7 @@ export function convertBytesValueToNative(value: Value, type: NativeType) {
       break;
   }
   return new Error(
-    `type conversion error from '${formatCELType(BYTES_TYPE)}' to '${
+    `type conversion error from '${formatCELType(BYTES_CEL_TYPE)}' to '${
       type.name
     }'`
   );
@@ -124,13 +131,13 @@ export function convertBytesValueToType(value: Value, type: Type) {
       }
       break;
     case 'type':
-      return BYTES_TYPE;
+      return BYTES_CEL_TYPE;
     default:
       break;
   }
   return new Error(
     `type conversion error from '${formatCELType(
-      BYTES_TYPE
+      BYTES_CEL_TYPE
     )}' to '${formatCELType(type)}'`
   );
 }
@@ -199,4 +206,130 @@ export function sizeBytesValue(value: Value) {
     throw new Error('bytes value is not a bytes');
   }
   return int64Value(BigInt(value.kind.value.length));
+}
+
+export class BytesRefType implements RefType {
+  // This has to be a TS private field instead of a # private field because
+  // otherwise the tests will not be able to access it to check for equality.
+  // TODO: do we want to alter the tests to use the getter instead?
+  readonly _traits = BYTES_TRAITS;
+
+  celType(): Type {
+    return BYTES_CEL_TYPE;
+  }
+
+  hasTrait(trait: Trait): boolean {
+    return this._traits.has(trait);
+  }
+
+  typeName(): string {
+    return RefTypeEnum.BYTES;
+  }
+}
+
+export const BYTES_REF_TYPE = new BytesRefType();
+
+export class BytesRefVal implements RefVal, Adder, Comparer, Sizer, Zeroer {
+  // This has to be a TS private field instead of a # private field because
+  // otherwise the tests will not be able to access it to check for equality.
+  // TODO: do we want to alter the tests to use the getter instead?
+  private readonly _value: Uint8Array;
+
+  constructor(value: Uint8Array) {
+    this._value = value;
+  }
+
+  celValue(): Value {
+    return bytesValue(this._value);
+  }
+
+  convertToNative(type: NativeType) {
+    switch (type) {
+      case Uint8Array:
+        return this._value;
+      case AnySchema:
+        return anyPack(
+          BytesValueSchema,
+          create(BytesValueSchema, { value: this._value })
+        );
+      case BytesValueSchema:
+        return create(BytesValueSchema, { value: this._value });
+      default:
+        return ErrorRefVal.nativeTypeConversionError(this, type);
+    }
+  }
+
+  convertToType(type: RefType): RefVal {
+    switch (type.typeName()) {
+      case RefTypeEnum.BYTES:
+        return new BytesRefVal(this._value);
+      case RefTypeEnum.STRING:
+        return new StringRefVal(new TextDecoder().decode(this._value));
+      case RefTypeEnum.TYPE:
+        return new TypeRefVal(BYTES_REF_TYPE);
+      default:
+        return ErrorRefVal.typeConversionError(this, type);
+    }
+  }
+
+  equal(other: RefVal): RefVal {
+    switch (other.type().typeName()) {
+      case RefTypeEnum.BYTES:
+        return new BoolRefVal(dequal(this._value, other.value()));
+      default:
+        return BoolRefVal.False;
+    }
+  }
+
+  type(): RefType {
+    return BYTES_REF_TYPE;
+  }
+
+  value() {
+    return this._value;
+  }
+
+  add(other: RefVal): RefVal {
+    switch (other.type().typeName()) {
+      case RefTypeEnum.BYTES:
+        return new BytesRefVal(
+          new Uint8Array([...this._value, ...(other.value() as Uint8Array)])
+        );
+      default:
+        return ErrorRefVal.maybeNoSuchOverload(other);
+    }
+  }
+
+  compare(other: RefVal): RefVal {
+    switch (other.type().typeName()) {
+      case RefTypeEnum.BYTES:
+        if (this._value.length < other.value().length) {
+          return IntRefVal.IntNegOne;
+        }
+        if (this._value.length > other.value().length) {
+          return IntRefVal.IntOne;
+        }
+        for (let i = 0; i < this._value.length; i++) {
+          const v = this._value[i];
+          const o = other.value()[i];
+          if (v < o) {
+            return IntRefVal.IntNegOne;
+          }
+          if (v > o) {
+            return IntRefVal.IntOne;
+          }
+        }
+        return IntRefVal.IntZero;
+      default:
+        return ErrorRefVal.maybeNoSuchOverload(other);
+    }
+  }
+
+  size(): RefVal {
+    return new IntRefVal(BigInt(this._value.length));
+  }
+
+  isZeroValue(): boolean {
+    return this._value.length === 0;
+  }
 }

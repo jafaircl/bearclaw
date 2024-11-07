@@ -26,17 +26,17 @@ import {
 } from '../common/decls/ident-decl';
 import { Errors } from '../common/errors';
 import { formatCELType } from '../common/format';
-import { BOOL_TYPE } from '../common/types/bool';
-import { BYTES_TYPE } from '../common/types/bytes';
+import { BOOL_CEL_TYPE } from '../common/types/bool';
+import { BYTES_CEL_TYPE } from '../common/types/bytes';
 import { unwrapCallExpr } from '../common/types/call';
 import { unwrapComprehensionExpr } from '../common/types/comprehension';
 import { isConstExpr, unwrapConstExpr } from '../common/types/constant';
-import { DOUBLE_TYPE } from '../common/types/double';
+import { DOUBLE_CEL_TYPE } from '../common/types/double';
 import { DYN_TYPE, isDynType } from '../common/types/dyn';
 import { ERROR_TYPE } from '../common/types/error';
 import { functionType } from '../common/types/function';
 import { unwrapIdentExpr } from '../common/types/ident';
-import { INT64_TYPE } from '../common/types/int';
+import { INT_CEL_TYPE } from '../common/types/int';
 import { listType, unwrapCreateList } from '../common/types/list';
 import { mapType } from '../common/types/map';
 import { NULL_TYPE } from '../common/types/null';
@@ -46,10 +46,10 @@ import {
   optionalType,
 } from '../common/types/optional';
 import { unwrapSelectExpr } from '../common/types/select';
-import { STRING_TYPE } from '../common/types/string';
+import { STRING_CEL_TYPE } from '../common/types/string';
 import { unwrapStructExpr } from '../common/types/struct';
 import { typeParamType } from '../common/types/type-param';
-import { UINT64_TYPE } from '../common/types/uint';
+import { UINT_CEL_TYPE } from '../common/types/uint';
 import { isDynTypeOrErrorType } from '../common/types/utils';
 import {
   DURATION_TYPE,
@@ -167,25 +167,25 @@ export class CELChecker {
     const constant = unwrapConstExpr(expr)!;
     switch (constant.constantKind.case) {
       case 'boolValue':
-        this.setType(expr.id, BOOL_TYPE);
+        this.setType(expr.id, BOOL_CEL_TYPE);
         break;
       case 'bytesValue':
-        this.setType(expr.id, BYTES_TYPE);
+        this.setType(expr.id, BYTES_CEL_TYPE);
         break;
       case 'doubleValue':
-        this.setType(expr.id, DOUBLE_TYPE);
+        this.setType(expr.id, DOUBLE_CEL_TYPE);
         break;
       case 'int64Value':
-        this.setType(expr.id, INT64_TYPE);
+        this.setType(expr.id, INT_CEL_TYPE);
         break;
       case 'nullValue':
         this.setType(expr.id, NULL_TYPE);
         break;
       case 'stringValue':
-        this.setType(expr.id, STRING_TYPE);
+        this.setType(expr.id, STRING_CEL_TYPE);
         break;
       case 'uint64Value':
-        this.setType(expr.id, UINT64_TYPE);
+        this.setType(expr.id, UINT_CEL_TYPE);
         break;
       case 'durationValue':
         this.setType(expr.id, DURATION_TYPE);
@@ -253,7 +253,7 @@ export class CELChecker {
       false
     );
     if (sel.testOnly) {
-      resultType = BOOL_TYPE;
+      resultType = BOOL_CEL_TYPE;
     }
     this.setType(expr.id, resultType);
     return expr;
@@ -618,7 +618,7 @@ export class CELChecker {
     this.env.addIdent(identDecl(comp.iterVar, { type: varType }));
     // Check the variable references in the condition and step.
     this.checkExpr(comp.loopCondition);
-    this._assertType(comp.loopCondition!, BOOL_TYPE);
+    this._assertType(comp.loopCondition!, BOOL_CEL_TYPE);
     this.checkExpr(comp.loopStep);
     this._assertType(comp.loopStep!, accuType!);
     // Exit the loop's block scope before checking the result.

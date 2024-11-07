@@ -5,7 +5,7 @@ import { ParserRuleContext, Token } from 'antlr4';
 import { Location, OffsetRange } from '../common/ast';
 import { ACCUMULATOR_VAR } from '../common/constants';
 import { functionDecl, overloadDecl } from '../common/decls/function-decl';
-import { BOOL_TYPE, boolExpr } from '../common/types/bool';
+import { BOOL_CEL_TYPE, boolExpr } from '../common/types/bool';
 import { callExpr } from '../common/types/call';
 import { comprehensionExpr } from '../common/types/comprehension';
 import { DYN_TYPE } from '../common/types/dyn';
@@ -38,7 +38,7 @@ export const STANDARD_MACRO_DECLARATIONS = new Set([
       overloadDecl({
         isInstanceFunction: false,
         params: [DYN_TYPE],
-        resultType: BOOL_TYPE,
+        resultType: BOOL_CEL_TYPE,
       }),
     ],
   }),
@@ -49,7 +49,7 @@ export const STANDARD_MACRO_DECLARATIONS = new Set([
       overloadDecl({
         isInstanceFunction: true,
         params: [DYN_TYPE, DYN_TYPE],
-        resultType: BOOL_TYPE,
+        resultType: BOOL_CEL_TYPE,
       }),
     ],
   }),
@@ -60,7 +60,7 @@ export const STANDARD_MACRO_DECLARATIONS = new Set([
       overloadDecl({
         isInstanceFunction: true,
         params: [DYN_TYPE, DYN_TYPE],
-        resultType: BOOL_TYPE,
+        resultType: BOOL_CEL_TYPE,
       }),
     ],
   }),
@@ -71,7 +71,7 @@ export const STANDARD_MACRO_DECLARATIONS = new Set([
       overloadDecl({
         isInstanceFunction: true,
         params: [DYN_TYPE, DYN_TYPE],
-        resultType: BOOL_TYPE,
+        resultType: BOOL_CEL_TYPE,
       }),
     ],
   }),

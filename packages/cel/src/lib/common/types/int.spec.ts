@@ -9,38 +9,22 @@ import {
   Int32ValueSchema,
   Int64ValueSchema,
   anyPack,
-  timestampFromMs,
 } from '@bufbuild/protobuf/wkt';
-import { boolValue } from './bool';
-import { DOUBLE_TYPE, doubleValue } from './double';
+import { BoolRefVal } from './bool';
+import { DOUBLE_REF_TYPE, DoubleRefVal } from './double';
+import { ErrorRefVal } from './error';
 import {
-  INT64_TYPE,
+  INT_REF_TYPE,
+  IntRefVal,
   MAX_INT64,
   MIN_INT64,
-  addInt64Value,
-  compareInt64Value,
-  convertInt64ValueToNative,
-  convertInt64ValueToType,
-  divideInt64Value,
-  equalInt64Value,
   int64Constant,
   int64Expr,
   int64Value,
-  isZeroInt64Value,
-  moduloInt64Value,
-  multiplyInt64Value,
-  negateInt64Value,
-  subtractInt64Value,
 } from './int';
-import { STRING_TYPE, stringValue } from './string';
-import {
-  MAX_UNIX_TIME_MS,
-  MIN_UNIX_TIME_MS,
-  timestampValue,
-} from './timestamp';
-import { TYPE_TYPE } from './type';
-import { UINT64_TYPE, uint64Value } from './uint';
-import { TIMESTAMP_TYPE } from './wkt';
+import { STRING_REF_TYPE, StringRefVal } from './string';
+import { TYPE_REF_TYPE, TypeRefVal } from './type';
+import { UINT_REF_TYPE, UintRefVal } from './uint';
 
 describe('int', () => {
   it('int64Constant', () => {
@@ -85,404 +69,341 @@ describe('int', () => {
   // TODO: validations
 
   it('convertInt64ValueToNative - js BigInt', () => {
-    expect(() => {
-      convertInt64ValueToNative(stringValue('foo'), Number);
-    }).toThrow();
-    expect(convertInt64ValueToNative(int64Value(BigInt(42)), BigInt)).toEqual(
-      BigInt(42)
-    );
+    const value = new IntRefVal(BigInt(42));
+    expect(value.convertToNative(BigInt)).toEqual(BigInt(42));
   });
 
   it('convertInt64ValueToNative - anyPack', () => {
-    const value = int64Value(BigInt(-42));
+    const value = new IntRefVal(BigInt(-42));
     const packed = anyPack(
       Int64ValueSchema,
       create(Int64ValueSchema, { value: BigInt(-42) })
     );
-    expect(convertInt64ValueToNative(value, AnySchema)).toEqual(packed);
+    expect(value.convertToNative(AnySchema)).toEqual(packed);
   });
 
   it('convertInt64ValueToNative - int64 wrapper', () => {
-    const value = int64Value(BigInt(30000000));
-    expect(convertInt64ValueToNative(value, Int64ValueSchema)).toEqual(
+    const value = new IntRefVal(BigInt(30000000));
+    expect(value.convertToNative(Int64ValueSchema)).toEqual(
       create(Int64ValueSchema, { value: BigInt(30000000) })
     );
     // Value errors
     expect(
-      convertInt64ValueToNative(
-        int64Value(MAX_INT64 + BigInt(1)),
-        Int64ValueSchema
-      )
-    ).toEqual(new Error('integer overflow'));
+      new IntRefVal(MAX_INT64 + BigInt(1)).convertToNative(Int64ValueSchema)
+    ).toEqual(ErrorRefVal.errIntOverflow);
     expect(
-      convertInt64ValueToNative(
-        int64Value(MIN_INT64 - BigInt(1)),
-        Int64ValueSchema
-      )
-    ).toEqual(new Error('integer overflow'));
+      new IntRefVal(MIN_INT64 - BigInt(1)).convertToNative(Int64ValueSchema)
+    ).toEqual(ErrorRefVal.errIntOverflow);
   });
 
   it('convertInt64ValueToNative - int32 wrapper', () => {
-    const value = int64Value(BigInt(7976931348623157));
-    expect(convertInt64ValueToNative(value, Int32ValueSchema)).toEqual(
+    const value = new IntRefVal(BigInt(7976931348623157));
+    expect(value.convertToNative(Int32ValueSchema)).toEqual(
       create(Int32ValueSchema, { value: 7976931348623157 })
     );
     // Value errors
     expect(
-      convertInt64ValueToNative(
-        int64Value(BigInt(Number.MAX_SAFE_INTEGER + 1)),
+      new IntRefVal(BigInt(Number.MAX_SAFE_INTEGER + 1)).convertToNative(
         Int32ValueSchema
       )
-    ).toEqual(new Error('integer overflow'));
+    ).toEqual(ErrorRefVal.errIntOverflow);
     expect(
-      convertInt64ValueToNative(
-        int64Value(BigInt(Number.MIN_SAFE_INTEGER - 1)),
+      new IntRefVal(BigInt(Number.MIN_SAFE_INTEGER - 1)).convertToNative(
         Int32ValueSchema
       )
-    ).toEqual(new Error('integer overflow'));
+    ).toEqual(ErrorRefVal.errIntOverflow);
   });
 
   it('convertInt64ValueToNative - invalid type', () => {
-    const value = int64Value(BigInt(-314159));
-    expect(convertInt64ValueToNative(value, Boolean)).toEqual(
-      new Error(`type conversion error from 'int' to 'Boolean'`)
+    const value = new IntRefVal(BigInt(-314159));
+    expect(value.convertToNative(Boolean)).toEqual(
+      ErrorRefVal.nativeTypeConversionError(value, Boolean)
     );
   });
 
   it('convertInt64ValueToType', () => {
-    expect(() => {
-      convertInt64ValueToType(stringValue('foo'), TYPE_TYPE);
-    }).toThrow();
     const tests = [
       {
-        in: int64Value(BigInt(42)),
-        type: TYPE_TYPE,
-        out: INT64_TYPE,
+        in: new IntRefVal(BigInt(42)),
+        type: TYPE_REF_TYPE,
+        out: new TypeRefVal(INT_REF_TYPE),
       },
       {
-        in: int64Value(BigInt(42)),
-        type: INT64_TYPE,
-        out: int64Value(BigInt(42)),
+        in: new IntRefVal(BigInt(42)),
+        type: INT_REF_TYPE,
+        out: new IntRefVal(BigInt(42)),
       },
       {
-        in: int64Value(BigInt(42)),
-        type: UINT64_TYPE,
-        out: uint64Value(BigInt(42)),
+        in: new IntRefVal(BigInt(42)),
+        type: UINT_REF_TYPE,
+        out: new UintRefVal(BigInt(42)),
       },
       {
-        in: int64Value(BigInt(-42)),
-        type: UINT64_TYPE,
-        out: new Error('unsigned integer overflow'),
+        in: new IntRefVal(BigInt(-42)),
+        type: UINT_REF_TYPE,
+        out: ErrorRefVal.errIntOverflow,
       },
       {
-        in: int64Value(BigInt(42)),
-        type: DOUBLE_TYPE,
-        out: doubleValue(42),
+        in: new IntRefVal(BigInt(42)),
+        type: DOUBLE_REF_TYPE,
+        out: new DoubleRefVal(42),
       },
       {
-        in: int64Value(BigInt(-42)),
-        type: STRING_TYPE,
-        out: stringValue('-42'),
+        in: new IntRefVal(BigInt(-42)),
+        type: STRING_REF_TYPE,
+        out: new StringRefVal('-42'),
       },
-      {
-        in: int64Value(BigInt(946684800)),
-        type: TIMESTAMP_TYPE,
-        out: timestampValue(timestampFromMs(946684800)),
-      },
-      {
-        in: int64Value(BigInt(MAX_UNIX_TIME_MS + 1)),
-        type: TIMESTAMP_TYPE,
-        out: new Error('timestamp overflow'),
-      },
-      {
-        in: int64Value(BigInt(MIN_UNIX_TIME_MS - 1)),
-        type: TIMESTAMP_TYPE,
-        out: new Error('timestamp overflow'),
-      },
+      // TODO: Timestamp types
+      // {
+      //   in: new IntRefVal(BigInt(946684800)),
+      //   type: TIMESTAMP_TYPE,
+      //   out: timestampValue(timestampFromMs(946684800)),
+      // },
+      // {
+      //   in: int64Value(BigInt(MAX_UNIX_TIME_MS + 1)),
+      //   type: TIMESTAMP_TYPE,
+      //   out: new Error('timestamp overflow'),
+      // },
+      // {
+      //   in: int64Value(BigInt(MIN_UNIX_TIME_MS - 1)),
+      //   type: TIMESTAMP_TYPE,
+      //   out: new Error('timestamp overflow'),
+      // },
     ];
     for (const test of tests) {
-      expect(convertInt64ValueToType(test.in, test.type)).toEqual(test.out);
+      expect(test.in.convertToType(test.type)).toStrictEqual(test.out);
     }
   });
 
   it('equalInt64Value', () => {
-    expect(() => {
-      equalInt64Value(stringValue('foo'), int64Value(BigInt(42)));
-    }).toThrow();
     const tests = [
       {
-        a: int64Value(BigInt(-10)),
-        b: int64Value(BigInt(-10)),
-        out: boolValue(true),
+        a: new IntRefVal(BigInt(-10)),
+        b: new IntRefVal(BigInt(-10)),
+        out: new BoolRefVal(true),
       },
       {
-        a: int64Value(BigInt(10)),
-        b: int64Value(BigInt(-10)),
-        out: boolValue(false),
+        a: new IntRefVal(BigInt(10)),
+        b: new IntRefVal(BigInt(-10)),
+        out: new BoolRefVal(false),
       },
       {
-        a: int64Value(BigInt(10)),
-        b: uint64Value(BigInt(10)),
-        out: boolValue(true),
+        a: new IntRefVal(BigInt(10)),
+        b: new UintRefVal(BigInt(10)),
+        out: new BoolRefVal(true),
       },
       {
-        a: int64Value(BigInt(9)),
-        b: uint64Value(BigInt(10)),
-        out: boolValue(false),
+        a: new IntRefVal(BigInt(9)),
+        b: new UintRefVal(BigInt(10)),
+        out: new BoolRefVal(false),
       },
       {
-        a: int64Value(BigInt(10)),
-        b: doubleValue(10),
-        out: boolValue(true),
+        a: new IntRefVal(BigInt(10)),
+        b: new DoubleRefVal(10),
+        out: new BoolRefVal(true),
       },
       {
-        a: int64Value(BigInt(10)),
-        b: doubleValue(-10.5),
-        out: boolValue(false),
+        a: new IntRefVal(BigInt(10)),
+        b: new DoubleRefVal(-10.5),
+        out: new BoolRefVal(false),
       },
       {
-        a: int64Value(BigInt(10)),
-        b: doubleValue(NaN),
-        out: boolValue(false),
+        a: new IntRefVal(BigInt(10)),
+        b: new DoubleRefVal(NaN),
+        out: new BoolRefVal(false),
       },
       {
-        a: int64Value(BigInt(10)),
-        b: stringValue('10'),
-        out: boolValue(false),
+        a: new IntRefVal(BigInt(10)),
+        b: new StringRefVal('10'),
+        out: new BoolRefVal(false),
       },
     ];
     for (const test of tests) {
-      expect(equalInt64Value(test.a, test.b)).toEqual(test.out);
+      expect(test.a.equal(test.b)).toStrictEqual(test.out);
     }
   });
 
   it('isZeroInt64Value', () => {
-    expect(isZeroInt64Value(int64Value(BigInt(0)))).toEqual(boolValue(true));
-    expect(isZeroInt64Value(int64Value(BigInt(1)))).toEqual(boolValue(false));
+    expect(new IntRefVal(BigInt(0)).isZeroValue()).toEqual(true);
+    expect(new IntRefVal(BigInt(1)).isZeroValue()).toEqual(false);
   });
 
   it('addInt64Value', () => {
-    expect(() => {
-      addInt64Value(stringValue('foo'), int64Value(BigInt(42)));
-    }).toThrow();
-    expect(addInt64Value(int64Value(BigInt(1)), int64Value(BigInt(2)))).toEqual(
-      int64Value(BigInt(3))
-    );
-    expect(addInt64Value(int64Value(BigInt(1)), stringValue('-4'))).toEqual(
-      new Error('no such overload')
-    );
-    expect(addInt64Value(int64Value(MAX_INT64), int64Value(BigInt(1)))).toEqual(
-      new Error('integer overflow')
+    expect(
+      new IntRefVal(BigInt(1)).add(new IntRefVal(BigInt(2)))
+    ).toStrictEqual(new IntRefVal(BigInt(3)));
+    expect(new IntRefVal(BigInt(1)).add(new StringRefVal('-4'))).toStrictEqual(
+      ErrorRefVal.errNoSuchOverload
     );
     expect(
-      addInt64Value(int64Value(MIN_INT64), int64Value(BigInt(-1)))
-    ).toEqual(new Error('integer overflow'));
+      new IntRefVal(MAX_INT64).add(new IntRefVal(BigInt(1)))
+    ).toStrictEqual(ErrorRefVal.errIntOverflow);
     expect(
-      addInt64Value(int64Value(MAX_INT64 - BigInt(1)), int64Value(BigInt(1)))
-    ).toEqual(int64Value(MAX_INT64));
+      new IntRefVal(MIN_INT64).add(new IntRefVal(BigInt(-1)))
+    ).toStrictEqual(ErrorRefVal.errIntOverflow);
     expect(
-      addInt64Value(int64Value(MIN_INT64 + BigInt(1)), int64Value(BigInt(-1)))
-    ).toEqual(int64Value(MIN_INT64));
+      new IntRefVal(MAX_INT64 - BigInt(1)).add(new IntRefVal(BigInt(1)))
+    ).toStrictEqual(new IntRefVal(MAX_INT64));
+    expect(
+      new IntRefVal(MIN_INT64 + BigInt(1)).add(new IntRefVal(BigInt(-1)))
+    ).toStrictEqual(new IntRefVal(MIN_INT64));
   });
 
   it('compareInt64Value', () => {
-    expect(() => {
-      compareInt64Value(stringValue('foo'), int64Value(BigInt(42)));
-    }).toThrow();
     const tests = [
       {
-        a: int64Value(BigInt(42)),
-        b: int64Value(BigInt(42)),
-        out: int64Value(BigInt(0)),
+        a: new IntRefVal(BigInt(42)),
+        b: new IntRefVal(BigInt(42)),
+        out: new IntRefVal(BigInt(0)),
       },
       {
-        a: int64Value(BigInt(42)),
-        b: uint64Value(BigInt(42)),
-        out: int64Value(BigInt(0)),
+        a: new IntRefVal(BigInt(42)),
+        b: new UintRefVal(BigInt(42)),
+        out: new IntRefVal(BigInt(0)),
       },
       {
-        a: int64Value(BigInt(42)),
-        b: doubleValue(42),
-        out: int64Value(BigInt(0)),
+        a: new IntRefVal(BigInt(42)),
+        b: new DoubleRefVal(42),
+        out: new IntRefVal(BigInt(0)),
       },
       {
-        a: int64Value(BigInt(-1300)),
-        b: int64Value(BigInt(204)),
-        out: int64Value(BigInt(-1)),
+        a: new IntRefVal(BigInt(-1300)),
+        b: new IntRefVal(BigInt(204)),
+        out: new IntRefVal(BigInt(-1)),
       },
       {
-        a: int64Value(BigInt(204)),
-        b: doubleValue(204.1),
-        out: int64Value(BigInt(-1)),
+        a: new IntRefVal(BigInt(204)),
+        b: new DoubleRefVal(204.1),
+        out: new IntRefVal(BigInt(-1)),
       },
       {
-        a: int64Value(BigInt(1300)),
-        b: uint64Value(MAX_INT64 + BigInt(1)),
-        out: int64Value(BigInt(-1)),
+        a: new IntRefVal(BigInt(1300)),
+        b: new UintRefVal(MAX_INT64 + BigInt(1)),
+        out: new IntRefVal(BigInt(-1)),
       },
       {
-        a: int64Value(BigInt(204)),
-        b: uint64Value(BigInt(205)),
-        out: int64Value(BigInt(-1)),
+        a: new IntRefVal(BigInt(204)),
+        b: new UintRefVal(BigInt(205)),
+        out: new IntRefVal(BigInt(-1)),
       },
       {
-        a: int64Value(BigInt(204)),
-        b: doubleValue(Number(MAX_INT64) + 1025.0),
-        out: int64Value(BigInt(-1)),
+        a: new IntRefVal(BigInt(204)),
+        b: new DoubleRefVal(Number(MAX_INT64) + 1025.0),
+        out: new IntRefVal(BigInt(-1)),
       },
       {
-        a: int64Value(BigInt(204)),
-        b: doubleValue(NaN),
-        out: new Error('NaN values cannot be ordered'),
+        a: new IntRefVal(BigInt(204)),
+        b: new DoubleRefVal(NaN),
+        out: new ErrorRefVal('NaN values cannot be ordered'),
       },
       {
-        a: int64Value(BigInt(204)),
-        b: int64Value(BigInt(-1300)),
-        out: int64Value(BigInt(1)),
+        a: new IntRefVal(BigInt(204)),
+        b: new IntRefVal(BigInt(-1300)),
+        out: new IntRefVal(BigInt(1)),
       },
       {
-        a: int64Value(BigInt(204)),
-        b: uint64Value(BigInt(10)),
-        out: int64Value(BigInt(1)),
+        a: new IntRefVal(BigInt(204)),
+        b: new UintRefVal(BigInt(10)),
+        out: new IntRefVal(BigInt(1)),
       },
       {
-        a: int64Value(BigInt(204)),
-        b: doubleValue(203.9),
-        out: int64Value(BigInt(1)),
+        a: new IntRefVal(BigInt(204)),
+        b: new DoubleRefVal(203.9),
+        out: new IntRefVal(BigInt(1)),
       },
       {
-        a: int64Value(BigInt(204)),
-        b: doubleValue(Number(MIN_INT64) - 1025.0),
-        out: int64Value(BigInt(1)),
+        a: new IntRefVal(BigInt(204)),
+        b: new DoubleRefVal(Number(MIN_INT64) - 1025.0),
+        out: new IntRefVal(BigInt(1)),
       },
       {
-        a: int64Value(BigInt(1)),
-        b: stringValue('1'),
-        out: new Error('no such overload'),
+        a: new IntRefVal(BigInt(1)),
+        b: new StringRefVal('1'),
+        out: ErrorRefVal.errNoSuchOverload,
       },
     ];
     for (const test of tests) {
-      expect(compareInt64Value(test.a, test.b)).toEqual(test.out);
+      expect(test.a.compare(test.b)).toStrictEqual(test.out);
     }
   });
 
   it('divideInt64Value', () => {
-    expect(() => {
-      divideInt64Value(stringValue('foo'), int64Value(BigInt(42)));
-    }).toThrow();
     expect(
-      divideInt64Value(int64Value(BigInt(3)), int64Value(BigInt(2)))
-    ).toEqual(int64Value(BigInt(1)));
+      new IntRefVal(BigInt(3)).divide(new IntRefVal(BigInt(2)))
+    ).toStrictEqual(new IntRefVal(BigInt(1)));
     expect(
-      divideInt64Value(int64Value(BigInt(3)), int64Value(BigInt(0)))
-    ).toEqual(new Error('divide by zero'));
+      new IntRefVal(BigInt(3)).divide(new IntRefVal(BigInt(0)))
+    ).toStrictEqual(ErrorRefVal.errDivideByZero);
     expect(
-      divideInt64Value(int64Value(MIN_INT64), int64Value(BigInt(-1)))
-    ).toEqual(new Error('integer overflow'));
+      new IntRefVal(MIN_INT64).divide(new IntRefVal(BigInt(-1)))
+    ).toStrictEqual(ErrorRefVal.errIntOverflow);
   });
 
   it('moduloInt64Value', () => {
-    expect(() => {
-      moduloInt64Value(stringValue('foo'), int64Value(BigInt(42)));
-    }).toThrow();
     expect(
-      moduloInt64Value(int64Value(BigInt(21)), int64Value(BigInt(2)))
-    ).toEqual(int64Value(BigInt(1)));
+      new IntRefVal(BigInt(21)).modulo(new IntRefVal(BigInt(2)))
+    ).toStrictEqual(new IntRefVal(BigInt(1)));
     expect(
-      moduloInt64Value(int64Value(BigInt(21)), int64Value(BigInt(0)))
-    ).toEqual(new Error('modulus by zero'));
+      new IntRefVal(BigInt(21)).modulo(new IntRefVal(BigInt(0)))
+    ).toStrictEqual(ErrorRefVal.errModulusByZero);
     expect(
-      moduloInt64Value(int64Value(MIN_INT64), int64Value(BigInt(-1)))
-    ).toEqual(new Error('integer overflow'));
+      new IntRefVal(MIN_INT64).modulo(new IntRefVal(BigInt(-1)))
+    ).toStrictEqual(ErrorRefVal.errIntOverflow);
   });
 
   it('multiplyInt64Value', () => {
-    expect(() => {
-      multiplyInt64Value(stringValue('foo'), int64Value(BigInt(42)));
-    }).toThrow();
     expect(
-      multiplyInt64Value(int64Value(BigInt(2)), int64Value(BigInt(-2)))
-    ).toEqual(int64Value(BigInt(-4)));
+      new IntRefVal(BigInt(2)).multiply(new IntRefVal(BigInt(-2)))
+    ).toStrictEqual(new IntRefVal(BigInt(-4)));
     expect(
-      multiplyInt64Value(
-        int64Value(MAX_INT64 / BigInt(2)),
-        int64Value(BigInt(3))
+      new IntRefVal(MAX_INT64 / BigInt(2)).multiply(new IntRefVal(BigInt(3)))
+    ).toStrictEqual(ErrorRefVal.errIntOverflow);
+    expect(
+      new IntRefVal(MAX_INT64 / BigInt(2)).multiply(new IntRefVal(BigInt(2)))
+    ).toStrictEqual(new IntRefVal(MAX_INT64 - BigInt(1)));
+    expect(
+      new IntRefVal(MIN_INT64 / BigInt(2)).multiply(new IntRefVal(BigInt(2)))
+    ).toStrictEqual(new IntRefVal(MIN_INT64));
+    expect(
+      new IntRefVal(MAX_INT64 / BigInt(2)).multiply(new IntRefVal(BigInt(-2)))
+    ).toStrictEqual(new IntRefVal(MIN_INT64 + BigInt(2)));
+    expect(
+      new IntRefVal((MIN_INT64 + BigInt(2)) / BigInt(2)).multiply(
+        new IntRefVal(BigInt(-2))
       )
-    ).toEqual(new Error('integer overflow'));
+    ).toStrictEqual(new IntRefVal(MAX_INT64 - BigInt(1)));
     expect(
-      multiplyInt64Value(
-        int64Value(MIN_INT64 / BigInt(2)),
-        int64Value(BigInt(3))
-      )
-    ).toEqual(new Error('integer overflow'));
-    expect(
-      multiplyInt64Value(
-        int64Value(MAX_INT64 / BigInt(2)),
-        int64Value(BigInt(2))
-      )
-    ).toEqual(int64Value(MAX_INT64 - BigInt(1)));
-    expect(
-      multiplyInt64Value(
-        int64Value(MIN_INT64 / BigInt(2)),
-        int64Value(BigInt(2))
-      )
-    ).toEqual(int64Value(MIN_INT64));
-    expect(
-      multiplyInt64Value(
-        int64Value(MAX_INT64 / BigInt(2)),
-        int64Value(BigInt(-2))
-      )
-    ).toEqual(int64Value(MIN_INT64 + BigInt(2)));
-    expect(
-      multiplyInt64Value(
-        int64Value((MIN_INT64 + BigInt(2)) / BigInt(2)),
-        int64Value(BigInt(-2))
-      )
-    ).toEqual(int64Value(MAX_INT64 - BigInt(1)));
-    expect(
-      multiplyInt64Value(int64Value(MIN_INT64), int64Value(BigInt(-1)))
-    ).toEqual(new Error('integer overflow'));
+      new IntRefVal(MIN_INT64).multiply(new IntRefVal(BigInt(-1)))
+    ).toStrictEqual(ErrorRefVal.errIntOverflow);
   });
 
   it('negateInt64Value', () => {
-    expect(() => {
-      negateInt64Value(stringValue('foo'));
-    }).toThrow();
-    expect(negateInt64Value(int64Value(BigInt(42)))).toEqual(
-      int64Value(BigInt(-42))
+    expect(new IntRefVal(BigInt(42)).negate()).toStrictEqual(
+      new IntRefVal(BigInt(-42))
     );
-    expect(negateInt64Value(int64Value(MIN_INT64))).toEqual(
-      new Error('integer overflow')
+    expect(new IntRefVal(MIN_INT64).negate()).toStrictEqual(
+      ErrorRefVal.errIntOverflow
     );
-    expect(negateInt64Value(int64Value(MAX_INT64))).toEqual(
-      int64Value(MIN_INT64 + BigInt(1))
+    expect(new IntRefVal(MAX_INT64).negate()).toStrictEqual(
+      new IntRefVal(MIN_INT64 + BigInt(1))
     );
   });
 
   it('subtractInt64Value', () => {
-    expect(() => {
-      subtractInt64Value(stringValue('foo'), int64Value(BigInt(42)));
-    }).toThrow();
     expect(
-      subtractInt64Value(int64Value(BigInt(4)), int64Value(BigInt(-3)))
-    ).toEqual(int64Value(BigInt(7)));
+      new IntRefVal(BigInt(4)).subtract(new IntRefVal(BigInt(-3)))
+    ).toStrictEqual(new IntRefVal(BigInt(7)));
     expect(
-      subtractInt64Value(int64Value(MAX_INT64), int64Value(BigInt(-1)))
-    ).toEqual(new Error('integer overflow'));
+      new IntRefVal(MAX_INT64).subtract(new IntRefVal(BigInt(-1)))
+    ).toStrictEqual(ErrorRefVal.errIntOverflow);
     expect(
-      subtractInt64Value(int64Value(MIN_INT64), int64Value(BigInt(1)))
-    ).toEqual(new Error('integer overflow'));
+      new IntRefVal(MIN_INT64).subtract(new IntRefVal(BigInt(1)))
+    ).toStrictEqual(ErrorRefVal.errIntOverflow);
     expect(
-      subtractInt64Value(
-        int64Value(MAX_INT64 - BigInt(1)),
-        int64Value(BigInt(-1))
-      )
-    ).toEqual(int64Value(MAX_INT64));
+      new IntRefVal(MAX_INT64 - BigInt(1)).subtract(new IntRefVal(BigInt(-1)))
+    ).toStrictEqual(new IntRefVal(MAX_INT64));
     expect(
-      subtractInt64Value(
-        int64Value(MIN_INT64 + BigInt(1)),
-        int64Value(BigInt(1))
-      )
-    ).toEqual(int64Value(MIN_INT64));
+      new IntRefVal(MIN_INT64 + BigInt(1)).subtract(new IntRefVal(BigInt(1)))
+    ).toStrictEqual(new IntRefVal(MIN_INT64));
   });
 });

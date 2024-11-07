@@ -9,16 +9,16 @@ import {
   DurationSchema,
   TimestampSchema,
 } from '@bufbuild/protobuf/wkt';
-import { BOOL_TYPE } from './bool';
-import { BYTES_TYPE } from './bytes';
-import { DOUBLE_TYPE } from './double';
+import { BOOL_CEL_TYPE } from './bool';
+import { BYTES_CEL_TYPE } from './bytes';
+import { DOUBLE_CEL_TYPE } from './double';
 import { DYN_TYPE } from './dyn';
-import { INT64_TYPE } from './int';
+import { INT_CEL_TYPE } from './int';
 import { listType } from './list';
 import { mapType } from './map';
 import { NULL_TYPE } from './null';
-import { STRING_TYPE } from './string';
-import { UINT64_TYPE } from './uint';
+import { STRING_CEL_TYPE } from './string';
+import { UINT_CEL_TYPE } from './uint';
 
 export function wellKnownType(value: Type_WellKnownType) {
   return create(TypeSchema, {
@@ -77,20 +77,20 @@ export function getCheckedWellKnownType(value: string) {
   switch (value) {
     // Wrapper types.
     case 'google.protobuf.BoolValue':
-      return BOOL_TYPE;
+      return BOOL_CEL_TYPE;
     case 'google.protobuf.BytesValue':
-      return BYTES_TYPE;
+      return BYTES_CEL_TYPE;
     case 'google.protobuf.DoubleValue':
     case 'google.protobuf.FloatValue':
-      return DOUBLE_TYPE;
+      return DOUBLE_CEL_TYPE;
     case 'google.protobuf.Int64Value':
     case 'google.protobuf.Int32Value':
-      return INT64_TYPE;
+      return INT_CEL_TYPE;
     case 'google.protobuf.UInt64Value':
     case 'google.protobuf.UInt32Value':
-      return UINT64_TYPE;
+      return UINT_CEL_TYPE;
     case 'google.protobuf.StringValue':
-      return STRING_TYPE;
+      return STRING_CEL_TYPE;
     // Well-known types.
     case 'google.protobuf.Any':
       return ANY_TYPE;
@@ -104,7 +104,7 @@ export function getCheckedWellKnownType(value: string) {
     case 'google.protobuf.NullValue':
       return NULL_TYPE;
     case 'google.protobuf.Struct':
-      return mapType({ keyType: STRING_TYPE, valueType: DYN_TYPE });
+      return mapType({ keyType: STRING_CEL_TYPE, valueType: DYN_TYPE });
     case 'google.protobuf.Value':
       return DYN_TYPE;
     default:

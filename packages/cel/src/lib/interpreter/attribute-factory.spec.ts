@@ -1,6 +1,6 @@
 import { CELContainer } from '../common/container';
 import { ProtoTypeRegistry } from '../common/pb/proto-type-registry';
-import { INT64_TYPE } from '../common/types/int';
+import { INT_CEL_TYPE } from '../common/types/int';
 import { stringValue } from '../common/types/string';
 import { typeValue } from '../common/types/type';
 import { MapActivation } from './activation';
@@ -45,7 +45,7 @@ describe('AttributeFactory', () => {
     // int
     const attr = attrs.absoluteAttribute(BigInt(1), 'int') as AbsoluteAttribute;
     const out = attr.resolve(new MapActivation());
-    expect(out).toEqual(typeValue(INT64_TYPE));
+    expect(out).toEqual(typeValue(INT_CEL_TYPE));
     expect(attr.cost()).toEqual(new Cost(1, 1));
   });
 });

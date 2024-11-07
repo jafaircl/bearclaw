@@ -10,25 +10,19 @@ import {
   FloatValueSchema,
   anyPack,
 } from '@bufbuild/protobuf/wkt';
-import { boolValue } from './bool';
+import { BoolRefVal } from './bool';
 import {
-  DOUBLE_TYPE,
-  addDoubleValue,
-  compareDoubleValue,
-  convertDoubleValueToNative,
-  convertDoubleValueToType,
-  divideDoubleValue,
+  DOUBLE_REF_TYPE,
+  DoubleRefVal,
   doubleConstant,
   doubleExpr,
   doubleValue,
-  equalDoubleValue,
-  isZeroDoubleValue,
-  multiplyDoubleValue,
 } from './double';
-import { INT64_TYPE, int64Value } from './int';
-import { STRING_TYPE, stringValue } from './string';
-import { TYPE_TYPE } from './type';
-import { UINT64_TYPE, uint64Value } from './uint';
+import { ErrorRefVal } from './error';
+import { INT_REF_TYPE, IntRefVal } from './int';
+import { STRING_REF_TYPE, StringRefVal } from './string';
+import { TYPE_REF_TYPE, TypeRefVal } from './type';
+import { UINT_REF_TYPE, UintRefVal } from './uint';
 
 describe('double', () => {
   it('doubleConstant', () => {
@@ -73,282 +67,261 @@ describe('double', () => {
   // TODO: validations
 
   it('convertDoubleValueToNative - js Number', () => {
-    expect(() => {
-      convertDoubleValueToNative(stringValue('foo'), Number);
-    }).toThrow();
-    expect(convertDoubleValueToNative(doubleValue(3.14), Number)).toEqual(3.14);
+    const value = new DoubleRefVal(3.14);
+    expect(value.convertToNative(Number)).toStrictEqual(3.14);
   });
 
   it('convertDoubleValueToNative - anyPack', () => {
-    const value = doubleValue(-1.4);
+    const value = new DoubleRefVal(-1.4);
     const packed = anyPack(
       DoubleValueSchema,
       create(DoubleValueSchema, { value: -1.4 })
     );
-    expect(convertDoubleValueToNative(value, AnySchema)).toEqual(packed);
+    expect(value.convertToNative(AnySchema)).toStrictEqual(packed);
   });
 
   it('convertDoubleValueToNative - double wrapper', () => {
-    const value = doubleValue(30000000.1);
-    expect(convertDoubleValueToNative(value, DoubleValueSchema)).toEqual(
+    const value = new DoubleRefVal(30000000.1);
+    expect(value.convertToNative(DoubleValueSchema)).toStrictEqual(
       create(DoubleValueSchema, { value: 30000000.1 })
     );
   });
 
   it('convertDoubleValueToNative - double wrapper', () => {
-    const value = doubleValue(1.7976931348623157);
-    expect(convertDoubleValueToNative(value, FloatValueSchema)).toEqual(
+    const value = new DoubleRefVal(1.7976931348623157);
+    expect(value.convertToNative(FloatValueSchema)).toStrictEqual(
       create(FloatValueSchema, { value: 1.7976931348623157 })
     );
   });
 
   it('convertDoubleValueToNative - invalid type', () => {
-    const value = doubleValue(-3.14159);
-    expect(convertDoubleValueToNative(value, Boolean)).toEqual(
-      new Error(`type conversion error from 'double' to 'Boolean'`)
+    const value = new DoubleRefVal(-3.14159);
+    expect(value.convertToNative(Boolean)).toStrictEqual(
+      ErrorRefVal.nativeTypeConversionError(value, Boolean)
     );
   });
 
   it('convertDoubleValueToType', () => {
-    expect(() => {
-      convertDoubleValueToType(stringValue('true'), DOUBLE_TYPE);
-    }).toThrow();
-    const value = doubleValue(1234.5);
-    expect(convertDoubleValueToType(value, DOUBLE_TYPE)).toEqual(value);
-    expect(convertDoubleValueToType(value, STRING_TYPE)).toEqual(
-      stringValue('1234.5')
+    const value = new DoubleRefVal(1234.5);
+    expect(value.convertToType(DOUBLE_REF_TYPE)).toStrictEqual(value);
+    expect(value.convertToType(STRING_REF_TYPE)).toStrictEqual(
+      new StringRefVal('1234.5')
     );
-    expect(convertDoubleValueToType(value, TYPE_TYPE)).toEqual(DOUBLE_TYPE);
+    expect(value.convertToType(TYPE_REF_TYPE)).toStrictEqual(
+      new TypeRefVal(DOUBLE_REF_TYPE)
+    );
     // Int64 errors
-    expect(convertDoubleValueToType(doubleValue(NaN), INT64_TYPE)).toEqual(
-      new Error('integer overflow')
-    );
-    expect(convertDoubleValueToType(doubleValue(Infinity), INT64_TYPE)).toEqual(
-      new Error('integer overflow')
+    expect(new DoubleRefVal(NaN).convertToType(INT_REF_TYPE)).toStrictEqual(
+      ErrorRefVal.errIntOverflow
     );
     expect(
-      convertDoubleValueToType(doubleValue(-Infinity), INT64_TYPE)
-    ).toEqual(new Error('integer overflow'));
+      new DoubleRefVal(Infinity).convertToType(INT_REF_TYPE)
+    ).toStrictEqual(ErrorRefVal.errIntOverflow);
     expect(
-      convertDoubleValueToType(doubleValue(Number.MAX_VALUE), INT64_TYPE)
-    ).toEqual(new Error('integer overflow'));
+      new DoubleRefVal(-Infinity).convertToType(INT_REF_TYPE)
+    ).toStrictEqual(ErrorRefVal.errIntOverflow);
     expect(
-      convertDoubleValueToType(doubleValue(-1 * Number.MAX_VALUE), INT64_TYPE)
-    ).toEqual(new Error('integer overflow'));
+      new DoubleRefVal(Number.MAX_VALUE).convertToType(INT_REF_TYPE)
+    ).toStrictEqual(ErrorRefVal.errIntOverflow);
+    expect(
+      new DoubleRefVal(-1 * Number.MAX_VALUE).convertToType(INT_REF_TYPE)
+    ).toStrictEqual(ErrorRefVal.errIntOverflow);
     // Uint64 errors
-    expect(convertDoubleValueToType(doubleValue(NaN), UINT64_TYPE)).toEqual(
-      new Error('unsigned integer overflow')
+    expect(new DoubleRefVal(NaN).convertToType(UINT_REF_TYPE)).toStrictEqual(
+      ErrorRefVal.errUintOverflow
     );
     expect(
-      convertDoubleValueToType(doubleValue(Infinity), UINT64_TYPE)
-    ).toEqual(new Error('unsigned integer overflow'));
-    expect(convertDoubleValueToType(doubleValue(-1), UINT64_TYPE)).toEqual(
-      new Error('unsigned integer overflow')
+      new DoubleRefVal(Infinity).convertToType(UINT_REF_TYPE)
+    ).toStrictEqual(ErrorRefVal.errUintOverflow);
+    expect(new DoubleRefVal(-1).convertToType(UINT_REF_TYPE)).toStrictEqual(
+      ErrorRefVal.errUintOverflow
     );
     expect(
-      convertDoubleValueToType(doubleValue(Number.MAX_VALUE), UINT64_TYPE)
-    ).toEqual(new Error('unsigned integer overflow'));
+      new DoubleRefVal(Number.MAX_VALUE).convertToType(UINT_REF_TYPE)
+    ).toStrictEqual(ErrorRefVal.errUintOverflow);
   });
 
   it('equalDoubleValue', () => {
-    expect(() => {
-      equalDoubleValue(stringValue('foo'), doubleValue(1));
-    }).toThrow();
     const testCases = [
       {
-        a: doubleValue(-10),
-        b: doubleValue(-10),
-        out: boolValue(true),
+        a: new DoubleRefVal(-10),
+        b: new DoubleRefVal(-10),
+        out: new BoolRefVal(true),
       },
       {
-        a: doubleValue(-10),
-        b: doubleValue(10),
-        out: boolValue(false),
+        a: new DoubleRefVal(-10),
+        b: new DoubleRefVal(10),
+        out: new BoolRefVal(false),
       },
       {
-        a: doubleValue(10),
-        b: uint64Value(BigInt(10)),
-        out: boolValue(true),
+        a: new DoubleRefVal(10),
+        b: new UintRefVal(BigInt(10)),
+        out: new BoolRefVal(true),
       },
       {
-        a: doubleValue(9),
-        b: uint64Value(BigInt(10)),
-        out: boolValue(false),
+        a: new DoubleRefVal(9),
+        b: new UintRefVal(BigInt(10)),
+        out: new BoolRefVal(false),
       },
       {
-        a: doubleValue(10),
-        b: int64Value(BigInt(10)),
-        out: boolValue(true),
+        a: new DoubleRefVal(10),
+        b: new IntRefVal(BigInt(10)),
+        out: new BoolRefVal(true),
       },
       {
-        a: doubleValue(10),
-        b: int64Value(BigInt(-15)),
-        out: boolValue(false),
+        a: new DoubleRefVal(10),
+        b: new IntRefVal(BigInt(-15)),
+        out: new BoolRefVal(false),
       },
       {
-        a: doubleValue(NaN),
-        b: int64Value(BigInt(10)),
-        out: boolValue(false),
+        a: new DoubleRefVal(NaN),
+        b: new IntRefVal(BigInt(10)),
+        out: new BoolRefVal(false),
       },
       {
-        a: doubleValue(10),
-        b: doubleValue(NaN),
-        out: boolValue(false),
+        a: new DoubleRefVal(10),
+        b: new DoubleRefVal(NaN),
+        out: new BoolRefVal(false),
       },
     ];
     for (const testCase of testCases) {
-      expect(equalDoubleValue(testCase.a, testCase.b)).toEqual(testCase.out);
+      expect(testCase.a.equal(testCase.b)).toStrictEqual(testCase.out);
     }
   });
 
   it('isZeroDoubleValue', () => {
-    expect(() => {
-      isZeroDoubleValue(stringValue('foo'));
-    }).toThrow();
-    expect(isZeroDoubleValue(doubleValue(0))).toEqual(boolValue(true));
-    expect(isZeroDoubleValue(doubleValue(1))).toEqual(boolValue(false));
+    expect(new DoubleRefVal(0).isZeroValue()).toEqual(true);
+    expect(new DoubleRefVal(1).isZeroValue()).toEqual(false);
   });
 
   it('addDoubleValue', () => {
-    expect(() => {
-      addDoubleValue(stringValue('foo'), doubleValue(1));
-    }).toThrow();
-    expect(addDoubleValue(doubleValue(1), doubleValue(2))).toEqual(
-      doubleValue(3)
+    expect(new DoubleRefVal(1).add(new DoubleRefVal(2))).toStrictEqual(
+      new DoubleRefVal(3)
     );
-    expect(addDoubleValue(doubleValue(1), uint64Value(BigInt(2)))).toEqual(
-      doubleValue(3)
+    expect(new DoubleRefVal(1).add(new UintRefVal(BigInt(2)))).toStrictEqual(
+      new DoubleRefVal(3)
     );
-    expect(addDoubleValue(doubleValue(1), int64Value(BigInt(2)))).toEqual(
-      doubleValue(3)
+    expect(new DoubleRefVal(1).add(new IntRefVal(BigInt(2)))).toStrictEqual(
+      new DoubleRefVal(3)
     );
-    expect(addDoubleValue(doubleValue(1), stringValue('2'))).toEqual(
-      new Error('no such overload')
+    expect(new DoubleRefVal(1).add(new StringRefVal('2'))).toStrictEqual(
+      ErrorRefVal.errNoSuchOverload
     );
   });
 
   it('compareDoubleValue', () => {
-    expect(() => {
-      compareDoubleValue(stringValue('foo'), doubleValue(1));
-    }).toThrow();
     const testCases = [
       {
-        a: doubleValue(42),
-        b: doubleValue(42),
-        out: int64Value(BigInt(0)),
+        a: new DoubleRefVal(42),
+        b: new DoubleRefVal(42),
+        out: new IntRefVal(BigInt(0)),
       },
       {
-        a: doubleValue(42),
-        b: uint64Value(BigInt(42)),
-        out: int64Value(BigInt(0)),
+        a: new DoubleRefVal(42),
+        b: new UintRefVal(BigInt(42)),
+        out: new IntRefVal(BigInt(0)),
       },
       {
-        a: doubleValue(42),
-        b: int64Value(BigInt(42)),
-        out: int64Value(BigInt(0)),
+        a: new DoubleRefVal(42),
+        b: new IntRefVal(BigInt(42)),
+        out: new IntRefVal(BigInt(0)),
       },
       {
-        a: doubleValue(-1300),
-        b: doubleValue(204),
-        out: int64Value(BigInt(-1)),
+        a: new DoubleRefVal(-1300),
+        b: new DoubleRefVal(204),
+        out: new IntRefVal(BigInt(-1)),
       },
       {
-        a: doubleValue(-1300),
-        b: uint64Value(BigInt(204)),
-        out: int64Value(BigInt(-1)),
+        a: new DoubleRefVal(-1300),
+        b: new UintRefVal(BigInt(204)),
+        out: new IntRefVal(BigInt(-1)),
       },
       {
-        a: doubleValue(203.9),
-        b: int64Value(BigInt(204)),
-        out: int64Value(BigInt(-1)),
+        a: new DoubleRefVal(203.9),
+        b: new IntRefVal(BigInt(204)),
+        out: new IntRefVal(BigInt(-1)),
       },
       {
-        a: doubleValue(1300),
-        b: uint64Value(BigInt(Number.MAX_SAFE_INTEGER + 1)),
-        out: int64Value(BigInt(-1)),
+        a: new DoubleRefVal(1300),
+        b: new UintRefVal(BigInt(Number.MAX_SAFE_INTEGER + 1)),
+        out: new IntRefVal(BigInt(-1)),
       },
       {
-        a: doubleValue(204),
-        b: uint64Value(BigInt(205)),
-        out: int64Value(BigInt(-1)),
+        a: new DoubleRefVal(204),
+        b: new UintRefVal(BigInt(205)),
+        out: new IntRefVal(BigInt(-1)),
       },
       {
-        a: doubleValue(204),
-        b: doubleValue(Number.MAX_SAFE_INTEGER + 1025),
-        out: int64Value(BigInt(-1)),
+        a: new DoubleRefVal(204),
+        b: new DoubleRefVal(Number.MAX_SAFE_INTEGER + 1025),
+        out: new IntRefVal(BigInt(-1)),
       },
       {
-        a: doubleValue(204),
-        b: doubleValue(NaN),
-        out: new Error('NaN values cannot be ordered'),
+        a: new DoubleRefVal(204),
+        b: new DoubleRefVal(NaN),
+        out: new ErrorRefVal('NaN values cannot be ordered'),
       },
       {
-        a: doubleValue(NaN),
-        b: doubleValue(204),
-        out: new Error('NaN values cannot be ordered'),
+        a: new DoubleRefVal(NaN),
+        b: new DoubleRefVal(204),
+        out: new ErrorRefVal('NaN values cannot be ordered'),
       },
       {
-        a: doubleValue(204),
-        b: doubleValue(-1300),
-        out: int64Value(BigInt(1)),
+        a: new DoubleRefVal(204),
+        b: new DoubleRefVal(-1300),
+        out: new IntRefVal(BigInt(1)),
       },
       {
-        a: doubleValue(204),
-        b: uint64Value(BigInt(10)),
-        out: int64Value(BigInt(1)),
+        a: new DoubleRefVal(204),
+        b: new UintRefVal(BigInt(10)),
+        out: new IntRefVal(BigInt(1)),
       },
       {
-        a: doubleValue(204.1),
-        b: int64Value(BigInt(204)),
-        out: int64Value(BigInt(1)),
+        a: new DoubleRefVal(204.1),
+        b: new IntRefVal(BigInt(204)),
+        out: new IntRefVal(BigInt(1)),
       },
       {
-        a: doubleValue(1),
-        b: stringValue('1'),
-        out: new Error('no such overload'),
+        a: new DoubleRefVal(1),
+        b: new StringRefVal('1'),
+        out: ErrorRefVal.errNoSuchOverload,
       },
     ];
     for (const testCase of testCases) {
-      expect(compareDoubleValue(testCase.a, testCase.b)).toEqual(testCase.out);
+      expect(testCase.a.compare(testCase.b)).toStrictEqual(testCase.out);
     }
   });
 
   it('divideDoubleValue', () => {
-    expect(() => {
-      divideDoubleValue(stringValue('foo'), doubleValue(1));
-    }).toThrow();
-    expect(divideDoubleValue(doubleValue(1), doubleValue(2))).toEqual(
-      doubleValue(0.5)
+    expect(new DoubleRefVal(1).divide(new DoubleRefVal(2))).toStrictEqual(
+      new DoubleRefVal(0.5)
     );
-    expect(divideDoubleValue(doubleValue(1), uint64Value(BigInt(2)))).toEqual(
-      doubleValue(0.5)
+    expect(new DoubleRefVal(1).divide(new UintRefVal(BigInt(2)))).toStrictEqual(
+      new DoubleRefVal(0.5)
     );
-    expect(divideDoubleValue(doubleValue(1), int64Value(BigInt(2)))).toEqual(
-      doubleValue(0.5)
+    expect(new DoubleRefVal(1).divide(new IntRefVal(BigInt(2)))).toStrictEqual(
+      new DoubleRefVal(0.5)
     );
-    expect(divideDoubleValue(doubleValue(1), stringValue('2'))).toEqual(
-      new Error('no such overload')
+    expect(new DoubleRefVal(1).divide(new StringRefVal('2'))).toStrictEqual(
+      ErrorRefVal.errNoSuchOverload
     );
-    expect(divideDoubleValue(doubleValue(1), doubleValue(0))).toEqual(
-      doubleValue(Infinity)
+    expect(new DoubleRefVal(1).divide(new DoubleRefVal(0))).toStrictEqual(
+      new DoubleRefVal(Infinity)
     );
   });
 
   it('multiplyDoubleValue', () => {
-    expect(() => {
-      multiplyDoubleValue(stringValue('foo'), doubleValue(1));
-    }).toThrow();
-    expect(multiplyDoubleValue(doubleValue(2), doubleValue(21))).toEqual(
-      doubleValue(42)
+    expect(new DoubleRefVal(2).multiply(new DoubleRefVal(21))).toStrictEqual(
+      new DoubleRefVal(42)
     );
     expect(
-      multiplyDoubleValue(doubleValue(2), uint64Value(BigInt(21)))
-    ).toEqual(doubleValue(42));
-    expect(multiplyDoubleValue(doubleValue(2), int64Value(BigInt(21)))).toEqual(
-      doubleValue(42)
-    );
-    expect(multiplyDoubleValue(doubleValue(2), stringValue('21'))).toEqual(
-      new Error('no such overload')
+      new DoubleRefVal(2).multiply(new UintRefVal(BigInt(21)))
+    ).toStrictEqual(new DoubleRefVal(42));
+    expect(
+      new DoubleRefVal(2).multiply(new IntRefVal(BigInt(21)))
+    ).toStrictEqual(new DoubleRefVal(42));
+    expect(new DoubleRefVal(2).multiply(new StringRefVal('21'))).toStrictEqual(
+      ErrorRefVal.errNoSuchOverload
     );
   });
 });
