@@ -16,6 +16,7 @@ import {
   anyPack,
   anyUnpack,
   timestampDate,
+  timestampFromDate,
 } from '@bufbuild/protobuf/wkt';
 import { RefType, RefTypeEnum, RefVal } from './../ref/reference';
 import { BoolRefVal } from './bool';
@@ -102,23 +103,104 @@ export function timestampToNanos(ts: Timestamp) {
   return ts.seconds * BigInt(1e9) + BigInt(ts.nanos);
 }
 
-export function timestampFromRfc3339nano(value: string) {
-  const stReg =
-    /(\d\d\d\d)(-)?(\d\d)(-)?(\d\d)(T)?(\d\d)(:)?(\d\d)?(:)?(\d\d)?([.,]\d+)?($|Z|([+-])(\d\d)(:)?(\d\d)?)/i;
-  const nsReg = /(^[^.]*)(\.\d*)(Z.*$)/;
-  if (!value || !stReg.test(value)) {
+/**
+ * Parses a timestamp from a string. Will accept RFC3339 timestamps with or
+ * without nanoseconds and with or without a timezone or ISO8601 timestamps
+ * with or without a timezone.
+ *
+ * Example values:
+ * - `1970-01-01T02:07:34.000000321Z`
+ * - `1970-01-01T02:07:34.000000321+07:00`
+ * - `2011-10-05T14:48:00.000Z`
+ * - `2011-10-05T14:48:00.000-04:00`
+ *
+ * This function is based on the Go implementation of RFC3339 parsing:
+ * @see https://cs.opensource.google/go/go/+/refs/tags/go1.23.3:src/time/format_rfc3339.go
+ *
+ * 1970-01-01T02:07:34.000000321Z
+ */
+export function timestampFromDateString(value: string) {
+  /**
+   * Parses a string as an unsigned integer between min and max.
+   *
+   * @param s the string to parse
+   * @param min the minimum value
+   * @param max the maximum value
+   * @returns the parsed integer or the min value if the string is invalid
+   */
+  function parseUint(s: string, min: number, max: number) {
+    const parsed = parseInt(s, 10);
+    if (Number.isNaN(parsed) || parsed < min || parsed > max) {
+      return min;
+    }
+    return parsed;
+  }
+
+  if (value.length < '2006-01-02T15:04:05'.length) {
     return null;
   }
-  const dt = new Date(
-    value
-      .replace(nsReg, '$1$3')
-      .replace(/Z-/i, '-')
-      .replace(/Z\+/i, '+')
-      .replace(/Z/i, '+')
-      .replace(/\+$/, 'Z')
-  );
-  const ns = value.replace(nsReg, '$2');
-  return timestamp(BigInt(dt.getTime() / 1000), Number(ns) * 1e9);
+  const year = parseUint(value.slice(0, 4), 0, 9999); // e.g., 2006
+  const month = parseUint(value.slice(5, 7), 1, 12); // e.g., 01
+  // TODO: handle months with fewer than 31 days
+  const day = parseUint(value.slice(8, 10), 1, 31); // e.g., 02
+  const hour = parseUint(value.slice(11, 13), 0, 23); // e.g., 15
+  const min = parseUint(value.slice(14, 16), 0, 59); // e.g., 04
+  const sec = parseUint(value.slice(17, 19), 0, 59); // e.g., 05
+
+  value = value.slice(19);
+
+  // Parse the fractional second.
+  let nanos = 0;
+  if (value.length > 1 && value[0] === '.') {
+    value = value.slice(2);
+    let i = 0;
+    while (i < value.length && '0' <= value[i] && value[i] <= '9') {
+      i++;
+    }
+    const frac = value.slice(0, i);
+    nanos = parseInt(frac, 10);
+    value = value.slice(i);
+  }
+
+  // Construct the date object
+  const date = new Date(Date.UTC(year, month - 1, day, hour, min, sec));
+
+  // Parse the timezone
+  if (value.length !== 1 || value !== 'Z') {
+    if (
+      value.length !== '-07:00'.length ||
+      (value[0] !== '+' && value[0] !== '-') ||
+      value[3] !== ':'
+    ) {
+      return null;
+    }
+    const hr = parseUint(value.slice(1, 3), 0, 23); // e.g., 07
+    const mm = parseUint(value.slice(4, 6), 0, 59); // e.g., 00
+    let zoneOffset = hr * 60 + mm;
+    if (value[0] === '-') {
+      zoneOffset = -zoneOffset;
+    }
+    date.setMinutes(date.getMinutes() + zoneOffset);
+  }
+  const ts = timestampFromDate(date);
+  return timestamp(ts.seconds, nanos);
+}
+
+/**
+ * Converts a timestamp to a string. The string will be in RFC3339 format with
+ * nanoseconds if the timestamp has nanoseconds. Otherwise, it will be in
+ * ISO8061 format. The string will always be in UTC.
+ *
+ * @param ts the timestamp to convert
+ * @returns the timestamp as a string
+ */
+export function timestampToDateString(ts: Timestamp) {
+  const date = timestampDate(ts);
+  if (ts.nanos === 0) {
+    return date.toISOString();
+  }
+  const paddedNanos = ts.nanos.toString().padStart(9, '0');
+  return date.toISOString().replace(/\.\d+Z$/, `.${paddedNanos}Z`);
 }
 
 export const TIMESTAMP_TRAITS = new Set<Trait>([
@@ -169,6 +251,8 @@ export class TimestampRefVal
     switch (type) {
       case Date:
         return timestampDate(this._value);
+      case String:
+        return timestampToDateString(this._value);
       case AnySchema:
         return anyPack(TimestampSchema, create(TimestampSchema, this._value));
       case TimestampSchema:
@@ -183,7 +267,7 @@ export class TimestampRefVal
       case RefTypeEnum.INT:
         return new IntRefVal(this._value.seconds);
       case RefTypeEnum.STRING:
-        return new StringRefVal(this.toString());
+        return new StringRefVal(timestampToDateString(this._value));
       case RefTypeEnum.TIMESTAMP:
         return new TimestampRefVal(this._value);
       case RefTypeEnum.TYPE:
