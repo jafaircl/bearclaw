@@ -64,7 +64,10 @@ describe('duration', () => {
       {
         value: new DurationRefVal(duration(BigInt(42), 1234)),
         type: Boolean,
-        want: ErrorRefVal.errNoSuchOverload,
+        want: ErrorRefVal.nativeTypeConversionError(
+          new DurationRefVal(duration(BigInt(42), 1234)),
+          Boolean
+        ),
       },
     ];
     for (const test of tests) {
@@ -107,7 +110,10 @@ describe('duration', () => {
       {
         value: new DurationRefVal(duration(BigInt(42), 1234)),
         type: BOOL_REF_TYPE,
-        want: ErrorRefVal.errNoSuchOverload,
+        want: ErrorRefVal.typeConversionError(
+          new DurationRefVal(duration(BigInt(42), 1234)),
+          BOOL_REF_TYPE
+        ),
       },
     ];
     for (const test of tests) {

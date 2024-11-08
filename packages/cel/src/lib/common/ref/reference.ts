@@ -63,7 +63,7 @@ export interface RefVal {
   celValue(): Value;
 
   /**
-   * ConvertToNative converts the Value to a native Go struct according to the
+   * ConvertToNative converts the Value to a native JS object according to the
    * reflected type description, or error if the conversion is not feasible.
    *
    * The ConvertToNative method is intended to be used to support conversion
@@ -76,7 +76,10 @@ export interface RefVal {
    * types.
    * - Do not use ConvertToNative within CEL extension functions.
    * - Document whether your implementation supports non-CEL field types, such
-   * as TS or Protobuf.
+   * as JS or Protobuf.
+   *
+   * Note that when converting a Timestamp to a native JS Date, nanosecond
+   * precision will be lost since JS Dates only support millisecond precision.
    */
   convertToNative(type: NativeType): any;
 

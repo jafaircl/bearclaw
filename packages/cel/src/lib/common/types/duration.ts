@@ -37,6 +37,13 @@ import { IntRefVal, MAX_INT64, MIN_INT64, int64Value } from './int';
 import { NativeType } from './native';
 import { isObjectValue } from './object';
 import { StringRefVal, stringValue } from './string';
+import {
+  MAX_UNIX_TIME,
+  MIN_UNIX_TIME,
+  TimestampRefVal,
+  timestampFromNanos,
+  timestampToNanos,
+} from './timestamp';
 import { Comparer } from './traits/comparer';
 import { Adder, Negater, Subtractor } from './traits/math';
 import { Receiver } from './traits/receiver';
@@ -312,7 +319,22 @@ export class DurationRefVal
           return ErrorRefVal.errIntOverflow;
         }
         return new DurationRefVal(durationFromNanos(thisNanos + otherNanos));
-      // TODO: timestamp
+      case RefTypeEnum.TIMESTAMP:
+        const durationNanos = durationToNanos(this._value);
+        const tsNanos = timestampToNanos(other.value());
+        if (
+          (durationNanos > 0 &&
+            tsNanos > MAX_INT64 * BigInt(1e9) - durationNanos) ||
+          (durationNanos < 0 &&
+            tsNanos < MIN_INT64 * BigInt(1e9) - durationNanos)
+        ) {
+          return ErrorRefVal.errIntOverflow;
+        }
+        const ts = timestampFromNanos(tsNanos + durationNanos);
+        if (ts.seconds < MIN_UNIX_TIME || ts.seconds > MAX_UNIX_TIME) {
+          return ErrorRefVal.errTimestampOverflow;
+        }
+        return new TimestampRefVal(ts);
       default:
         return ErrorRefVal.maybeNoSuchOverload(other);
     }
@@ -369,7 +391,6 @@ export class DurationRefVal
             this._value.nanos - subtrahend.value().nanos
           )
         );
-      // TODO: timestamp
       default:
         return ErrorRefVal.maybeNoSuchOverload(subtrahend);
     }

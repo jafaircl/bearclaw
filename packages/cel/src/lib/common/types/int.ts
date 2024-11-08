@@ -33,7 +33,13 @@ import { NativeType } from './native';
 import { isNumberValue } from './number';
 import { primitiveType } from './primitive';
 import { StringRefVal, stringValue } from './string';
-import { MAX_UNIX_TIME, MIN_UNIX_TIME, timestampValue } from './timestamp';
+import {
+  MAX_UNIX_TIME,
+  MIN_UNIX_TIME,
+  TimestampRefVal,
+  timestamp,
+  timestampValue,
+} from './timestamp';
 import { Comparer } from './traits/comparer';
 import {
   Adder,
@@ -491,6 +497,11 @@ export class IntRefVal
         return new IntRefVal(this._value);
       case RefTypeEnum.STRING:
         return new StringRefVal(this._value.toString());
+      case RefTypeEnum.TIMESTAMP:
+        if (this._value > MAX_UNIX_TIME || this._value < MIN_UNIX_TIME) {
+          return ErrorRefVal.errTimestampOverflow;
+        }
+        return new TimestampRefVal(timestamp(this._value));
       case RefTypeEnum.TYPE:
         return new TypeRefVal(INT_REF_TYPE);
       case RefTypeEnum.UINT:

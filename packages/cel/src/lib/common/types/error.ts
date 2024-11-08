@@ -36,7 +36,10 @@ export function unwrapErrorType(val: Type) {
 }
 
 export class ErrorRefType implements RefType {
-  #traits = new Set<Trait>();
+  // This has to be a TS private field instead of a # private field because
+  // otherwise the tests will not be able to access it to check for equality.
+  // TODO: do we want to alter the tests to use the getter instead?
+  private readonly _traits = new Set<Trait>();
 
   celType(): Type {
     return create(TypeSchema, {
@@ -48,7 +51,7 @@ export class ErrorRefType implements RefType {
   }
 
   hasTrait(trait: Trait): boolean {
-    return this.#traits.has(trait);
+    return this._traits.has(trait);
   }
 
   typeName(): string {
@@ -59,10 +62,13 @@ export class ErrorRefType implements RefType {
 export const ERROR_REF_TYPE = new ErrorRefType();
 
 export class ErrorRefVal implements RefVal {
-  #val: Error;
+  // This has to be a TS private field instead of a # private field because
+  // otherwise the tests will not be able to access it to check for equality.
+  // TODO: do we want to alter the tests to use the getter instead?
+  private readonly _value: Error;
 
   constructor(message: string) {
-    this.#val = new Error(message);
+    this._value = new Error(message);
   }
 
   static errDivideByZero = new ErrorRefVal('divide by zero');
@@ -179,7 +185,7 @@ export class ErrorRefVal implements RefVal {
         case: 'objectValue',
         value: anyPack(
           ErrorSetSchema,
-          create(ErrorSetSchema, { errors: [{ message: this.#val.message }] })
+          create(ErrorSetSchema, { errors: [{ message: this._value.message }] })
         ),
       },
     });
@@ -207,6 +213,6 @@ export class ErrorRefVal implements RefVal {
   }
 
   value(): Error {
-    return this.#val;
+    return this._value;
   }
 }

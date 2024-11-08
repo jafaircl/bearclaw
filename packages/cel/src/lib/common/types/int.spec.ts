@@ -23,6 +23,13 @@ import {
   int64Value,
 } from './int';
 import { STRING_REF_TYPE, StringRefVal } from './string';
+import {
+  MAX_UNIX_TIME,
+  MIN_UNIX_TIME,
+  TIMESTAMP_REF_TYPE,
+  TimestampRefVal,
+  timestamp,
+} from './timestamp';
 import { TYPE_REF_TYPE, TypeRefVal } from './type';
 import { UINT_REF_TYPE, UintRefVal } from './uint';
 
@@ -141,7 +148,7 @@ describe('int', () => {
       {
         in: new IntRefVal(BigInt(-42)),
         type: UINT_REF_TYPE,
-        out: ErrorRefVal.errIntOverflow,
+        out: ErrorRefVal.errUintOverflow,
       },
       {
         in: new IntRefVal(BigInt(42)),
@@ -153,22 +160,21 @@ describe('int', () => {
         type: STRING_REF_TYPE,
         out: new StringRefVal('-42'),
       },
-      // TODO: Timestamp types
-      // {
-      //   in: new IntRefVal(BigInt(946684800)),
-      //   type: TIMESTAMP_TYPE,
-      //   out: timestampValue(timestampFromMs(946684800)),
-      // },
-      // {
-      //   in: int64Value(BigInt(MAX_UNIX_TIME_MS + 1)),
-      //   type: TIMESTAMP_TYPE,
-      //   out: new Error('timestamp overflow'),
-      // },
-      // {
-      //   in: int64Value(BigInt(MIN_UNIX_TIME_MS - 1)),
-      //   type: TIMESTAMP_TYPE,
-      //   out: new Error('timestamp overflow'),
-      // },
+      {
+        in: new IntRefVal(BigInt(946684800)),
+        type: TIMESTAMP_REF_TYPE,
+        out: new TimestampRefVal(timestamp(BigInt(946684800))),
+      },
+      {
+        in: new IntRefVal(MAX_UNIX_TIME + BigInt(1)),
+        type: TIMESTAMP_REF_TYPE,
+        out: ErrorRefVal.errTimestampOverflow,
+      },
+      {
+        in: new IntRefVal(MIN_UNIX_TIME - BigInt(1)),
+        type: TIMESTAMP_REF_TYPE,
+        out: ErrorRefVal.errTimestampOverflow,
+      },
     ];
     for (const test of tests) {
       expect(test.in.convertToType(test.type)).toStrictEqual(test.out);

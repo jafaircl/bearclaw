@@ -5,7 +5,8 @@
   "scripts": {
     "cz": "cz",
     "nx": "nx",
-    "generate-cel-parser": "antlr4 -Dlanguage=TypeScript packages/cel/src/lib/gen/CEL.g4 -visitor"
+    "generate-cel-parser": "antlr4 -Dlanguage=TypeScript packages/cel/src/lib/gen/CEL.g4 -visitor",
+    "generate-timezoone-offset-map": "npx ts-node scripts/generate-timezone-offset-map.ts"
   },
   "private": true,
   "devDependencies": {
@@ -54,6 +55,7 @@
     "@buf/cel_spec.bufbuild_es": "^2.1.0-20230602032904-0583f28ce7d3.1",
     "@buf/google_cel-spec.bufbuild_es": "^2.1.0-20240829202630-b69910e4e9bc.1",
     "@bufbuild/protobuf": "^2.1.0",
+    "@vvo/tzdb": "^6.149.0",
     "antlr4": "^4.13.2",
     "class-transformer": "^0.5.1",
     "deep-freeze-strict": "^1.1.1",
