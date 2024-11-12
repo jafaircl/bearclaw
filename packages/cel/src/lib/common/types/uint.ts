@@ -36,7 +36,7 @@ import { Comparer } from './traits/comparer';
 import { Adder, Divider, Modder, Multiplier, Subtractor } from './traits/math';
 import { Trait } from './traits/trait';
 import { Zeroer } from './traits/zeroer';
-import { TypeRefVal } from './type';
+import { TypeValue } from './type';
 
 export const UINT_CEL_TYPE = primitiveType(Type_PrimitiveType.UINT64);
 
@@ -337,26 +337,7 @@ export function subtractUint64Value(value: Value, other: Value) {
   return uint64Value(result);
 }
 
-export class UintRefType implements RefType {
-  // This has to be a TS private field instead of a # private field because
-  // otherwise the tests will not be able to access it to check for equality.
-  // TODO: do we want to alter the tests to use the getter instead?
-  private readonly _traits = UINT64_TRAITS;
-
-  celType(): Type {
-    return UINT_CEL_TYPE;
-  }
-
-  hasTrait(trait: Trait): boolean {
-    return this._traits.has(trait);
-  }
-
-  typeName(): string {
-    return RefTypeEnum.UINT;
-  }
-}
-
-export const UINT_REF_TYPE = new UintRefType();
+export const UINT_REF_TYPE = new TypeValue(RefTypeEnum.UINT, UINT64_TRAITS);
 
 export class UintRefVal
   implements
@@ -420,7 +401,7 @@ export class UintRefVal
       case RefTypeEnum.STRING:
         return new StringRefVal(this._value.toString());
       case RefTypeEnum.TYPE:
-        return new TypeRefVal(UINT_REF_TYPE);
+        return UINT_REF_TYPE;
       case RefTypeEnum.UINT:
         if (Number.isNaN(this._value) || !isValidUint64(this._value)) {
           return ErrorRefVal.errUintOverflow;

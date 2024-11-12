@@ -30,7 +30,7 @@ import {
   TimestampRefVal,
   timestamp,
 } from './timestamp';
-import { TYPE_REF_TYPE, TypeRefVal } from './type';
+import { TYPE_REF_TYPE } from './type';
 import { UINT_REF_TYPE, UintRefVal } from './uint';
 
 describe('int', () => {
@@ -133,7 +133,7 @@ describe('int', () => {
       {
         in: new IntRefVal(BigInt(42)),
         type: TYPE_REF_TYPE,
-        out: new TypeRefVal(INT_REF_TYPE),
+        out: INT_REF_TYPE,
       },
       {
         in: new IntRefVal(BigInt(42)),

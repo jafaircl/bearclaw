@@ -26,7 +26,7 @@ import { Comparer } from './traits/comparer';
 import { Negater } from './traits/math';
 import { Trait } from './traits/trait';
 import { Zeroer } from './traits/zeroer';
-import { TypeRefVal } from './type';
+import { TypeValue } from './type';
 
 export const BOOL_CEL_TYPE = primitiveType(Type_PrimitiveType.BOOL);
 
@@ -185,26 +185,7 @@ export function negateBoolValue(value: Value) {
   return boolValue(!value.kind.value);
 }
 
-export class BoolRefType implements RefType {
-  // This has to be a TS private field instead of a # private field because
-  // otherwise the tests will not be able to access it to check for equality.
-  // TODO: do we want to alter the tests to use the getter instead?
-  readonly _traits = BOOL_TRAITS;
-
-  celType(): Type {
-    return BOOL_CEL_TYPE;
-  }
-
-  hasTrait(trait: Trait): boolean {
-    return this._traits.has(trait);
-  }
-
-  typeName(): string {
-    return 'bool';
-  }
-}
-
-export const BOOL_REF_TYPE = new BoolRefType();
+export const BOOL_REF_TYPE = new TypeValue(RefTypeEnum.BOOL, BOOL_TRAITS);
 
 export class BoolRefVal implements RefVal, Comparer, Zeroer, Negater {
   // This has to be a TS private field instead of a # private field because
@@ -246,7 +227,7 @@ export class BoolRefVal implements RefVal, Comparer, Zeroer, Negater {
       case RefTypeEnum.STRING:
         return new StringRefVal(this._value ? 'true' : 'false');
       case RefTypeEnum.TYPE:
-        return new TypeRefVal(BOOL_REF_TYPE);
+        return BOOL_REF_TYPE;
       default:
         return ErrorRefVal.typeConversionError(this, type);
     }

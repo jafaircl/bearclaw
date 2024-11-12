@@ -19,7 +19,7 @@ import {
   STANDARD_FUNCTION_DECLARATIONS,
   STANDARD_IDENT_DECLARATIONS,
 } from './common/standard';
-import { DYN_TYPE } from './common/types/dyn';
+import { DYN_CEL_TYPE } from './common/types/dyn';
 import { INT_CEL_TYPE } from './common/types/int';
 import { mapType } from './common/types/map';
 import { messageType } from './common/types/message';
@@ -43,7 +43,7 @@ export class CELEnvironment {
   public readonly container: CELContainer = new CELContainer();
   public readonly registry: MutableRegistry = createMutableRegistry();
   public readonly scopes: DeclGroup[] = [new DeclGroup(new Map(), new Map())];
-  public readonly aggLitElemType = DYN_TYPE;
+  public readonly aggLitElemType = DYN_CEL_TYPE;
 
   constructor(options?: CELEnvironmentOptions) {
     if (options?.container) {

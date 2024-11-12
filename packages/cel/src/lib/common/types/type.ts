@@ -59,20 +59,13 @@ export function isTypeValue(value: Value): value is Value & {
   return value.kind.case === 'typeValue';
 }
 
-export class TypeRefType implements RefType {
-  // This has to be a TS private field instead of a # private field because
-  // otherwise the tests will not be able to access it to check for equality.
-  // TODO: do we want to alter the tests to use the getter instead?
-  readonly _traits = new Set<Trait>();
+export class TypeValue implements RefType, RefVal {
+  private readonly _typeEnum: RefTypeEnum;
+  private readonly _traits: Set<Trait>;
 
-  celType(): Type {
-    return create(TypeSchema, {
-      typeKind: {
-        case: 'type',
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        value: null as any,
-      },
-    });
+  constructor(typeEnum: RefTypeEnum, traits: Set<Trait> = new Set()) {
+    this._typeEnum = typeEnum;
+    this._traits = traits;
   }
 
   hasTrait(trait: Trait): boolean {
@@ -80,29 +73,7 @@ export class TypeRefType implements RefType {
   }
 
   typeName(): string {
-    return RefTypeEnum.TYPE;
-  }
-}
-
-export const TYPE_REF_TYPE = new TypeRefType();
-
-export class TypeRefVal implements RefVal {
-  // This has to be a TS private field instead of a # private field because
-  // otherwise the tests will not be able to access it to check for equality.
-  // TODO: do we want to alter the tests to use the getter instead?
-  private readonly _value: RefType;
-
-  constructor(value: RefType) {
-    this._value = value;
-  }
-
-  celValue(): Value {
-    return create(ValueSchema, {
-      kind: {
-        case: 'typeValue',
-        value: this._value.typeName(),
-      },
-    });
+    return this._typeEnum;
   }
 
   convertToNative(type: NativeType) {
@@ -114,7 +85,7 @@ export class TypeRefVal implements RefVal {
   }
 
   equal(other: RefVal): RefVal {
-    return new BoolRefVal(this._value.typeName() === other.type().typeName());
+    return new BoolRefVal(this.typeName() === other.type().typeName());
   }
 
   type(): RefType {
@@ -122,6 +93,8 @@ export class TypeRefVal implements RefVal {
   }
 
   value() {
-    return this._value;
+    return this.typeName();
   }
 }
+
+export const TYPE_REF_TYPE = new TypeValue(RefTypeEnum.TYPE);

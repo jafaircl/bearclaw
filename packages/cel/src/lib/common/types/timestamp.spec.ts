@@ -56,7 +56,7 @@ import {
   timestampValue,
   unwrapTimestampValue,
 } from './timestamp';
-import { TYPE_REF_TYPE, TypeRefVal } from './type';
+import { TYPE_REF_TYPE } from './type';
 
 describe('timestamp', () => {
   it('timestampValue', () => {
@@ -156,7 +156,7 @@ describe('timestamp', () => {
       {
         value: new TimestampRefVal(timestamp(BigInt(8593))),
         type: TYPE_REF_TYPE,
-        want: new TypeRefVal(TIMESTAMP_REF_TYPE),
+        want: TIMESTAMP_REF_TYPE,
       },
       {
         value: new TimestampRefVal(timestamp(BigInt(2345))),

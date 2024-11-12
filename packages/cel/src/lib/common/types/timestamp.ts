@@ -1,7 +1,6 @@
 /* eslint-disable no-case-declarations */
 import { isNil } from '@bearclaw/is';
 import {
-  Type,
   TypeSchema,
   Type_WellKnownType,
 } from '@buf/google_cel-spec.bufbuild_es/cel/expr/checked_pb.js';
@@ -46,7 +45,7 @@ import { Adder, Subtractor } from './traits/math';
 import { Receiver } from './traits/receiver';
 import { Trait } from './traits/trait';
 import { Zeroer } from './traits/zeroer';
-import { TypeRefVal } from './type';
+import { TypeValue } from './type';
 import { typeNameToUrl } from './utils';
 import { WKT_REGISTRY } from './wkt';
 
@@ -238,26 +237,10 @@ export const TIMESTAMP_TRAITS = new Set<Trait>([
   Trait.SUBTRACTOR_TYPE,
 ]);
 
-export class TimestampRefType implements RefType {
-  // This has to be a TS private field instead of a # private field because
-  // otherwise the tests will not be able to access it to check for equality.
-  // TODO: do we want to alter the tests to use the getter instead?
-  private readonly _traits = TIMESTAMP_TRAITS;
-
-  celType(): Type {
-    return TIMESTAMP_CEL_TYPE;
-  }
-
-  hasTrait(trait: Trait): boolean {
-    return this._traits.has(trait);
-  }
-
-  typeName(): string {
-    return RefTypeEnum.TIMESTAMP;
-  }
-}
-
-export const TIMESTAMP_REF_TYPE = new TimestampRefType();
+export const TIMESTAMP_REF_TYPE = new TypeValue(
+  RefTypeEnum.TIMESTAMP,
+  TIMESTAMP_TRAITS
+);
 
 export class TimestampRefVal
   implements RefVal, Adder, Comparer, Receiver, Subtractor, Zeroer
@@ -470,7 +453,7 @@ export class TimestampRefVal
       case RefTypeEnum.TIMESTAMP:
         return new TimestampRefVal(this._value);
       case RefTypeEnum.TYPE:
-        return new TypeRefVal(TIMESTAMP_REF_TYPE);
+        return TIMESTAMP_REF_TYPE;
       default:
         return ErrorRefVal.typeConversionError(this, type);
     }

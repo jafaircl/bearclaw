@@ -237,16 +237,16 @@ import { ABSTRACT_TYPE_TYPE } from './types/abstract';
 import { BOOL_CEL_TYPE } from './types/bool';
 import { BYTES_CEL_TYPE } from './types/bytes';
 import { DOUBLE_CEL_TYPE } from './types/double';
-import { DYN_TYPE } from './types/dyn';
+import { DYN_CEL_TYPE } from './types/dyn';
 import { INT_CEL_TYPE } from './types/int';
 import { listType } from './types/list';
 import { mapType } from './types/map';
-import { NULL_TYPE } from './types/null';
+import { NULL_CEL_TYPE } from './types/null';
 import { STRING_CEL_TYPE } from './types/string';
 import { typeType } from './types/type';
 import { typeParamType } from './types/type-param';
 import { UINT_CEL_TYPE } from './types/uint';
-import { DURATION_TYPE, TIMESTAMP_TYPE } from './types/wkt';
+import { DURATION_WKT_CEL_TYPE, TIMESTAMP_WKT_CEL_TYPE } from './types/wkt';
 
 export const STANDARD_DESCRIPTORS: (
   | DescMessage
@@ -277,19 +277,19 @@ export const STANDARD_IDENT_DECLARATIONS: Decl[] = [
   identDecl('bool', { type: typeType(BOOL_CEL_TYPE) }),
   identDecl('bytes', { type: typeType(BYTES_CEL_TYPE) }),
   identDecl('double', { type: typeType(DOUBLE_CEL_TYPE) }),
-  identDecl('duration', { type: typeType(DURATION_TYPE) }),
-  identDecl('dyn', { type: typeType(DYN_TYPE) }),
+  identDecl('duration', { type: typeType(DURATION_WKT_CEL_TYPE) }),
+  identDecl('dyn', { type: typeType(DYN_CEL_TYPE) }),
   identDecl('int', { type: typeType(INT_CEL_TYPE) }),
   identDecl('string', { type: typeType(STRING_CEL_TYPE) }),
-  identDecl('timestamp', { type: typeType(TIMESTAMP_TYPE) }),
+  identDecl('timestamp', { type: typeType(TIMESTAMP_WKT_CEL_TYPE) }),
   identDecl('uint', { type: typeType(UINT_CEL_TYPE) }),
-  identDecl('list', { type: typeType(listType({ elemType: DYN_TYPE })) }),
+  identDecl('list', { type: typeType(listType({ elemType: DYN_CEL_TYPE })) }),
   identDecl('map', {
-    type: typeType(mapType({ keyType: DYN_TYPE, valueType: DYN_TYPE })),
+    type: typeType(mapType({ keyType: DYN_CEL_TYPE, valueType: DYN_CEL_TYPE })),
   }),
   identDecl('type', { type: typeType(ABSTRACT_TYPE_TYPE) }),
-  identDecl('null_type', { type: typeType(NULL_TYPE) }),
-  identDecl('null', { type: NULL_TYPE }),
+  identDecl('null_type', { type: typeType(NULL_CEL_TYPE) }),
+  identDecl('null', { type: NULL_CEL_TYPE }),
 ];
 
 const paramA = typeParamType('A');
@@ -391,18 +391,18 @@ export const ADD_FUNCTION_DECL = functionDecl(ADD_OPERATOR, {
     },
     {
       overloadId: ADD_DURATION_DURATION_OVERLOAD,
-      params: [DURATION_TYPE, DURATION_TYPE],
-      resultType: DURATION_TYPE,
+      params: [DURATION_WKT_CEL_TYPE, DURATION_WKT_CEL_TYPE],
+      resultType: DURATION_WKT_CEL_TYPE,
     },
     {
       overloadId: ADD_DURATION_TIMESTAMP_OVERLOAD,
-      params: [DURATION_TYPE, TIMESTAMP_TYPE],
-      resultType: TIMESTAMP_TYPE,
+      params: [DURATION_WKT_CEL_TYPE, TIMESTAMP_WKT_CEL_TYPE],
+      resultType: TIMESTAMP_WKT_CEL_TYPE,
     },
     {
       overloadId: ADD_TIMESTAMP_DURATION_OVERLOAD,
-      params: [TIMESTAMP_TYPE, DURATION_TYPE],
-      resultType: TIMESTAMP_TYPE,
+      params: [TIMESTAMP_WKT_CEL_TYPE, DURATION_WKT_CEL_TYPE],
+      resultType: TIMESTAMP_WKT_CEL_TYPE,
     },
     {
       overloadId: ADD_INT64_OVERLOAD,
@@ -512,18 +512,18 @@ export const SUBTRACT_FUNCTION_DECL = functionDecl(SUBTRACT_OPERATOR, {
     },
     {
       overloadId: SUBTRACT_DURATION_DURATION_OVERLOAD,
-      params: [DURATION_TYPE, DURATION_TYPE],
-      resultType: DURATION_TYPE,
+      params: [DURATION_WKT_CEL_TYPE, DURATION_WKT_CEL_TYPE],
+      resultType: DURATION_WKT_CEL_TYPE,
     },
     {
       overloadId: SUBTRACT_TIMESTAMP_DURATION_OVERLOAD,
-      params: [TIMESTAMP_TYPE, DURATION_TYPE],
-      resultType: TIMESTAMP_TYPE,
+      params: [TIMESTAMP_WKT_CEL_TYPE, DURATION_WKT_CEL_TYPE],
+      resultType: TIMESTAMP_WKT_CEL_TYPE,
     },
     {
       overloadId: SUBTRACT_TIMESTAMP_TIMESTAMP_OVERLOAD,
-      params: [TIMESTAMP_TYPE, TIMESTAMP_TYPE],
-      resultType: DURATION_TYPE,
+      params: [TIMESTAMP_WKT_CEL_TYPE, TIMESTAMP_WKT_CEL_TYPE],
+      resultType: DURATION_WKT_CEL_TYPE,
     },
   ],
 });
@@ -593,12 +593,12 @@ export const LESS_FUNCTION_DECL = functionDecl(LESS_OPERATOR, {
     },
     {
       overloadId: LESS_TIMESTAMP_OVERLOAD,
-      params: [TIMESTAMP_TYPE, TIMESTAMP_TYPE],
+      params: [TIMESTAMP_WKT_CEL_TYPE, TIMESTAMP_WKT_CEL_TYPE],
       resultType: BOOL_CEL_TYPE,
     },
     {
       overloadId: LESS_DURATION_OVERLOAD,
-      params: [DURATION_TYPE, DURATION_TYPE],
+      params: [DURATION_WKT_CEL_TYPE, DURATION_WKT_CEL_TYPE],
       resultType: BOOL_CEL_TYPE,
     },
   ],
@@ -662,12 +662,12 @@ export const LESS_EQUALS_FUNCTION_DECL = functionDecl(LESS_EQUALS_OPERATOR, {
     },
     {
       overloadId: LESS_EQUALS_DURATION_OVERLOAD,
-      params: [DURATION_TYPE, DURATION_TYPE],
+      params: [DURATION_WKT_CEL_TYPE, DURATION_WKT_CEL_TYPE],
       resultType: BOOL_CEL_TYPE,
     },
     {
       overloadId: LESS_EQUALS_TIMESTAMP_OVERLOAD,
-      params: [TIMESTAMP_TYPE, TIMESTAMP_TYPE],
+      params: [TIMESTAMP_WKT_CEL_TYPE, TIMESTAMP_WKT_CEL_TYPE],
       resultType: BOOL_CEL_TYPE,
     },
   ],
@@ -736,12 +736,12 @@ export const GREATER_FUNCTION_DECL = functionDecl(GREATER_OPERATOR, {
     },
     {
       overloadId: GREATER_TIMESTAMP_OVERLOAD,
-      params: [TIMESTAMP_TYPE, TIMESTAMP_TYPE],
+      params: [TIMESTAMP_WKT_CEL_TYPE, TIMESTAMP_WKT_CEL_TYPE],
       resultType: BOOL_CEL_TYPE,
     },
     {
       overloadId: GREATER_DURATION_OVERLOAD,
-      params: [DURATION_TYPE, DURATION_TYPE],
+      params: [DURATION_WKT_CEL_TYPE, DURATION_WKT_CEL_TYPE],
       resultType: BOOL_CEL_TYPE,
     },
   ],
@@ -812,12 +812,12 @@ export const GREATER_EQUALS_FUNCTION_DECL = functionDecl(
       },
       {
         overloadId: GREATER_EQUALS_DURATION_OVERLOAD,
-        params: [DURATION_TYPE, DURATION_TYPE],
+        params: [DURATION_WKT_CEL_TYPE, DURATION_WKT_CEL_TYPE],
         resultType: BOOL_CEL_TYPE,
       },
       {
         overloadId: GREATER_EQUALS_TIMESTAMP_OVERLOAD,
-        params: [TIMESTAMP_TYPE, TIMESTAMP_TYPE],
+        params: [TIMESTAMP_WKT_CEL_TYPE, TIMESTAMP_WKT_CEL_TYPE],
         resultType: BOOL_CEL_TYPE,
       },
     ],
@@ -1001,18 +1001,18 @@ export const TYPE_CONVERT_DURATION_FUNCTION_DECL = functionDecl(
     overloads: [
       {
         overloadId: DURATION_TO_DURATION_OVERLOAD,
-        params: [DURATION_TYPE],
-        resultType: DURATION_TYPE,
+        params: [DURATION_WKT_CEL_TYPE],
+        resultType: DURATION_WKT_CEL_TYPE,
       },
       {
         overloadId: INT_TO_DURATION_OVERLOAD,
         params: [INT_CEL_TYPE],
-        resultType: DURATION_TYPE,
+        resultType: DURATION_WKT_CEL_TYPE,
       },
       {
         overloadId: STRING_TO_DURATION_OVERLOAD,
         params: [STRING_CEL_TYPE],
-        resultType: DURATION_TYPE,
+        resultType: DURATION_WKT_CEL_TYPE,
       },
     ],
   }
@@ -1026,7 +1026,7 @@ export const TYPE_CONVERT_DYN_FUNCTION_DECL = functionDecl(
       {
         overloadId: TYPE_CONVERT_TYPE_OVERLOAD,
         params: [paramA],
-        resultType: DYN_TYPE,
+        resultType: DYN_CEL_TYPE,
         typeParams: typeParamAList,
       },
     ],
@@ -1050,7 +1050,7 @@ export const TYPE_CONVERT_INT_FUNCTION_DECL = functionDecl(
       },
       {
         overloadId: DURATION_TO_INT_OVERLOAD,
-        params: [DURATION_TYPE],
+        params: [DURATION_WKT_CEL_TYPE],
         resultType: INT_CEL_TYPE,
       },
       {
@@ -1060,7 +1060,7 @@ export const TYPE_CONVERT_INT_FUNCTION_DECL = functionDecl(
       },
       {
         overloadId: TIMESTAMP_TO_INT_OVERLOAD,
-        params: [TIMESTAMP_TYPE],
+        params: [TIMESTAMP_WKT_CEL_TYPE],
         resultType: INT_CEL_TYPE,
       },
       {
@@ -1109,12 +1109,12 @@ export const TYPE_CONVERT_STRING_FUNCTION_DECL = functionDecl(
       },
       {
         overloadId: DURATION_TO_STRING_OVERLOAD,
-        params: [DURATION_TYPE],
+        params: [DURATION_WKT_CEL_TYPE],
         resultType: STRING_CEL_TYPE,
       },
       {
         overloadId: TIMESTAMP_TO_STRING_OVERLOAD,
-        params: [TIMESTAMP_TYPE],
+        params: [TIMESTAMP_WKT_CEL_TYPE],
         resultType: STRING_CEL_TYPE,
       },
     ],
@@ -1128,18 +1128,18 @@ export const TYPE_CONVERT_TIMESTAMP_FUNCTION_DECL = functionDecl(
     overloads: [
       {
         overloadId: TIMESTAMP_TO_TIMESTAMP_OVERLOAD,
-        params: [TIMESTAMP_TYPE],
-        resultType: TIMESTAMP_TYPE,
+        params: [TIMESTAMP_WKT_CEL_TYPE],
+        resultType: TIMESTAMP_WKT_CEL_TYPE,
       },
       {
         overloadId: INT_TO_TIMESTAMP_OVERLOAD,
         params: [INT_CEL_TYPE],
-        resultType: TIMESTAMP_TYPE,
+        resultType: TIMESTAMP_WKT_CEL_TYPE,
       },
       {
         overloadId: STRING_TO_TIMESTAMP_OVERLOAD,
         params: [STRING_CEL_TYPE],
-        resultType: TIMESTAMP_TYPE,
+        resultType: TIMESTAMP_WKT_CEL_TYPE,
       },
     ],
   }
@@ -1227,13 +1227,13 @@ export const TIME_GET_FULL_YEAR_FUNCTION_DECL = functionDecl(
     overloads: [
       {
         overloadId: TIMESTAMP_TO_YEAR_OVERLOAD,
-        params: [TIMESTAMP_TYPE],
+        params: [TIMESTAMP_WKT_CEL_TYPE],
         resultType: INT_CEL_TYPE,
         isInstanceFunction: true,
       },
       {
         overloadId: TIMESTAMP_TO_YEAR_WITH_TZ_OVERLOAD,
-        params: [TIMESTAMP_TYPE],
+        params: [TIMESTAMP_WKT_CEL_TYPE],
         resultType: STRING_CEL_TYPE,
         isInstanceFunction: true,
       },
@@ -1246,13 +1246,13 @@ export const TIME_GET_MONTH_FUNCTION_DECL = functionDecl(
     overloads: [
       {
         overloadId: TIMESTAMP_TO_MONTH_OVERLOAD,
-        params: [TIMESTAMP_TYPE],
+        params: [TIMESTAMP_WKT_CEL_TYPE],
         resultType: INT_CEL_TYPE,
         isInstanceFunction: true,
       },
       {
         overloadId: TIMESTAMP_TO_MONTH_WITH_TZ_OVERLOAD,
-        params: [TIMESTAMP_TYPE],
+        params: [TIMESTAMP_WKT_CEL_TYPE],
         resultType: STRING_CEL_TYPE,
         isInstanceFunction: true,
       },
@@ -1265,13 +1265,13 @@ export const TIME_GET_DAY_OF_YEAR_FUNCTION_DECL = functionDecl(
     overloads: [
       {
         overloadId: TIMESTAMP_TO_DAY_OF_YEAR_OVERLOAD,
-        params: [TIMESTAMP_TYPE],
+        params: [TIMESTAMP_WKT_CEL_TYPE],
         resultType: INT_CEL_TYPE,
         isInstanceFunction: true,
       },
       {
         overloadId: TIMESTAMP_TO_DAY_OF_YEAR_WITH_TZ_OVERLOAD,
-        params: [TIMESTAMP_TYPE],
+        params: [TIMESTAMP_WKT_CEL_TYPE],
         resultType: STRING_CEL_TYPE,
         isInstanceFunction: true,
       },
@@ -1284,13 +1284,13 @@ export const TIME_GET_DAY_OF_MONTH_FUNCTION_DECL = functionDecl(
     overloads: [
       {
         overloadId: TIMESTAMP_TO_DAY_OF_MONTH_ZERO_BASED_OVERLOAD,
-        params: [TIMESTAMP_TYPE],
+        params: [TIMESTAMP_WKT_CEL_TYPE],
         resultType: INT_CEL_TYPE,
         isInstanceFunction: true,
       },
       {
         overloadId: TIMESTAMP_TO_DAY_OF_MONTH_ZERO_BASED_WITH_TZ_OVERLOAD,
-        params: [TIMESTAMP_TYPE],
+        params: [TIMESTAMP_WKT_CEL_TYPE],
         resultType: STRING_CEL_TYPE,
         isInstanceFunction: true,
       },
@@ -1303,13 +1303,13 @@ export const TIME_GET_DATE_FUNCTION_DECL = functionDecl(
     overloads: [
       {
         overloadId: TIMESTAMP_TO_DAY_OF_MONTH_ONE_BASED_OVERLOAD,
-        params: [TIMESTAMP_TYPE],
+        params: [TIMESTAMP_WKT_CEL_TYPE],
         resultType: INT_CEL_TYPE,
         isInstanceFunction: true,
       },
       {
         overloadId: TIMESTAMP_TO_DAY_OF_MONTH_ONE_BASED_WITH_TZ_OVERLOAD,
-        params: [TIMESTAMP_TYPE],
+        params: [TIMESTAMP_WKT_CEL_TYPE],
         resultType: STRING_CEL_TYPE,
         isInstanceFunction: true,
       },
@@ -1322,13 +1322,13 @@ export const TIME_GET_DAY_OF_WEEK_FUNCTION_DECL = functionDecl(
     overloads: [
       {
         overloadId: TIMESTAMP_TO_DAY_OF_WEEK_OVERLOAD,
-        params: [TIMESTAMP_TYPE],
+        params: [TIMESTAMP_WKT_CEL_TYPE],
         resultType: INT_CEL_TYPE,
         isInstanceFunction: true,
       },
       {
         overloadId: TIMESTAMP_TO_DAY_OF_WEEK_WITH_TZ_OVERLOAD,
-        params: [TIMESTAMP_TYPE],
+        params: [TIMESTAMP_WKT_CEL_TYPE],
         resultType: STRING_CEL_TYPE,
         isInstanceFunction: true,
       },
@@ -1341,19 +1341,19 @@ export const TIME_GET_HOURS_FUNCTION_DECL = functionDecl(
     overloads: [
       {
         overloadId: TIMESTAMP_TO_HOURS_OVERLOAD,
-        params: [TIMESTAMP_TYPE],
+        params: [TIMESTAMP_WKT_CEL_TYPE],
         resultType: INT_CEL_TYPE,
         isInstanceFunction: true,
       },
       {
         overloadId: TIMESTAMP_TO_HOURS_WITH_TZ_OVERLOAD,
-        params: [TIMESTAMP_TYPE],
+        params: [TIMESTAMP_WKT_CEL_TYPE],
         resultType: STRING_CEL_TYPE,
         isInstanceFunction: true,
       },
       {
         overloadId: DURATION_TO_HOURS_OVERLOAD,
-        params: [DURATION_TYPE],
+        params: [DURATION_WKT_CEL_TYPE],
         resultType: INT_CEL_TYPE,
         isInstanceFunction: true,
       },
@@ -1366,19 +1366,19 @@ export const TIME_GET_MINUTES_FUNCTION_DECL = functionDecl(
     overloads: [
       {
         overloadId: TIMESTAMP_TO_MINUTES_OVERLOAD,
-        params: [TIMESTAMP_TYPE],
+        params: [TIMESTAMP_WKT_CEL_TYPE],
         resultType: INT_CEL_TYPE,
         isInstanceFunction: true,
       },
       {
         overloadId: TIMESTAMP_TO_MINUTES_WITH_TZ_OVERLOAD,
-        params: [TIMESTAMP_TYPE],
+        params: [TIMESTAMP_WKT_CEL_TYPE],
         resultType: STRING_CEL_TYPE,
         isInstanceFunction: true,
       },
       {
         overloadId: DURATION_TO_MINUTES_OVERLOAD,
-        params: [DURATION_TYPE],
+        params: [DURATION_WKT_CEL_TYPE],
         resultType: INT_CEL_TYPE,
         isInstanceFunction: true,
       },
@@ -1391,19 +1391,19 @@ export const TIME_GET_SECONDS_FUNCTION_DECL = functionDecl(
     overloads: [
       {
         overloadId: TIMESTAMP_TO_SECONDS_OVERLOAD,
-        params: [TIMESTAMP_TYPE],
+        params: [TIMESTAMP_WKT_CEL_TYPE],
         resultType: INT_CEL_TYPE,
         isInstanceFunction: true,
       },
       {
         overloadId: TIMESTAMP_TO_SECONDS_WITH_TZ_OVERLOAD,
-        params: [TIMESTAMP_TYPE],
+        params: [TIMESTAMP_WKT_CEL_TYPE],
         resultType: STRING_CEL_TYPE,
         isInstanceFunction: true,
       },
       {
         overloadId: DURATION_TO_SECONDS_OVERLOAD,
-        params: [DURATION_TYPE],
+        params: [DURATION_WKT_CEL_TYPE],
         resultType: INT_CEL_TYPE,
         isInstanceFunction: true,
       },
@@ -1416,19 +1416,19 @@ export const TIME_GET_MILLISECONDS_FUNCTION_DECL = functionDecl(
     overloads: [
       {
         overloadId: TIMESTAMP_TO_MILLISECONDS_OVERLOAD,
-        params: [TIMESTAMP_TYPE],
+        params: [TIMESTAMP_WKT_CEL_TYPE],
         resultType: INT_CEL_TYPE,
         isInstanceFunction: true,
       },
       {
         overloadId: TIMESTAMP_TO_MILLISECONDS_WITH_TZ_OVERLOAD,
-        params: [TIMESTAMP_TYPE],
+        params: [TIMESTAMP_WKT_CEL_TYPE],
         resultType: STRING_CEL_TYPE,
         isInstanceFunction: true,
       },
       {
         overloadId: DURATION_TO_MILLISECONDS_OVERLOAD,
-        params: [DURATION_TYPE],
+        params: [DURATION_WKT_CEL_TYPE],
         resultType: INT_CEL_TYPE,
         isInstanceFunction: true,
       },

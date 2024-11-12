@@ -7,6 +7,7 @@ import {
   FloatValueSchema,
   Int32ValueSchema,
   Int64ValueSchema,
+  NullValueSchema,
   StringValueSchema,
   StructSchema,
   TimestampSchema,
@@ -36,6 +37,7 @@ export type NativeType =
   | typeof FloatValueSchema
   | typeof Int32ValueSchema
   | typeof Int64ValueSchema
+  | typeof NullValueSchema
   | typeof StringValueSchema
   | typeof StructSchema
   | typeof TimestampSchema

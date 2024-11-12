@@ -12,11 +12,11 @@ import {
 import { BOOL_CEL_TYPE } from './bool';
 import { BYTES_CEL_TYPE } from './bytes';
 import { DOUBLE_CEL_TYPE } from './double';
-import { DYN_TYPE } from './dyn';
+import { DYN_CEL_TYPE } from './dyn';
 import { INT_CEL_TYPE } from './int';
 import { listType } from './list';
 import { mapType } from './map';
-import { NULL_TYPE } from './null';
+import { NULL_CEL_TYPE } from './null';
 import { STRING_CEL_TYPE } from './string';
 import { UINT_CEL_TYPE } from './uint';
 
@@ -42,9 +42,11 @@ export function unwrapWellKnownType(value: Type) {
   return null;
 }
 
-export const ANY_TYPE = wellKnownType(Type_WellKnownType.ANY);
-export const DURATION_TYPE = wellKnownType(Type_WellKnownType.DURATION);
-export const TIMESTAMP_TYPE = wellKnownType(Type_WellKnownType.TIMESTAMP);
+export const ANY_WKT_CEL_TYPE = wellKnownType(Type_WellKnownType.ANY);
+export const DURATION_WKT_CEL_TYPE = wellKnownType(Type_WellKnownType.DURATION);
+export const TIMESTAMP_WKT_CEL_TYPE = wellKnownType(
+  Type_WellKnownType.TIMESTAMP
+);
 
 export function isCheckedWellKnownType(type: Type) {
   if (type.typeKind.case !== 'messageType') {
@@ -93,20 +95,20 @@ export function getCheckedWellKnownType(value: string) {
       return STRING_CEL_TYPE;
     // Well-known types.
     case 'google.protobuf.Any':
-      return ANY_TYPE;
+      return ANY_WKT_CEL_TYPE;
     case 'google.protobuf.Duration':
-      return DURATION_TYPE;
+      return DURATION_WKT_CEL_TYPE;
     case 'google.protobuf.Timestamp':
-      return TIMESTAMP_TYPE;
+      return TIMESTAMP_WKT_CEL_TYPE;
     // Json types.
     case 'google.protobuf.ListValue':
-      return listType({ elemType: DYN_TYPE });
+      return listType({ elemType: DYN_CEL_TYPE });
     case 'google.protobuf.NullValue':
-      return NULL_TYPE;
+      return NULL_CEL_TYPE;
     case 'google.protobuf.Struct':
-      return mapType({ keyType: STRING_CEL_TYPE, valueType: DYN_TYPE });
+      return mapType({ keyType: STRING_CEL_TYPE, valueType: DYN_CEL_TYPE });
     case 'google.protobuf.Value':
-      return DYN_TYPE;
+      return DYN_CEL_TYPE;
     default:
       return null;
   }

@@ -22,7 +22,7 @@ import { ErrorRefVal } from './error';
 import { INT_REF_TYPE, IntRefVal, MAX_INT64, MIN_INT64 } from './int';
 import { objectValue } from './object';
 import { STRING_REF_TYPE, StringRefVal } from './string';
-import { TYPE_REF_TYPE, TypeRefVal } from './type';
+import { TYPE_REF_TYPE } from './type';
 import { UINT_REF_TYPE, UintRefVal } from './uint';
 
 describe('duration', () => {
@@ -100,7 +100,7 @@ describe('duration', () => {
       {
         value: new DurationRefVal(duration(BigInt(42), 1234)),
         type: TYPE_REF_TYPE,
-        want: new TypeRefVal(DURATION_REF_TYPE),
+        want: DURATION_REF_TYPE,
       },
       {
         value: new DurationRefVal(duration(BigInt(42), 1234)),

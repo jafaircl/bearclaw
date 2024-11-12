@@ -49,10 +49,10 @@ import { Adder, Negater, Subtractor } from './traits/math';
 import { Receiver } from './traits/receiver';
 import { Trait } from './traits/trait';
 import { Zeroer } from './traits/zeroer';
-import { TypeRefVal } from './type';
+import { TypeValue } from './type';
 import { UintRefVal } from './uint';
 import { typeNameToUrl } from './utils';
-import { DURATION_TYPE, WKT_REGISTRY } from './wkt';
+import { DURATION_WKT_CEL_TYPE, WKT_REGISTRY } from './wkt';
 
 export const DURATION_CEL_TYPE = create(TypeSchema, {
   typeKind: {
@@ -104,7 +104,7 @@ export function convertDurationValueToNative(value: Value, type: NativeType) {
       break;
   }
   return new Error(
-    `type conversion error from '${formatCELType(DURATION_TYPE)}' to '${
+    `type conversion error from '${formatCELType(DURATION_WKT_CEL_TYPE)}' to '${
       type.name
     }'`
   );
@@ -139,13 +139,13 @@ export function convertDurationValueToType(value: Value, type: Type) {
       }
       break;
     case 'type':
-      return DURATION_TYPE;
+      return DURATION_WKT_CEL_TYPE;
     default:
       break;
   }
   return new Error(
     `type conversion error from '${formatCELType(
-      DURATION_TYPE
+      DURATION_WKT_CEL_TYPE
     )}' to '${formatCELType(type)}'`
   );
 }
@@ -191,26 +191,10 @@ export const DURATION_TRAITS = new Set([
   Trait.SUBTRACTOR_TYPE,
 ]);
 
-export class DurationRefType implements RefType {
-  // This has to be a TS private field instead of a # private field because
-  // otherwise the tests will not be able to access it to check for equality.
-  // TODO: do we want to alter the tests to use the getter instead?
-  readonly _traits = new Set<Trait>();
-
-  celType(): Type {
-    return DURATION_CEL_TYPE;
-  }
-
-  hasTrait(trait: Trait): boolean {
-    return this._traits.has(trait);
-  }
-
-  typeName(): string {
-    return RefTypeEnum.DURATION;
-  }
-}
-
-export const DURATION_REF_TYPE = new DurationRefType();
+export const DURATION_REF_TYPE = new TypeValue(
+  RefTypeEnum.DURATION,
+  DURATION_TRAITS
+);
 
 export class DurationRefVal
   implements RefVal, Adder, Comparer, Negater, Receiver, Subtractor, Zeroer
@@ -279,7 +263,7 @@ export class DurationRefVal
       case RefTypeEnum.STRING:
         return new StringRefVal(`${durationToSeconds(this._value)}s`);
       case RefTypeEnum.TYPE:
-        return new TypeRefVal(DURATION_REF_TYPE);
+        return DURATION_REF_TYPE;
       case RefTypeEnum.UINT:
         return new UintRefVal(durationToNanos(this._value));
       default:

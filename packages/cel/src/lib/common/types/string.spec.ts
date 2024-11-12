@@ -4,10 +4,17 @@ import {
 } from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb.js';
 import { ValueSchema } from '@buf/google_cel-spec.bufbuild_es/cel/expr/value_pb.js';
 import { create } from '@bufbuild/protobuf';
-import { AnySchema, StringValueSchema, anyPack } from '@bufbuild/protobuf/wkt';
+import {
+  AnySchema,
+  StringValueSchema,
+  anyPack,
+  timestampFromDate,
+} from '@bufbuild/protobuf/wkt';
 import { CONTAINS_OVERLOAD } from '../../overloads';
 import { BOOL_REF_TYPE, BoolRefVal } from './bool';
+import { BYTES_REF_TYPE, BytesRefVal } from './bytes';
 import { DOUBLE_REF_TYPE, DoubleRefVal } from './double';
+import { DURATION_REF_TYPE, DurationRefVal, duration } from './duration';
 import { ErrorRefVal } from './error';
 import { INT_REF_TYPE, IntRefVal } from './int';
 import {
@@ -17,7 +24,8 @@ import {
   stringExpr,
   stringValue,
 } from './string';
-import { TYPE_REF_TYPE, TypeRefVal } from './type';
+import { TIMESTAMP_REF_TYPE, TimestampRefVal } from './timestamp';
+import { TYPE_REF_TYPE } from './type';
 import { UINT_REF_TYPE, UintRefVal } from './uint';
 
 describe('string', () => {
@@ -91,7 +99,7 @@ describe('string', () => {
       {
         value: new StringRefVal('hello'),
         type: TYPE_REF_TYPE,
-        expected: new TypeRefVal(STRING_REF_TYPE),
+        expected: STRING_REF_TYPE,
       },
       {
         value: new StringRefVal('hello'),
@@ -123,35 +131,34 @@ describe('string', () => {
         type: BOOL_REF_TYPE,
         expected: new BoolRefVal(false),
       },
-      // TODO: bytes type
-      // {
-      //   value: new StringRefVal('hello'),
-      //   type: BYTES_TYPE,
-      //   expected: bytesValue(new TextEncoder().encode('hello')),
-      // },
+      {
+        value: new StringRefVal('hello'),
+        type: BYTES_REF_TYPE,
+        expected: new BytesRefVal(new TextEncoder().encode('hello')),
+      },
       // TODO: timestamp & duration types
-      // {
-      //   value: new StringRefVal('2021-01-01T00:00:00Z'),
-      //   type: TIMESTAMP_TYPE,
-      //   expected: timestampValue(
-      //     timestampFromDate(new Date('2021-01-01T00:00:00Z'))
-      //   ),
-      // },
-      // {
-      //   value: stringValue('42s'),
-      //   type: DURATION_TYPE,
-      //   expected: durationValue({ seconds: BigInt(42), nanos: 0 }),
-      // },
-      // {
-      //   value: stringValue('1h5s'),
-      //   type: DURATION_TYPE,
-      //   expected: durationValue({ seconds: BigInt(3605), nanos: 0 }),
-      // },
-      // {
-      //   value: stringValue('3.14s'),
-      //   type: DURATION_TYPE,
-      //   expected: durationValue({ seconds: BigInt(3), nanos: 0.14 * 1e9 }),
-      // },
+      {
+        value: new StringRefVal('2021-01-01T00:00:00Z'),
+        type: TIMESTAMP_REF_TYPE,
+        expected: new TimestampRefVal(
+          timestampFromDate(new Date('2021-01-01T00:00:00Z'))
+        ),
+      },
+      {
+        value: new StringRefVal('42s'),
+        type: DURATION_REF_TYPE,
+        expected: new DurationRefVal(duration(BigInt(42), 0)),
+      },
+      {
+        value: new StringRefVal('1h5s'),
+        type: DURATION_REF_TYPE,
+        expected: new DurationRefVal(duration(BigInt(3605), 0)),
+      },
+      {
+        value: new StringRefVal('3.14s'),
+        type: DURATION_REF_TYPE,
+        expected: new DurationRefVal(duration(BigInt(3), 0.14 * 1e9)),
+      },
     ];
     for (const test of tests) {
       expect(test.value.convertToType(test.type)).toStrictEqual(test.expected);

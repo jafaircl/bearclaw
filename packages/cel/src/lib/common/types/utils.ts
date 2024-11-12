@@ -7,7 +7,7 @@ import {
 } from '@buf/google_cel-spec.bufbuild_es/cel/expr/checked_pb.js';
 import { DescField, ScalarType } from '@bufbuild/protobuf';
 import { Empty } from '@bufbuild/protobuf/wkt';
-import { DYN_TYPE, isDynType } from './dyn';
+import { DYN_CEL_TYPE, isDynType } from './dyn';
 import { isErrorType } from './error';
 import { listType } from './list';
 import { mapType } from './map';
@@ -64,7 +64,7 @@ export function getFieldDescriptorType(field: DescField) {
             elemType: scalarTypeToPrimitiveType(field.scalar),
           });
         default:
-          return DYN_TYPE;
+          return DYN_CEL_TYPE;
       }
     case 'scalar':
       return scalarTypeToPrimitiveType(field.scalar);
@@ -87,10 +87,10 @@ export function getFieldDescriptorType(field: DescField) {
             valueType: scalarTypeToPrimitiveType(field.scalar),
           });
         default:
-          return DYN_TYPE;
+          return DYN_CEL_TYPE;
       }
     default:
-      return DYN_TYPE;
+      return DYN_CEL_TYPE;
   }
 }
 
@@ -124,7 +124,7 @@ export function scalarTypeToPrimitiveType(scalar: ScalarType) {
     case ScalarType.UINT64:
       return primitiveType(Type_PrimitiveType.UINT64);
     default:
-      return DYN_TYPE;
+      return DYN_CEL_TYPE;
   }
 }
 

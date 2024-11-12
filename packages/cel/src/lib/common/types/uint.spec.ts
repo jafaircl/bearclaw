@@ -15,7 +15,7 @@ import { DOUBLE_REF_TYPE, DoubleRefVal } from './double';
 import { ErrorRefVal } from './error';
 import { INT_REF_TYPE, IntRefVal, MAX_INT64 } from './int';
 import { STRING_REF_TYPE, StringRefVal } from './string';
-import { TYPE_REF_TYPE, TypeRefVal } from './type';
+import { TYPE_REF_TYPE } from './type';
 import {
   UINT_REF_TYPE,
   UintRefVal,
@@ -115,7 +115,7 @@ describe('uint', () => {
       {
         in: new UintRefVal(BigInt(42)),
         type: TYPE_REF_TYPE,
-        out: new TypeRefVal(UINT_REF_TYPE),
+        out: UINT_REF_TYPE,
       },
       {
         in: new UintRefVal(BigInt(46)),

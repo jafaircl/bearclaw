@@ -16,7 +16,7 @@ import {
 import { ErrorRefVal } from './error';
 import { IntRefVal } from './int';
 import { STRING_REF_TYPE, StringRefVal } from './string';
-import { TYPE_REF_TYPE, TypeRefVal } from './type';
+import { TYPE_REF_TYPE } from './type';
 
 describe('bytes', () => {
   it('bytesConstant', () => {
@@ -95,9 +95,7 @@ describe('bytes', () => {
     expect(value.convertToType(STRING_REF_TYPE)).toStrictEqual(
       new StringRefVal('helloworld')
     );
-    expect(value.convertToType(TYPE_REF_TYPE)).toStrictEqual(
-      new TypeRefVal(BYTES_REF_TYPE)
-    );
+    expect(value.convertToType(TYPE_REF_TYPE)).toStrictEqual(BYTES_REF_TYPE);
     expect(value.convertToType(BOOL_REF_TYPE)).toStrictEqual(
       ErrorRefVal.typeConversionError(value, BOOL_REF_TYPE)
     );

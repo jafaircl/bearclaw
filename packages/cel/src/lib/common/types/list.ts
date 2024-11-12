@@ -14,9 +14,9 @@ import {
   ValueSchema,
 } from '@buf/google_cel-spec.bufbuild_es/cel/expr/value_pb.js';
 import { MessageInitShape, create } from '@bufbuild/protobuf';
-import { DYN_TYPE } from './dyn';
+import { DYN_CEL_TYPE } from './dyn';
 
-export const LIST_TYPE = listType({ elemType: DYN_TYPE });
+export const LIST_CEL_TYPE = listType({ elemType: DYN_CEL_TYPE });
 
 export function listType(value: MessageInitShape<typeof Type_ListTypeSchema>) {
   return create(TypeSchema, {

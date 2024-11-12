@@ -7,13 +7,13 @@ import { create } from '@bufbuild/protobuf';
 import { EmptySchema, NullValue } from '@bufbuild/protobuf/wkt';
 import { formatCELType } from '../common/format';
 import { abstractType } from '../common/types/abstract';
-import { DYN_TYPE } from '../common/types/dyn';
+import { DYN_CEL_TYPE } from '../common/types/dyn';
 import { ERROR_TYPE } from '../common/types/error';
 import { functionType } from '../common/types/function';
 import { listType } from '../common/types/list';
 import { mapType } from '../common/types/map';
 import { messageType } from '../common/types/message';
-import { NULL_TYPE } from '../common/types/null';
+import { NULL_CEL_TYPE } from '../common/types/null';
 import { nullableType } from '../common/types/nullable';
 import { optionalType } from '../common/types/optional';
 import { primitiveType } from '../common/types/primitive';
@@ -24,8 +24,8 @@ import { wrapperType } from '../common/types/wrapper';
 import { isAssignableType, isExactType } from './types';
 
 describe('types', () => {
-  it('DYN_TYPE', () => {
-    expect(DYN_TYPE).toEqual(
+  it('DYN_CEL_TYPE', () => {
+    expect(DYN_CEL_TYPE).toEqual(
       create(TypeSchema, {
         typeKind: {
           case: 'dyn',
@@ -35,8 +35,8 @@ describe('types', () => {
     );
   });
 
-  it('NULL_TYPE', () => {
-    expect(NULL_TYPE).toEqual(
+  it('NULL_CEL_TYPE', () => {
+    expect(NULL_CEL_TYPE).toEqual(
       create(TypeSchema, {
         typeKind: {
           case: 'null',
@@ -326,7 +326,7 @@ describe('types', () => {
     const testCases = [
       {
         t1: nullableType(primitiveType(Type_PrimitiveType.STRING)),
-        t2: NULL_TYPE,
+        t2: NULL_CEL_TYPE,
         isAssignable: true,
       },
       {
@@ -365,7 +365,7 @@ describe('types', () => {
         }),
         t2: abstractType({
           name: 'vector',
-          parameterTypes: [NULL_TYPE],
+          parameterTypes: [NULL_CEL_TYPE],
         }),
         isAssignable: true,
       },
@@ -385,7 +385,7 @@ describe('types', () => {
       {
         t1: abstractType({
           name: 'vector',
-          parameterTypes: [DYN_TYPE],
+          parameterTypes: [DYN_CEL_TYPE],
         }),
         t2: abstractType({
           name: 'vector',
@@ -417,7 +417,7 @@ describe('types', () => {
         }),
         t2: abstractType({
           name: 'vector',
-          parameterTypes: [DYN_TYPE],
+          parameterTypes: [DYN_CEL_TYPE],
         }),
         isAssignable: false,
       },

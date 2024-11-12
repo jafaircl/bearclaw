@@ -4,11 +4,11 @@ import {
   Type_MapTypeSchema,
 } from '@buf/google_cel-spec.bufbuild_es/cel/expr/checked_pb.js';
 import { MessageInitShape, create } from '@bufbuild/protobuf';
-import { DYN_TYPE } from './dyn';
+import { DYN_CEL_TYPE } from './dyn';
 
 export const MAP_TYPE = mapType({
-  keyType: DYN_TYPE,
-  valueType: DYN_TYPE,
+  keyType: DYN_CEL_TYPE,
+  valueType: DYN_CEL_TYPE,
 });
 
 export function mapType(value: MessageInitShape<typeof Type_MapTypeSchema>) {

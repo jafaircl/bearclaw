@@ -1048,6 +1048,12 @@ const testCases: TestInfo[] = [
     }),
   },
   {
+    I: `m.map(__result__, __result__)`,
+    E: `ERROR: <input>:1:7: iteration variable overwrites accumulator variable
+        | m.map(__result__, __result__)
+        | ......^`,
+  },
+  {
     I: `m.map(v, p, f)`,
     // P: `__comprehension__(
     // 	// Variable
@@ -1157,6 +1163,18 @@ const testCases: TestInfo[] = [
       }),
       result: identExpr(BigInt(12), { name: ACCUMULATOR_VAR }),
     }),
+  },
+  {
+    I: `m.filter(__result__, false)`,
+    E: `ERROR: <input>:1:10: iteration variable overwrites accumulator variable
+        | m.filter(__result__, false)
+        | .........^`,
+  },
+  {
+    I: `m.filter(a.b, false)`,
+    E: `ERROR: <input>:1:11: argument is not an identifier
+        | m.filter(a.b, false)
+        | ..........^`,
   },
 
   // Tests from C++ parser

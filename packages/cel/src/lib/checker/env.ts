@@ -9,7 +9,7 @@ import {
 } from '../common/decls/function-decl';
 import { identDecl } from '../common/decls/ident-decl';
 import { TypeProvider } from '../common/ref/provider';
-import { DYN_TYPE } from '../common/types/dyn';
+import { DYN_CEL_TYPE } from '../common/types/dyn';
 import { unwrapEnumValue } from '../common/types/enum';
 import { INT_CEL_TYPE, int64Constant } from '../common/types/int';
 import { LESS_DOUBLE_INT64_OVERLOAD } from '../overloads';
@@ -87,7 +87,7 @@ export class CheckerEnv {
   readonly #container: CELContainer;
   readonly #provider: TypeProvider;
   readonly #declarations: Scopes;
-  readonly #aggLitElemType = DYN_TYPE;
+  readonly #aggLitElemType = DYN_CEL_TYPE;
   readonly #filteredOverloadIDs = new Set<string>();
 
   constructor(
@@ -102,7 +102,7 @@ export class CheckerEnv {
     this.#declarations.push();
 
     if (options?.homogeneousAggregateLiterals) {
-      // this.#aggLitElemType = DYN_TYPE; // TODO: what type should this be
+      // this.#aggLitElemType = DYN_CEL_TYPE; // TODO: what type should this be
     }
     this.#filteredOverloadIDs = CROSS_TYPE_NUMERIC_COMPARISON_OVERLOADS;
     if (options?.crossTypeNumericComparisons) {

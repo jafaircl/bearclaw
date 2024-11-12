@@ -29,7 +29,7 @@ import { Adder } from './traits/math';
 import { Sizer } from './traits/sizer';
 import { Trait } from './traits/trait';
 import { Zeroer } from './traits/zeroer';
-import { TypeRefVal } from './type';
+import { TypeValue } from './type';
 
 export const BYTES_CEL_TYPE = primitiveType(Type_PrimitiveType.BYTES);
 
@@ -208,26 +208,7 @@ export function sizeBytesValue(value: Value) {
   return int64Value(BigInt(value.kind.value.length));
 }
 
-export class BytesRefType implements RefType {
-  // This has to be a TS private field instead of a # private field because
-  // otherwise the tests will not be able to access it to check for equality.
-  // TODO: do we want to alter the tests to use the getter instead?
-  readonly _traits = BYTES_TRAITS;
-
-  celType(): Type {
-    return BYTES_CEL_TYPE;
-  }
-
-  hasTrait(trait: Trait): boolean {
-    return this._traits.has(trait);
-  }
-
-  typeName(): string {
-    return RefTypeEnum.BYTES;
-  }
-}
-
-export const BYTES_REF_TYPE = new BytesRefType();
+export const BYTES_REF_TYPE = new TypeValue(RefTypeEnum.BYTES, BYTES_TRAITS);
 
 export class BytesRefVal implements RefVal, Adder, Comparer, Sizer, Zeroer {
   // This has to be a TS private field instead of a # private field because
@@ -266,7 +247,7 @@ export class BytesRefVal implements RefVal, Adder, Comparer, Sizer, Zeroer {
       case RefTypeEnum.STRING:
         return new StringRefVal(new TextDecoder().decode(this._value));
       case RefTypeEnum.TYPE:
-        return new TypeRefVal(BYTES_REF_TYPE);
+        return BYTES_REF_TYPE;
       default:
         return ErrorRefVal.typeConversionError(this, type);
     }

@@ -21,7 +21,7 @@ import {
 import { ErrorRefVal } from './error';
 import { INT_REF_TYPE, IntRefVal } from './int';
 import { STRING_REF_TYPE, StringRefVal } from './string';
-import { TYPE_REF_TYPE, TypeRefVal } from './type';
+import { TYPE_REF_TYPE } from './type';
 import { UINT_REF_TYPE, UintRefVal } from './uint';
 
 describe('double', () => {
@@ -107,9 +107,7 @@ describe('double', () => {
     expect(value.convertToType(STRING_REF_TYPE)).toStrictEqual(
       new StringRefVal('1234.5')
     );
-    expect(value.convertToType(TYPE_REF_TYPE)).toStrictEqual(
-      new TypeRefVal(DOUBLE_REF_TYPE)
-    );
+    expect(value.convertToType(TYPE_REF_TYPE)).toStrictEqual(DOUBLE_REF_TYPE);
     // Int64 errors
     expect(new DoubleRefVal(NaN).convertToType(INT_REF_TYPE)).toStrictEqual(
       ErrorRefVal.errIntOverflow

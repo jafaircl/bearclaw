@@ -26,17 +26,17 @@ import { BYTES_CEL_TYPE } from '../types/bytes';
 import { DOUBLE_CEL_TYPE } from '../types/double';
 import { enumValue } from '../types/enum';
 import { INT_CEL_TYPE } from '../types/int';
-import { LIST_TYPE } from '../types/list';
+import { LIST_CEL_TYPE } from '../types/list';
 import { MAP_TYPE } from '../types/map';
 import { messageType } from '../types/message';
-import { NULL_TYPE } from '../types/null';
+import { NULL_CEL_TYPE } from '../types/null';
 import { STRING_CEL_TYPE } from '../types/string';
 import { isZeroValue } from '../types/traits/zeroer';
 import { TYPE_TYPE } from '../types/type';
 import { UINT_CEL_TYPE } from '../types/uint';
 import { getFieldDescriptorType } from '../types/utils';
 import { valueOf } from '../types/value';
-import { DURATION_TYPE, TIMESTAMP_TYPE } from '../types/wkt';
+import { DURATION_WKT_CEL_TYPE, TIMESTAMP_WKT_CEL_TYPE } from '../types/wkt';
 import { TypeRegistry } from './../ref/registry';
 
 export class ProtoTypeRegistry implements TypeRegistry {
@@ -54,13 +54,13 @@ export class ProtoTypeRegistry implements TypeRegistry {
       BOOL_CEL_TYPE,
       BYTES_CEL_TYPE,
       DOUBLE_CEL_TYPE,
-      DURATION_TYPE,
+      DURATION_WKT_CEL_TYPE,
       INT_CEL_TYPE,
-      LIST_TYPE,
+      LIST_CEL_TYPE,
       MAP_TYPE,
-      NULL_TYPE,
+      NULL_CEL_TYPE,
       STRING_CEL_TYPE,
-      TIMESTAMP_TYPE,
+      TIMESTAMP_WKT_CEL_TYPE,
       TYPE_TYPE,
       UINT_CEL_TYPE
     );

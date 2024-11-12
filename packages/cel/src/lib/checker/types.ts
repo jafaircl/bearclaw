@@ -12,7 +12,7 @@ import {
 } from '@buf/google_cel-spec.bufbuild_es/cel/expr/checked_pb.js';
 import { formatCELType } from '../common/format';
 import { abstractType } from '../common/types/abstract';
-import { DYN_TYPE, isDynType } from '../common/types/dyn';
+import { DYN_CEL_TYPE, isDynType } from '../common/types/dyn';
 import { functionType } from '../common/types/function';
 import { listType } from '../common/types/list';
 import { mapType } from '../common/types/map';
@@ -621,7 +621,7 @@ export function substitute(
     return substitute(mapping, tSub, typeParamToDyn);
   }
   if (typeParamToDyn && t.typeKind.case === 'typeParam') {
-    return DYN_TYPE;
+    return DYN_CEL_TYPE;
   }
   switch (t.typeKind.case) {
     case 'function':

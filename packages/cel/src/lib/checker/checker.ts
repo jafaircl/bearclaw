@@ -32,14 +32,14 @@ import { unwrapCallExpr } from '../common/types/call';
 import { unwrapComprehensionExpr } from '../common/types/comprehension';
 import { isConstExpr, unwrapConstExpr } from '../common/types/constant';
 import { DOUBLE_CEL_TYPE } from '../common/types/double';
-import { DYN_TYPE, isDynType } from '../common/types/dyn';
+import { DYN_CEL_TYPE, isDynType } from '../common/types/dyn';
 import { ERROR_TYPE } from '../common/types/error';
 import { functionType } from '../common/types/function';
 import { unwrapIdentExpr } from '../common/types/ident';
 import { INT_CEL_TYPE } from '../common/types/int';
 import { listType, unwrapCreateList } from '../common/types/list';
 import { mapType } from '../common/types/map';
-import { NULL_TYPE } from '../common/types/null';
+import { NULL_CEL_TYPE } from '../common/types/null';
 import {
   isOptionalType,
   maybeUnwrapOptionalType,
@@ -52,8 +52,8 @@ import { typeParamType } from '../common/types/type-param';
 import { UINT_CEL_TYPE } from '../common/types/uint';
 import { isDynTypeOrErrorType } from '../common/types/utils';
 import {
-  DURATION_TYPE,
-  TIMESTAMP_TYPE,
+  DURATION_WKT_CEL_TYPE,
+  TIMESTAMP_WKT_CEL_TYPE,
   getCheckedWellKnownType,
   wellKnownType,
 } from '../common/types/wkt';
@@ -89,7 +89,7 @@ export class CELChecker {
   }
 
   public get dynAggregateLiteralElementTypesEnabled() {
-    return this.env.aggLitElemType.typeKind.case === DYN_TYPE.typeKind.case;
+    return this.env.aggLitElemType.typeKind.case === DYN_CEL_TYPE.typeKind.case;
   }
 
   public get errors() {
@@ -179,7 +179,7 @@ export class CELChecker {
         this.setType(expr.id, INT_CEL_TYPE);
         break;
       case 'nullValue':
-        this.setType(expr.id, NULL_TYPE);
+        this.setType(expr.id, NULL_CEL_TYPE);
         break;
       case 'stringValue':
         this.setType(expr.id, STRING_CEL_TYPE);
@@ -188,10 +188,10 @@ export class CELChecker {
         this.setType(expr.id, UINT_CEL_TYPE);
         break;
       case 'durationValue':
-        this.setType(expr.id, DURATION_TYPE);
+        this.setType(expr.id, DURATION_WKT_CEL_TYPE);
         break;
       case 'timestampValue':
-        this.setType(expr.id, TIMESTAMP_TYPE);
+        this.setType(expr.id, TIMESTAMP_WKT_CEL_TYPE);
         break;
       default:
         this.#errors.reportUnexpectedAstTypeError(
@@ -428,7 +428,7 @@ export class CELChecker {
           !isDynType(resultType) &&
           !isExactType(fnResultType, resultType)
         ) {
-          resultType = DYN_TYPE;
+          resultType = DYN_CEL_TYPE;
         }
       }
     }
@@ -596,9 +596,9 @@ export class CELChecker {
         // incorrect type at a later point in type-checking. The isAssignable
         // call will update the type substitutions for the type param under the
         // covers.
-        this._isAssignable(DYN_TYPE, rangeType);
+        this._isAssignable(DYN_CEL_TYPE, rangeType);
         // Set the range iteration variable to type DYN as well.
-        varType = DYN_TYPE;
+        varType = DYN_CEL_TYPE;
         break;
       default:
         this.#errors.reportNotAComprehensionRange(
@@ -705,9 +705,9 @@ export class CELChecker {
         // incorrect type at a later point in type-checking. The isAssignable
         // call will update the type substitutions for the type param under the
         // covers.
-        this._isAssignable(DYN_TYPE, targetType);
+        this._isAssignable(DYN_CEL_TYPE, targetType);
         // Also, set the result type to DYN.
-        resultType = DYN_TYPE;
+        resultType = DYN_CEL_TYPE;
         break;
       default:
         // Dynamic / error values are treated as DYN type. Errors are handled
@@ -719,7 +719,7 @@ export class CELChecker {
             targetType
           );
         }
-        resultType = DYN_TYPE;
+        resultType = DYN_CEL_TYPE;
         break;
     }
     // If the target type was optional coming in, then the result must be
@@ -765,7 +765,7 @@ export class CELChecker {
       return mostGeneral(previous, current);
     }
     if (this.dynAggregateLiteralElementTypesEnabled) {
-      return DYN_TYPE;
+      return DYN_CEL_TYPE;
     }
     this.#errors.reportTypeMismatch(
       expr.id,

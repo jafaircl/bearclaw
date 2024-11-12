@@ -1,4 +1,3 @@
-import { Type } from '@buf/google_cel-spec.bufbuild_es/cel/expr/checked_pb';
 import { Value } from '@buf/google_cel-spec.bufbuild_es/cel/expr/value_pb.js';
 import { create } from '@bufbuild/protobuf';
 import { ValueSchema } from '@bufbuild/protobuf/wkt';
@@ -6,7 +5,7 @@ import { RefType, RefTypeEnum, RefVal } from '../ref/reference';
 import { BoolRefVal } from './bool';
 import { ErrorRefVal } from './error';
 import { NativeType } from './native';
-import { Trait } from './traits/trait';
+import { TypeValue } from './type';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function unknownValue(value: any) {
@@ -24,47 +23,27 @@ export function isUnknownValue(value: Value): value is Value & {
   return value.kind.case === undefined;
 }
 
-export class UnknownRefType implements RefType {
-  readonly #traits = new Set<Trait>();
-
-  celType(): Type {
-    throw new Error('Method not implemented.');
-  }
-
-  hasTrait(trait: Trait): boolean {
-    return this.#traits.has(trait);
-  }
-
-  typeName(): string {
-    return RefTypeEnum.UNKNOWN;
-  }
-}
-
-export const UNKNOWN_REF_TYPE = new UnknownRefType();
+export const UNKNOWN_REF_TYPE = new TypeValue(RefTypeEnum.UNKNOWN);
 
 /**
  * Unknown type implementation which collects expression ids which caused the
  * current value to become unknown.
  */
 export class UnknownRefVal implements RefVal {
-  readonly #value: bigint;
+  private readonly _value: bigint;
 
   constructor(value: bigint) {
-    this.#value = value;
-  }
-
-  celValue(): Value {
-    throw new Error('Method not implemented.');
+    this._value = value;
   }
 
   convertToNative(typeDesc: NativeType) {
     switch (typeDesc) {
       case Number:
-        return Number(this.#value);
+        return Number(this._value);
       case BigInt:
-        return this.#value;
+        return this._value;
       case String:
-        return this.#value.toString();
+        return this._value.toString();
       default:
         return ErrorRefVal.nativeTypeConversionError(this, typeDesc);
     }
@@ -84,6 +63,6 @@ export class UnknownRefVal implements RefVal {
   }
 
   value() {
-    return this.#value;
+    return this._value;
   }
 }

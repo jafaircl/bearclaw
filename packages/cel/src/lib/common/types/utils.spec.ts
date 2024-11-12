@@ -2,7 +2,7 @@ import { Type_PrimitiveType } from '@buf/google_cel-spec.bufbuild_es/cel/expr/ch
 import { ScalarType } from '@bufbuild/protobuf';
 import { BOOL_CEL_TYPE } from './bool';
 import { BYTES_CEL_TYPE } from './bytes';
-import { DYN_TYPE } from './dyn';
+import { DYN_CEL_TYPE } from './dyn';
 import { ERROR_TYPE } from './error';
 import { INT_CEL_TYPE } from './int';
 import { primitiveType } from './primitive';
@@ -12,7 +12,7 @@ import { isDynTypeOrErrorType, scalarTypeToPrimitiveType } from './utils';
 
 describe('utils', () => {
   it('isDynTypeOrErrorType', () => {
-    expect(isDynTypeOrErrorType(DYN_TYPE)).toBe(true);
+    expect(isDynTypeOrErrorType(DYN_CEL_TYPE)).toBe(true);
     expect(isDynTypeOrErrorType(ERROR_TYPE)).toBe(true);
     expect(isDynTypeOrErrorType(BOOL_CEL_TYPE)).toBe(false);
     expect(isDynTypeOrErrorType(BYTES_CEL_TYPE)).toBe(false);

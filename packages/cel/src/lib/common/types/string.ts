@@ -1,4 +1,5 @@
 /* eslint-disable no-case-declarations */
+import { isNil } from '@bearclaw/is';
 import {
   Type,
   Type_PrimitiveType,
@@ -26,19 +27,27 @@ import {
   ENDS_WITH_OVERLOAD,
   STARTS_WITH_OVERLOAD,
 } from '../../overloads';
-import { parseBytesConstant } from '../constants';
+import { parseBytes } from '../constants';
 import { formatCELType } from '../format';
 import { RefType, RefTypeEnum, RefVal } from '../ref/reference';
 import { BoolRefVal, boolValue } from './bool';
-import { bytesValue } from './bytes';
+import { BytesRefVal, bytesValue } from './bytes';
 import { isConstExpr } from './constant';
 import { DoubleRefVal, doubleValue } from './double';
-import { durationValue, parseISO8061DurationString } from './duration';
+import {
+  DurationRefVal,
+  durationValue,
+  parseISO8061DurationString,
+} from './duration';
 import { ErrorRefVal } from './error';
 import { IntRefVal, int64Value } from './int';
 import { NativeType } from './native';
 import { primitiveType } from './primitive';
-import { timestampValue } from './timestamp';
+import {
+  TimestampRefVal,
+  timestampFromDateString,
+  timestampValue,
+} from './timestamp';
 import { Comparer } from './traits/comparer';
 import { Matcher } from './traits/matcher';
 import { Adder } from './traits/math';
@@ -46,7 +55,7 @@ import { Receiver } from './traits/receiver';
 import { Sizer } from './traits/sizer';
 import { Trait } from './traits/trait';
 import { Zeroer } from './traits/zeroer';
-import { TypeRefVal } from './type';
+import { TypeValue } from './type';
 import { UintRefVal, uint64Value } from './uint';
 
 export const STRING_CEL_TYPE = primitiveType(Type_PrimitiveType.STRING);
@@ -126,8 +135,7 @@ export function convertStringValueToNative(value: Value, type: NativeType) {
     case String:
       return value.kind.value;
     case Uint8Array:
-      return parseBytesConstant(`b"${value.kind.value}"`).constantKind
-        .value as Uint8Array;
+      return parseBytes(`b"${value.kind.value}"`);
     case AnySchema:
       return anyPack(
         StringValueSchema,
@@ -155,10 +163,7 @@ export function convertStringValueToType(value: Value, type: Type) {
         case Type_PrimitiveType.BOOL:
           return boolValue(value.kind.value === 'true');
         case Type_PrimitiveType.BYTES:
-          return bytesValue(
-            parseBytesConstant(`b"${value.kind.value}"`).constantKind
-              .value as Uint8Array
-          );
+          return bytesValue(parseBytes(`b"${value.kind.value}"`));
         case Type_PrimitiveType.DOUBLE:
           return doubleValue(parseFloat(value.kind.value));
         case Type_PrimitiveType.INT64:
@@ -324,26 +329,7 @@ export function sizeStringValue(value: Value) {
   return int64Value(BigInt(value.kind.value.length));
 }
 
-export class StringRefType implements RefType {
-  // This has to be a TS private field instead of a # private field because
-  // otherwise the tests will not be able to access it to check for equality.
-  // TODO: do we want to alter the tests to use the getter instead?
-  readonly _traits = STRING_TRAITS;
-
-  celType(): Type {
-    return STRING_CEL_TYPE;
-  }
-
-  hasTrait(trait: Trait): boolean {
-    return this._traits.has(trait);
-  }
-
-  typeName(): string {
-    return RefTypeEnum.STRING;
-  }
-}
-
-export const STRING_REF_TYPE = new StringRefType();
+export const STRING_REF_TYPE = new TypeValue(RefTypeEnum.STRING, STRING_TRAITS);
 
 export class StringRefVal
   implements RefVal, Adder, Comparer, Matcher, Receiver, Sizer, Zeroer
@@ -399,8 +385,7 @@ export class StringRefVal
       case String:
         return this._value;
       case Uint8Array:
-        return parseBytesConstant(`b"${this._value}"`).constantKind
-          .value as Uint8Array;
+        return parseBytes(`b"${this._value}"`);
       case AnySchema:
         return anyPack(
           StringValueSchema,
@@ -417,14 +402,28 @@ export class StringRefVal
     switch (type.typeName()) {
       case RefTypeEnum.BOOL:
         return new BoolRefVal(this._value === 'true');
+      case RefTypeEnum.BYTES:
+        return new BytesRefVal(parseBytes(`b"${this._value}"`));
       case RefTypeEnum.DOUBLE:
         return new DoubleRefVal(parseFloat(this._value));
+      case RefTypeEnum.DURATION:
+        const duration = parseISO8061DurationString(this._value.toUpperCase());
+        if (duration instanceof Error) {
+          return ErrorRefVal.errDurationOutOfRange;
+        }
+        return new DurationRefVal(duration);
       case RefTypeEnum.INT:
         return new IntRefVal(BigInt(parseInt(this._value, 10)));
       case RefTypeEnum.STRING:
         return new StringRefVal(this._value);
+      case RefTypeEnum.TIMESTAMP:
+        const ts = timestampFromDateString(this._value);
+        if (isNil(ts)) {
+          return ErrorRefVal.errTimestampOutOfRange;
+        }
+        return new TimestampRefVal(ts);
       case RefTypeEnum.TYPE:
-        return new TypeRefVal(STRING_REF_TYPE);
+        return STRING_REF_TYPE;
       case RefTypeEnum.UINT:
         return new UintRefVal(BigInt(parseInt(this._value, 10)));
       // TODO: implement other conversions

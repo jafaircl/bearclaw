@@ -15,7 +15,7 @@ import {
 import { ErrorRefVal } from './error';
 import { IntRefVal } from './int';
 import { STRING_REF_TYPE, StringRefVal } from './string';
-import { TYPE_REF_TYPE, TypeRefVal } from './type';
+import { TYPE_REF_TYPE } from './type';
 
 describe('bool', () => {
   it('boolConstant', () => {
@@ -95,9 +95,7 @@ describe('bool', () => {
     expect(value.convertToType(STRING_REF_TYPE)).toStrictEqual(
       new StringRefVal('true')
     );
-    expect(value.convertToType(TYPE_REF_TYPE)).toStrictEqual(
-      new TypeRefVal(BOOL_REF_TYPE)
-    );
+    expect(value.convertToType(TYPE_REF_TYPE)).toStrictEqual(BOOL_REF_TYPE);
   });
 
   it('equalBoolValue', () => {

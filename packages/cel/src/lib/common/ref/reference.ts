@@ -1,7 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { isFunction } from '@bearclaw/is';
-import { Type } from '@buf/google_cel-spec.bufbuild_es/cel/expr/checked_pb';
-import { Value } from '@buf/google_cel-spec.bufbuild_es/cel/expr/value_pb';
 import { NativeType } from '../types/native';
 import { Trait } from '../types/traits/trait';
 
@@ -28,10 +26,6 @@ export enum RefTypeEnum {
  */
 export interface RefType {
   /**
-   * CelType returns the CEL type of the type.
-   */
-  celType(): Type;
-  /**
    * HasTrait returns whether the type has a given trait associated with it.
    *
    * See common/types/traits/traits.ts for a list of supported traits.
@@ -57,11 +51,6 @@ export function isRefType(value: any): value is RefType {
  * addition of traits.
  */
 export interface RefVal {
-  /**
-   * CelValue returns the CEL value of the value.
-   */
-  celValue(): Value;
-
   /**
    * ConvertToNative converts the Value to a native JS object according to the
    * reflected type description, or error if the conversion is not feasible.

@@ -5,7 +5,7 @@ import {
 import { create } from '@bufbuild/protobuf';
 import { Empty, EmptySchema } from '@bufbuild/protobuf/wkt';
 
-export const DYN_TYPE = create(TypeSchema, {
+export const DYN_CEL_TYPE = create(TypeSchema, {
   typeKind: {
     case: 'dyn',
     value: create(EmptySchema),

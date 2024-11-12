@@ -13,10 +13,10 @@ import { Sizer, isSizer } from './sizer';
 export interface Lister
   extends RefVal,
     Adder,
-    Sizer,
     Container,
     Indexer,
-    Iterable {}
+    Iterable,
+    Sizer {}
 
 export function isLister(value: any): value is Lister {
   return (

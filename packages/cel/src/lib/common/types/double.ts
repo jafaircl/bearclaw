@@ -34,7 +34,7 @@ import { Comparer } from './traits/comparer';
 import { Adder, Divider, Multiplier, Negater, Subtractor } from './traits/math';
 import { Trait } from './traits/trait';
 import { Zeroer } from './traits/zeroer';
-import { TypeRefVal } from './type';
+import { TypeValue } from './type';
 import { UintRefVal, isValidUint64, uint64Value } from './uint';
 
 export const DOUBLE_CEL_TYPE = primitiveType(Type_PrimitiveType.DOUBLE);
@@ -285,26 +285,7 @@ export function subtractDoubleValue(value: Value, other: Value) {
   return doubleValue(value.kind.value - Number(other.kind.value));
 }
 
-export class DoubleRefType implements RefType {
-  // This has to be a TS private field instead of a # private field because
-  // otherwise the tests will not be able to access it to check for equality.
-  // TODO: do we want to alter the tests to use the getter instead?
-  readonly _traits = DOUBLE_TRAITS;
-
-  celType(): Type {
-    return DOUBLE_CEL_TYPE;
-  }
-
-  hasTrait(trait: Trait): boolean {
-    return this._traits.has(trait);
-  }
-
-  typeName(): string {
-    return RefTypeEnum.DOUBLE;
-  }
-}
-
-export const DOUBLE_REF_TYPE = new DoubleRefType();
+export const DOUBLE_REF_TYPE = new TypeValue(RefTypeEnum.DOUBLE, DOUBLE_TRAITS);
 
 export class DoubleRefVal
   implements
@@ -365,7 +346,7 @@ export class DoubleRefVal
       case RefTypeEnum.STRING:
         return new StringRefVal(this._value.toString());
       case RefTypeEnum.TYPE:
-        return new TypeRefVal(DOUBLE_REF_TYPE);
+        return DOUBLE_REF_TYPE;
       case RefTypeEnum.UINT:
         if (
           Number.isNaN(this.value()) ||

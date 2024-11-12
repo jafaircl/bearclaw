@@ -8,11 +8,11 @@ import { functionDecl, overloadDecl } from '../common/decls/function-decl';
 import { BOOL_CEL_TYPE, boolExpr } from '../common/types/bool';
 import { callExpr } from '../common/types/call';
 import { comprehensionExpr } from '../common/types/comprehension';
-import { DYN_TYPE } from '../common/types/dyn';
-import { identExpr, unwrapIdentExpr } from '../common/types/ident';
+import { DYN_CEL_TYPE } from '../common/types/dyn';
+import { identExpr, isIdentExpr, unwrapIdentExpr } from '../common/types/ident';
 import { int64Expr } from '../common/types/int';
 import { listExpr } from '../common/types/list';
-import { selectExpr } from '../common/types/select';
+import { isSelectExpr, selectExpr } from '../common/types/select';
 import {
   ADD_OPERATOR,
   ALL_MACRO,
@@ -37,7 +37,7 @@ export const STANDARD_MACRO_DECLARATIONS = new Set([
     overloads: [
       overloadDecl({
         isInstanceFunction: false,
-        params: [DYN_TYPE],
+        params: [DYN_CEL_TYPE],
         resultType: BOOL_CEL_TYPE,
       }),
     ],
@@ -48,7 +48,7 @@ export const STANDARD_MACRO_DECLARATIONS = new Set([
     overloads: [
       overloadDecl({
         isInstanceFunction: true,
-        params: [DYN_TYPE, DYN_TYPE],
+        params: [DYN_CEL_TYPE, DYN_CEL_TYPE],
         resultType: BOOL_CEL_TYPE,
       }),
     ],
@@ -59,7 +59,7 @@ export const STANDARD_MACRO_DECLARATIONS = new Set([
     overloads: [
       overloadDecl({
         isInstanceFunction: true,
-        params: [DYN_TYPE, DYN_TYPE],
+        params: [DYN_CEL_TYPE, DYN_CEL_TYPE],
         resultType: BOOL_CEL_TYPE,
       }),
     ],
@@ -70,7 +70,7 @@ export const STANDARD_MACRO_DECLARATIONS = new Set([
     overloads: [
       overloadDecl({
         isInstanceFunction: true,
-        params: [DYN_TYPE, DYN_TYPE],
+        params: [DYN_CEL_TYPE, DYN_CEL_TYPE],
         resultType: BOOL_CEL_TYPE,
       }),
     ],
@@ -81,8 +81,8 @@ export const STANDARD_MACRO_DECLARATIONS = new Set([
     overloads: [
       overloadDecl({
         isInstanceFunction: true,
-        params: [DYN_TYPE, DYN_TYPE],
-        resultType: DYN_TYPE,
+        params: [DYN_CEL_TYPE, DYN_CEL_TYPE],
+        resultType: DYN_CEL_TYPE,
       }),
     ],
   }),
@@ -97,8 +97,8 @@ export const STANDARD_MACRO_DECLARATIONS = new Set([
     overloads: [
       overloadDecl({
         isInstanceFunction: true,
-        params: [DYN_TYPE, DYN_TYPE],
-        resultType: DYN_TYPE,
+        params: [DYN_CEL_TYPE, DYN_CEL_TYPE],
+        resultType: DYN_CEL_TYPE,
       }),
     ],
   }),
@@ -144,7 +144,7 @@ export function expandHasMacro(
   args: Expr[]
 ): Expr {
   const arg = args[0];
-  if (arg.exprKind.case !== 'selectExpr') {
+  if (!isSelectExpr(arg)) {
     throw new MacroError('invalid argument to has() macro', ctx, arg);
   }
   return selectExpr(helper.nextId(ctx), {
@@ -161,7 +161,7 @@ export function expandAllMacro(
   args: Expr[]
 ): Expr {
   const arg0 = args[0];
-  if (arg0.exprKind.case !== 'identExpr') {
+  if (!isIdentExpr(arg0)) {
     throw new MacroError('argument must be a simple name', ctx, arg0);
   }
   const arg1 = args[1];
@@ -197,7 +197,7 @@ export function expandExistsMacro(
   args: Expr[]
 ): Expr {
   const arg0 = args[0];
-  if (arg0.exprKind.case !== 'identExpr') {
+  if (!isIdentExpr(arg0)) {
     throw new MacroError('argument must be a simple name', ctx, arg0);
   }
   const arg1 = args[1];
@@ -237,7 +237,7 @@ export function expandExistsOneMacro(
   args: Expr[]
 ): Expr {
   const arg0 = args[0];
-  if (arg0.exprKind.case !== 'identExpr') {
+  if (!isIdentExpr(arg0)) {
     throw new MacroError('argument must be a simple name', ctx, arg0);
   }
   const arg1 = args[1];
@@ -280,6 +280,13 @@ export function expandMapMacro(
   const v = unwrapIdentExpr(args[0]);
   if (isNil(v)) {
     throw new MacroError('argument is not an identifier', ctx, args[0]);
+  }
+  if (v.name === ACCUMULATOR_VAR) {
+    throw new MacroError(
+      'iteration variable overwrites accumulator variable',
+      ctx,
+      args[0]
+    );
   }
   let fn: Expr | null = null;
   let filter: Expr | null = null;
@@ -325,6 +332,13 @@ export function expandFilterMacro(
   const v = unwrapIdentExpr(args[0]);
   if (isNil(v)) {
     throw new MacroError('argument is not an identifier', ctx, args[0]);
+  }
+  if (v.name === ACCUMULATOR_VAR) {
+    throw new MacroError(
+      'iteration variable overwrites accumulator variable',
+      ctx,
+      args[0]
+    );
   }
   const filter = args[1];
   const listInit = listExpr(helper.nextId(ctx), {});

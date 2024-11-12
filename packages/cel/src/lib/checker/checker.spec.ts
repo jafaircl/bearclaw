@@ -27,13 +27,13 @@ import { abstractType } from '../common/types/abstract';
 import { BOOL_CEL_TYPE } from '../common/types/bool';
 import { BYTES_CEL_TYPE } from '../common/types/bytes';
 import { DOUBLE_CEL_TYPE } from '../common/types/double';
-import { DYN_TYPE } from '../common/types/dyn';
+import { DYN_CEL_TYPE } from '../common/types/dyn';
 import { ERROR_TYPE } from '../common/types/error';
 import { INT_CEL_TYPE } from '../common/types/int';
 import { listType } from '../common/types/list';
 import { mapType } from '../common/types/map';
 import { messageType } from '../common/types/message';
-import { NULL_TYPE } from '../common/types/null';
+import { NULL_CEL_TYPE } from '../common/types/null';
 import { nullableType } from '../common/types/nullable';
 import { ABSTRACT_OPTIONAL_TYPE, optionalType } from '../common/types/optional';
 import { STRING_CEL_TYPE } from '../common/types/string';
@@ -91,7 +91,7 @@ function getDefaultEnv() {
     identDecl('iz', { type: BOOL_CEL_TYPE }),
     identDecl('ib', { type: BYTES_CEL_TYPE }),
     identDecl('id', { type: DOUBLE_CEL_TYPE }),
-    identDecl('ix', { type: NULL_TYPE })
+    identDecl('ix', { type: NULL_CEL_TYPE })
   );
   env.addFunctions(
     ...STANDARD_FUNCTION_DECLARATIONS,
@@ -189,7 +189,7 @@ const testCases: TestInfo[] = [
   {
     in: `null`,
     out: `null~null`,
-    outType: NULL_TYPE,
+    outType: NULL_CEL_TYPE,
   },
   {
     in: `b"ABC"`,
@@ -230,7 +230,7 @@ const testCases: TestInfo[] = [
   {
     in: `ix`,
     out: `ix~null^ix`,
-    outType: NULL_TYPE,
+    outType: NULL_CEL_TYPE,
     env: getDefaultEnv(),
   },
   {
@@ -248,7 +248,7 @@ const testCases: TestInfo[] = [
   {
     in: `[]`,
     out: `[]~list(dyn)`,
-    outType: listType({ elemType: DYN_TYPE }),
+    outType: listType({ elemType: DYN_CEL_TYPE }),
   },
   {
     in: `[1]`,
@@ -258,7 +258,7 @@ const testCases: TestInfo[] = [
   {
     in: `[1, "A"]`,
     out: `[1~int, "A"~string]~list(dyn)`,
-    outType: listType({ elemType: DYN_TYPE }),
+    outType: listType({ elemType: DYN_CEL_TYPE }),
   },
   {
     in: `foo`,
@@ -320,7 +320,7 @@ _+_(
       ]~list(dyn),
       []~list(dyn)
   )~list(dyn)^add_list`,
-    outType: listType({ elemType: DYN_TYPE }),
+    outType: listType({ elemType: DYN_CEL_TYPE }),
   },
   {
     in: `{1:2u, 2:3u}`,
@@ -334,7 +334,7 @@ _+_(
   },
   {
     in: `{1:2u, 2u:3}`,
-    outType: mapType({ keyType: DYN_TYPE, valueType: DYN_TYPE }),
+    outType: mapType({ keyType: DYN_CEL_TYPE, valueType: DYN_CEL_TYPE }),
     out: `{1~int : 2u~uint, 2u~uint : 3~int}~map(dyn, dyn)`,
   },
   {
@@ -524,7 +524,7 @@ ERROR: <input>:1:2: unexpected failed resolution of 'google.api.expr.test.v1.pro
           )~dyn^index_map
         )~dyn^add_bytes|add_double|add_duration_duration|add_duration_timestamp|add_int64|add_list|add_string|add_timestamp_duration|add_uint64
         `,
-    outType: DYN_TYPE,
+    outType: DYN_CEL_TYPE,
   },
   {
     in: `TestAllTypes.NestedEnum.BAR != 99`,
@@ -1156,9 +1156,9 @@ ERROR: <input>:1:1: found no matching overload for '_&&_' applied to '(bool, int
       )~list(dyn)^conditional,
       // Result
       __result__~list(dyn)^__result__)~list(dyn)`,
-    outType: listType({ elemType: DYN_TYPE }),
+    outType: listType({ elemType: DYN_CEL_TYPE }),
     env: extendEnv(getDefaultEnv(), {
-      idents: [identDecl('lists', { type: DYN_TYPE })],
+      idents: [identDecl('lists', { type: DYN_CEL_TYPE })],
     }),
   },
   // TODO: incorrect outType
@@ -1198,7 +1198,7 @@ ERROR: <input>:1:5: undeclared reference to 'x' (in container '')
   //     || x >= x`,
   //     env: extendEnv(getDefaultEnv(), {
   //       idents: [
-  //         identDecl('x', { type: ANY_TYPE }),
+  //         identDecl('x', { type: ANY_WKT_CEL_TYPE }),
   //         identDecl('y', { type: nullableType(INT_CEL_TYPE) }),
   //       ],
   //     }),
@@ -1245,7 +1245,7 @@ ERROR: <input>:1:5: undeclared reference to 'x' (in container '')
   //     || x >= x`,
   //     env: extendEnv(getDefaultEnv(), {
   //       idents: [
-  //         identDecl('x', { type: ANY_TYPE }),
+  //         identDecl('x', { type: ANY_WKT_CEL_TYPE }),
   //         identDecl('y', { type: nullableType(INT_CEL_TYPE) }),
   //       ],
   //     }),
@@ -1455,7 +1455,7 @@ _!=_(
     )~list(dyn)^add_list,
     3~int
 )~dyn^index_list`,
-    outType: DYN_TYPE,
+    outType: DYN_CEL_TYPE,
   },
   {
     in: `[1] + [dyn('string')]`,
@@ -1469,7 +1469,7 @@ _!=_(
         )~dyn^to_dyn
     ]~list(dyn)
 )~list(dyn)^add_list`,
-    outType: listType({ elemType: DYN_TYPE }),
+    outType: listType({ elemType: DYN_CEL_TYPE }),
   },
   {
     in: `[dyn('string')] + [1]`,
@@ -1483,7 +1483,7 @@ _!=_(
         1~int
     ]~list(int)
 )~list(dyn)^add_list`,
-    outType: listType({ elemType: DYN_TYPE }),
+    outType: listType({ elemType: DYN_CEL_TYPE }),
   },
   // TODO; this one throws the correct error and points to the right spot but the argTypes are (_var2, _var0) instead of (list(dyn), dyn)
   //   {
@@ -1528,11 +1528,11 @@ _!=_(
     env: extendEnv(getDefaultEnv(), {
       idents: [
         identDecl('args', {
-          type: mapType({ keyType: STRING_CEL_TYPE, valueType: DYN_TYPE }),
+          type: mapType({ keyType: STRING_CEL_TYPE, valueType: DYN_CEL_TYPE }),
         }),
       ],
     }),
-    outType: listType({ elemType: DYN_TYPE }),
+    outType: listType({ elemType: DYN_CEL_TYPE }),
   },
   {
     in: `a.b + 1 == a[0]`,
@@ -1672,7 +1672,7 @@ google.api.expr.test.v1.proto2.TestAllTypes.repeated_nested_message
   {
     in: `{}`,
     out: `{}~map(dyn, dyn)`,
-    outType: mapType({ keyType: DYN_TYPE, valueType: DYN_TYPE }),
+    outType: mapType({ keyType: DYN_CEL_TYPE, valueType: DYN_CEL_TYPE }),
   },
   {
     in: `set([1, 2, 3])`,
@@ -2279,11 +2279,11 @@ _==_(
     env: extendEnv(getDefaultEnv(), {
       idents: [
         identDecl('a', {
-          type: optionalType(DYN_TYPE),
+          type: optionalType(DYN_CEL_TYPE),
         }),
       ],
     }),
-    outType: optionalType(DYN_TYPE),
+    outType: optionalType(DYN_CEL_TYPE),
     out: `a~optional_type(dyn)^a.dynamic~optional_type(dyn)`,
   },
   {
@@ -2291,7 +2291,7 @@ _==_(
     env: extendEnv(getDefaultEnv(), {
       idents: [
         identDecl('a', {
-          type: optionalType(DYN_TYPE),
+          type: optionalType(DYN_CEL_TYPE),
         }),
       ],
     }),
@@ -2306,7 +2306,7 @@ _==_(
           type: optionalType(
             mapType({
               keyType: STRING_CEL_TYPE,
-              valueType: DYN_TYPE,
+              valueType: DYN_CEL_TYPE,
             })
           ),
         }),
@@ -2495,7 +2495,7 @@ _==_(
           )~list(list(dyn))^add_list,
           // Result
           __result__~list(list(dyn))^__result__)~list(list(dyn))`,
-    outType: listType({ elemType: listType({ elemType: DYN_TYPE }) }),
+    outType: listType({ elemType: listType({ elemType: DYN_CEL_TYPE }) }),
   },
 ];
 

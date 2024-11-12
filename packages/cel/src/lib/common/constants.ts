@@ -648,7 +648,7 @@ export function parseStringConstant(text: string) {
   });
 }
 
-export function parseBytesConstant(text: string) {
+export function parseBytes(text: string) {
   let isRawLiteral = false;
   let offset = 0;
 
@@ -711,10 +711,15 @@ export function parseBytesConstant(text: string) {
   const buffer = new DecodeByteStringBuffer(text.length);
   decodeString(offset, text, buffer, isRawLiteral, true);
 
+  return buffer.toDecodedValue().toUint8Array();
+}
+
+export function parseBytesConstant(text: string) {
+  const bytes = parseBytes(text);
   return create(ConstantSchema, {
     constantKind: {
       case: 'bytesValue',
-      value: buffer.toDecodedValue().toUint8Array(),
+      value: bytes,
     },
   });
 }
