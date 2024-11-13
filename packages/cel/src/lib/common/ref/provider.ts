@@ -1,6 +1,6 @@
 import { Type } from '@buf/google_cel-spec.bufbuild_es/cel/expr/checked_pb.js';
-import { Value } from '@buf/google_cel-spec.bufbuild_es/cel/expr/value_pb.js';
 import { FieldType } from './field-type';
+import { RefVal } from './reference';
 
 /**
  * TypeProvider specifies functions for creating new object instances and for
@@ -10,13 +10,13 @@ export interface TypeProvider {
   /**
    * EnumValue returns the numeric value of the given enum value name.
    */
-  enumValue(enumName: string): Value | Error;
+  enumValue(enumName: string): RefVal;
 
   /**
    * FindIdent takes a qualified identifier name and returns a Value if one
    * exists.
    */
-  findIdent(identName: string): Value | null;
+  findIdent(identName: string): RefVal;
 
   /**
    * FindType looks up the Type given a qualified typeName. Returns null if
@@ -42,5 +42,5 @@ export interface TypeProvider {
    * convert the Val to the field's native type. If an error occurs during
    * conversion, the NewValue will be an Error.
    */
-  newValue(typeName: string, fields: Record<string, Value>): Value | Error;
+  newValue(typeName: string, fields: Record<string, RefVal>): RefVal;
 }

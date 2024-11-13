@@ -24,7 +24,7 @@ export enum RefTypeEnum {
 /**
  * Type interface indicate the name of a given type.
  */
-export interface RefType {
+export interface RefType extends RefVal {
   /**
    * HasTrait returns whether the type has a given trait associated with it.
    *
@@ -42,7 +42,9 @@ export interface RefType {
 }
 
 export function isRefType(value: any): value is RefType {
-  return isFunction(value.hasTrait) && isFunction(value.typeName);
+  return (
+    isFunction(value.hasTrait) && isFunction(value.typeName) && isRefVal(value)
+  );
 }
 
 /**

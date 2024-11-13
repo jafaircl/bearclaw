@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Type } from '@buf/google_cel-spec.bufbuild_es/cel/expr/checked_pb';
 import { TypeAdapter } from './adapter';
 import { TypeProvider } from './provider';
+import { RefType } from './reference';
 
 /**
  * TypeRegistry allows third-parties to add custom types to CEL. Not all
@@ -30,5 +30,5 @@ export interface TypeRegistry extends TypeProvider, TypeAdapter {
    * If a type is provided more than once with an alternative definition, the
    * call will result in an error.
    */
-  registerType(...types: Type[]): void;
+  registerType(...types: RefType[]): void;
 }

@@ -9,8 +9,8 @@ import {
 } from '../common/decls/function-decl';
 import { identDecl } from '../common/decls/ident-decl';
 import { TypeProvider } from '../common/ref/provider';
+import { RefTypeEnum } from '../common/ref/reference';
 import { DYN_CEL_TYPE } from '../common/types/dyn';
-import { unwrapEnumValue } from '../common/types/enum';
 import { INT_CEL_TYPE, int64Constant } from '../common/types/int';
 import { LESS_DOUBLE_INT64_OVERLOAD } from '../overloads';
 import { STANDARD_MACRO_DECLARATIONS } from '../parser/macros';
@@ -187,11 +187,10 @@ export class CheckerEnv {
       // Next try to import this as an enum value by splitting the name in a
       // type prefix and the enum inside.
       const enumValue = this.#provider.enumValue(candidate);
-      if (!(enumValue instanceof Error)) {
-        const unwrappedEnum = unwrapEnumValue(enumValue)!;
+      if (enumValue.type().typeName() !== RefTypeEnum.ERR) {
         const decl = identDecl(candidate, {
           type: INT_CEL_TYPE,
-          value: int64Constant(BigInt(unwrappedEnum.value)),
+          value: int64Constant(enumValue.value()),
         });
         this.#declarations.addIdent(decl);
         return decl;

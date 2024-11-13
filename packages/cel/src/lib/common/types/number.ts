@@ -1,8 +1,8 @@
 import { Value } from '@buf/google_cel-spec.bufbuild_es/cel/expr/value_pb.js';
 import { RefTypeEnum, RefVal } from '../ref/reference';
-import { isDoubleValue } from './double';
-import { isInt64Value } from './int';
-import { isUint64Value } from './uint';
+import { DoubleRefVal, isDoubleValue } from './double';
+import { IntRefVal, isInt64Value } from './int';
+import { isUint64Value, UintRefVal } from './uint';
 
 export function isNumberValue(value: Value): value is Value & {
   kind:
@@ -13,8 +13,9 @@ export function isNumberValue(value: Value): value is Value & {
   return isDoubleValue(value) || isInt64Value(value) || isUint64Value(value);
 }
 
-// TODO: type narrowing
-export function isNumberRefVal(value: RefVal) {
+export function isNumberRefVal(
+  value: RefVal
+): value is DoubleRefVal | IntRefVal | UintRefVal {
   switch (value.type().typeName()) {
     case RefTypeEnum.DOUBLE:
     case RefTypeEnum.INT:

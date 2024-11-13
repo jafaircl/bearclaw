@@ -1,49 +1,38 @@
 /* eslint-disable no-case-declarations */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { isEmpty, isNil } from '@bearclaw/is';
+import { Type } from '@buf/google_cel-spec.bufbuild_es/cel/expr/checked_pb.js';
 import {
-  Type,
-  TypeSchema,
-} from '@buf/google_cel-spec.bufbuild_es/cel/expr/checked_pb.js';
-import {
-  Value,
-  ValueSchema,
-} from '@buf/google_cel-spec.bufbuild_es/cel/expr/value_pb.js';
-import {
+  createMutableRegistry,
   DescEnum,
   DescMessage,
   MutableRegistry,
   Registry,
-  create,
-  createMutableRegistry,
-  isMessage,
 } from '@bufbuild/protobuf';
-import { formatCELType } from '../format';
 import { FieldType } from '../ref/field-type';
+import { isRefType, RefType, RefTypeEnum, RefVal } from '../ref/reference';
 import { STANDARD_DESCRIPTORS } from '../standard';
-import { BOOL_CEL_TYPE, isBoolValue } from '../types/bool';
-import { BYTES_CEL_TYPE } from '../types/bytes';
-import { DOUBLE_CEL_TYPE } from '../types/double';
-import { enumValue } from '../types/enum';
-import { INT_CEL_TYPE } from '../types/int';
-import { LIST_CEL_TYPE } from '../types/list';
-import { MAP_TYPE } from '../types/map';
+import { BOOL_REF_TYPE, isBoolValue } from '../types/bool';
+import { BYTES_REF_TYPE } from '../types/bytes';
+import { DOUBLE_REF_TYPE } from '../types/double';
+import { DURATION_REF_TYPE } from '../types/duration';
+import { ErrorRefVal } from '../types/error';
+import { INT_CEL_TYPE, INT_REF_TYPE, IntRefVal } from '../types/int';
 import { messageType } from '../types/message';
-import { NULL_CEL_TYPE } from '../types/null';
-import { STRING_CEL_TYPE } from '../types/string';
+import { NULL_REF_TYPE, NullRefVal } from '../types/null';
+import { STRING_REF_TYPE } from '../types/string';
+import { TIMESTAMP_REF_TYPE } from '../types/timestamp';
 import { isZeroValue } from '../types/traits/zeroer';
-import { TYPE_TYPE } from '../types/type';
-import { UINT_CEL_TYPE } from '../types/uint';
+import { TYPE_REF_TYPE } from '../types/type';
+import { UINT_REF_TYPE } from '../types/uint';
 import { getFieldDescriptorType } from '../types/utils';
-import { valueOf } from '../types/value';
-import { DURATION_WKT_CEL_TYPE, TIMESTAMP_WKT_CEL_TYPE } from '../types/wkt';
 import { TypeRegistry } from './../ref/registry';
 
 export class ProtoTypeRegistry implements TypeRegistry {
-  readonly #refTypeMap = new Map<string, Type>();
+  readonly #refTypeMap = new Map<string, RefType>();
   readonly #registry: MutableRegistry;
 
-  constructor(typeMap: Map<string, Type> = new Map(), registry?: Registry) {
+  constructor(typeMap: Map<string, RefType> = new Map(), registry?: Registry) {
     this.#registry = createMutableRegistry(...STANDARD_DESCRIPTORS);
     if (!isNil(registry)) {
       for (const r of registry) {
@@ -51,18 +40,19 @@ export class ProtoTypeRegistry implements TypeRegistry {
       }
     }
     this.registerType(
-      BOOL_CEL_TYPE,
-      BYTES_CEL_TYPE,
-      DOUBLE_CEL_TYPE,
-      DURATION_WKT_CEL_TYPE,
-      INT_CEL_TYPE,
-      LIST_CEL_TYPE,
-      MAP_TYPE,
-      NULL_CEL_TYPE,
-      STRING_CEL_TYPE,
-      TIMESTAMP_WKT_CEL_TYPE,
-      TYPE_TYPE,
-      UINT_CEL_TYPE
+      BOOL_REF_TYPE,
+      BYTES_REF_TYPE,
+      DOUBLE_REF_TYPE,
+      DURATION_REF_TYPE,
+      INT_REF_TYPE,
+      // TODO: list and map
+      // LIST_CEL_TYPE,
+      // MAP_TYPE,
+      NULL_REF_TYPE,
+      STRING_REF_TYPE,
+      TIMESTAMP_REF_TYPE,
+      TYPE_REF_TYPE,
+      UINT_REF_TYPE
     );
     for (const [k, v] of typeMap) {
       this.#refTypeMap.set(k, v);
@@ -73,46 +63,42 @@ export class ProtoTypeRegistry implements TypeRegistry {
     return new ProtoTypeRegistry(this.#refTypeMap, this.#registry);
   }
 
-  register(t: Type | DescEnum | DescMessage): void {
-    if (isMessage(t, TypeSchema)) {
+  register(t: RefType | DescEnum | DescMessage): void {
+    if (isRefType(t)) {
       this.registerType(t);
     } else {
       this.#registry.add(t);
     }
   }
 
-  registerType(...types: Type[]): void {
+  registerType(...types: RefType[]): void {
     for (const type of types) {
-      this.#refTypeMap.set(formatCELType(type), type);
+      this.#refTypeMap.set(type.typeName(), type);
     }
   }
 
   enumValue(enumName: string) {
     for (const desc of this.#registry) {
       if (desc.kind === 'enum') {
-        const v = desc.values.find((v) => v.name === enumName);
-        if (!isNil(v)) {
-          return enumValue(desc.typeName, v.number);
+        for (const value of desc.values) {
+          if (value.name === enumName) {
+            return new IntRefVal(BigInt(value.number));
+          }
         }
       }
     }
-    return new Error(`unknown enum name '${enumName}'`);
+    return new ErrorRefVal(`unknown enum name '${enumName}'`);
   }
 
   findIdent(identName: string) {
     if (this.#refTypeMap.has(identName)) {
-      return create(ValueSchema, {
-        kind: {
-          case: 'typeValue',
-          value: identName,
-        },
-      });
+      return this.#refTypeMap.get(identName)!;
     }
     const enumValue = this.enumValue(identName);
-    if (!(enumValue instanceof Error)) {
+    if (enumValue.type().typeName() === RefTypeEnum.INT) {
       return enumValue;
     }
-    return null;
+    return new NullRefVal();
   }
 
   findType(typeName: string): Type | null {
@@ -169,22 +155,16 @@ export class ProtoTypeRegistry implements TypeRegistry {
     }
   }
 
-  newValue(typeName: string, fields: Record<string, Value>): Value | Error {
+  newValue(typeName: string, fields: Record<string, RefVal>): RefVal {
     const type = this.#registry.getMessage(typeName);
     if (isNil(type)) {
-      return new Error(`unknown type '${typeName}'`);
+      return new ErrorRefVal(`unknown type '${typeName}'`);
     }
     // TODO: implement
-    return create(ValueSchema, {
-      kind: {
-        case: 'objectValue',
-        value: {},
-      },
-    });
+    return new ErrorRefVal('not implemented');
   }
 
   nativeToValue(value: any) {
-    // TODO: this is not correct
-    return valueOf(value);
+    return new ErrorRefVal('not implemented');
   }
 }

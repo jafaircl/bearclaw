@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { isMap, isNil, isPlainObject } from '@bearclaw/is';
+import { isFunction, isMap, isNil, isPlainObject } from '@bearclaw/is';
 import { objectToMap } from '../common/utils';
 import { ResolvedValue } from './resolved-value';
 
@@ -15,7 +15,7 @@ export interface Activation {
    * ResolveName returns a value from the activation by qualified name, or
    * false if the name could not be found.
    */
-  resolveName<T>(name: string): ResolvedValue<T> | null;
+  resolveName<T>(name: string): ResolvedValue<T>;
 
   /**
    * Parent returns the parent of the current activation, may be nil. If
@@ -43,41 +43,19 @@ export class MapActivation implements Activation {
     if (!this.#bindings.has(name)) {
       return ResolvedValue.ABSENT as ResolvedValue<T>;
     }
-    const obj: T = this.#bindings.get(name);
+    let obj: T = this.#bindings.get(name);
     if (isNil(obj)) {
       return ResolvedValue.NULL_VALUE as ResolvedValue<T>;
+    }
+    if (isFunction(obj)) {
+      obj = obj();
+      this.#bindings.set(name, obj);
     }
     return new ResolvedValue(obj, true);
   }
 
   public parent(): Activation | null {
     return null;
-  }
-}
-
-/**
- * FunctionActivation which implements Activation and a provider of named
- * values.
- */
-export class FunctionActivation implements Activation {
-  #provider: (name: string) => any;
-
-  constructor(provider: (name: string) => any) {
-    this.#provider = provider;
-  }
-
-  parent(): Activation | null {
-    return null;
-  }
-
-  resolveName<T>(name: string): ResolvedValue<T> | null {
-    const obj = this.#provider(name);
-    if (obj instanceof ResolvedValue) {
-      return obj;
-    } else if (isNil(obj)) {
-      return ResolvedValue.ABSENT as ResolvedValue<T>;
-    }
-    return new ResolvedValue(obj, true);
   }
 }
 
@@ -94,9 +72,9 @@ export class HierarchicalActivation implements Activation {
     this.#child = child;
   }
 
-  public resolveName<T>(name: string): ResolvedValue<T> | null {
+  public resolveName<T>(name: string): ResolvedValue<T> {
     const value = this.#child.resolveName<T>(name);
-    if (!isNil(value)) {
+    if (!isNil(value) && value.present === true) {
       return value;
     }
     return this.#parent.resolveName<T>(name);
@@ -131,16 +109,12 @@ export function newActivation(bindings: any) {
   }
   if (
     bindings instanceof MapActivation ||
-    bindings instanceof FunctionActivation ||
     bindings instanceof HierarchicalActivation
   ) {
     return bindings;
   }
   if (bindings instanceof Map || isPlainObject(bindings)) {
     return new MapActivation(bindings);
-  }
-  if (typeof bindings === 'function') {
-    return new FunctionActivation(bindings);
   }
   throw new Error(
     `activation input must be an activation or map[string]interface: got ${typeof bindings}`

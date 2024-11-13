@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Value } from '@buf/google_cel-spec.bufbuild_es/cel/expr/value_pb.js';
+import { RefVal } from './reference';
 
 /**
  * TypeAdapter converts native Go values of varying type and complexity to
@@ -9,5 +9,5 @@ export interface TypeAdapter {
   /**
    * NativeToValue converts the input `value` to a CEL `Value`.
    */
-  nativeToValue(value: any): Value | Error;
+  nativeToValue(value: any): RefVal;
 }

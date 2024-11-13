@@ -13,7 +13,7 @@ import { create } from '@bufbuild/protobuf';
 import { Empty, EmptySchema, anyPack } from '@bufbuild/protobuf/wkt';
 import { RefType, RefTypeEnum, RefVal } from '../ref/reference';
 import { NativeType } from './native';
-import { Trait } from './traits/trait';
+import { TypeValue } from './type';
 
 export const ERROR_TYPE = create(TypeSchema, {
   typeKind: {
@@ -35,31 +35,7 @@ export function unwrapErrorType(val: Type) {
   return null;
 }
 
-export class ErrorRefType implements RefType {
-  // This has to be a TS private field instead of a # private field because
-  // otherwise the tests will not be able to access it to check for equality.
-  // TODO: do we want to alter the tests to use the getter instead?
-  private readonly _traits = new Set<Trait>();
-
-  celType(): Type {
-    return create(TypeSchema, {
-      typeKind: {
-        case: 'error',
-        value: create(EmptySchema),
-      },
-    });
-  }
-
-  hasTrait(trait: Trait): boolean {
-    return this._traits.has(trait);
-  }
-
-  typeName(): string {
-    return RefTypeEnum.ERR;
-  }
-}
-
-export const ERROR_REF_TYPE = new ErrorRefType();
+export const ERROR_REF_TYPE = new TypeValue(RefTypeEnum.ERR);
 
 export class ErrorRefVal implements RefVal {
   // This has to be a TS private field instead of a # private field because
