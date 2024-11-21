@@ -1,13 +1,9 @@
-import {
-  AnySchema,
-  TimestampSchema,
-  anyPack,
-  timestampFromDate,
-} from '@bufbuild/protobuf/wkt';
+import { AnySchema, TimestampSchema, anyPack } from '@bufbuild/protobuf/wkt';
 import {
   TIMESTAMP_TO_DAY_OF_MONTH_ONE_BASED_OVERLOAD,
   TIMESTAMP_TO_DAY_OF_MONTH_ONE_BASED_WITH_TZ_OVERLOAD,
   TIMESTAMP_TO_DAY_OF_MONTH_ZERO_BASED_OVERLOAD,
+  TIMESTAMP_TO_DAY_OF_MONTH_ZERO_BASED_WITH_TZ_OVERLOAD,
   TIMESTAMP_TO_DAY_OF_WEEK_OVERLOAD,
   TIMESTAMP_TO_DAY_OF_WEEK_WITH_TZ_OVERLOAD,
   TIMESTAMP_TO_DAY_OF_YEAR_OVERLOAD,
@@ -18,6 +14,7 @@ import {
   TIMESTAMP_TO_MILLISECONDS_WITH_TZ_OVERLOAD,
   TIMESTAMP_TO_MINUTES_OVERLOAD,
   TIMESTAMP_TO_MINUTES_WITH_TZ_OVERLOAD,
+  TIMESTAMP_TO_MONTH_OVERLOAD,
   TIMESTAMP_TO_MONTH_WITH_TZ_OVERLOAD,
   TIMESTAMP_TO_SECONDS_OVERLOAD,
   TIMESTAMP_TO_SECONDS_WITH_TZ_OVERLOAD,
@@ -33,42 +30,29 @@ import {
   TIME_GET_MINUTES_OVERLOAD,
   TIME_GET_MONTH_OVERLOAD,
   TIME_GET_SECONDS_OVERLOAD,
-} from '../../overloads';
-import {
-  TIMESTAMP_TO_DAY_OF_MONTH_ZERO_BASED_WITH_TZ_OVERLOAD,
-  TIMESTAMP_TO_MONTH_OVERLOAD,
-} from './../../overloads';
-import { BOOL_REF_TYPE, BoolRefVal } from './bool';
+} from '../overloads';
+import { BoolRefVal } from './bool';
 import { DurationRefVal, duration } from './duration';
 import { ErrorRefVal } from './error';
-import { INT_REF_TYPE, IntRefVal, MAX_INT64, MIN_INT64 } from './int';
-import { objectValue } from './object';
-import { STRING_REF_TYPE, StringRefVal } from './string';
+import { IntRefVal, MAX_INT64, MIN_INT64 } from './int';
+import { StringRefVal } from './string';
 import {
   MAX_UNIX_TIME,
   MIN_UNIX_TIME,
-  TIMESTAMP_REF_TYPE,
   TimestampRefVal,
-  isTimestampValue,
   timestamp,
   timestampFromDateString,
   timestampToDateString,
-  timestampValue,
-  unwrapTimestampValue,
 } from './timestamp';
-import { TYPE_REF_TYPE } from './type';
+import {
+  BoolType,
+  IntType,
+  StringType,
+  TimestampType,
+  TypeType,
+} from './types';
 
 describe('timestamp', () => {
-  it('timestampValue', () => {
-    const now = new Date();
-    const value = timestampValue(timestampFromDate(now));
-    expect(value).toEqual(
-      objectValue(anyPack(TimestampSchema, timestampFromDate(now)))
-    );
-    expect(isTimestampValue(value)).toBe(true);
-    expect(unwrapTimestampValue(value)).toEqual(timestampFromDate(now));
-  });
-
   it('timestampFromDateString', () => {
     // Iso8601 without timezone
     expect(timestampFromDateString('2011-10-05T14:48:00.000Z')).toStrictEqual(
@@ -150,30 +134,30 @@ describe('timestamp', () => {
     const tests = [
       {
         value: new TimestampRefVal(timestamp(BigInt(42))),
-        type: TIMESTAMP_REF_TYPE,
+        type: TimestampType,
         want: new TimestampRefVal(timestamp(BigInt(42))),
       },
       {
         value: new TimestampRefVal(timestamp(BigInt(8593))),
-        type: TYPE_REF_TYPE,
-        want: TIMESTAMP_REF_TYPE,
+        type: TypeType,
+        want: TimestampType,
       },
       {
         value: new TimestampRefVal(timestamp(BigInt(2345))),
-        type: INT_REF_TYPE,
+        type: IntType,
         want: new IntRefVal(BigInt(2345)),
       },
       {
         value: new TimestampRefVal(timestamp(BigInt(5398475), 234)),
-        type: STRING_REF_TYPE,
+        type: StringType,
         want: new StringRefVal('1970-03-04T11:34:35.000000234Z'),
       },
       {
         value: new TimestampRefVal(timestamp(BigInt(42))),
-        type: BOOL_REF_TYPE,
+        type: BoolType,
         want: ErrorRefVal.typeConversionError(
           new TimestampRefVal(timestamp(BigInt(42))),
-          BOOL_REF_TYPE
+          BoolType
         ),
       },
     ];
@@ -365,7 +349,9 @@ describe('timestamp', () => {
   });
 
   it('isZeroTimestampValue', () => {
-    expect(new TimestampRefVal(timestamp()).isZeroValue()).toStrictEqual(true);
+    expect(
+      new TimestampRefVal(timestamp(BigInt(0))).isZeroValue()
+    ).toStrictEqual(true);
     expect(new TimestampRefVal(timestamp(BigInt(42))).isZeroValue()).toEqual(
       false
     );

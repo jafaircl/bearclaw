@@ -19,7 +19,7 @@ export function isIterable(value: any): value is Iterable {
 /**
  * Iterator permits safe traversal over the contents of an aggregate type.
  */
-export interface Iterator extends RefVal {
+export interface Iterator {
   /**
    * HasNext returns true if there are unvisited elements in the Iterator.
    */
@@ -28,7 +28,7 @@ export interface Iterator extends RefVal {
   /**
    * Next returns the next element.
    */
-  next(): RefVal;
+  next(): RefVal | null;
 }
 
 export function isIterator(value: any): value is Iterator {

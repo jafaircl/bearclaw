@@ -1,19 +1,13 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { isNil } from '@bearclaw/is';
-import { Decl } from '@buf/google_cel-spec.bufbuild_es/cel/expr/checked_pb';
 import { dequal } from 'dequal';
-import { CELContainer } from '../common/container';
+import { Container } from '../common/container';
 import {
-  mergeFunctionDecls,
-  unwrapFunctionDecl,
-} from '../common/decls/function-decl';
-import { identDecl } from '../common/decls/ident-decl';
-import { TypeProvider } from '../common/ref/provider';
-import { RefTypeEnum } from '../common/ref/reference';
-import { DYN_CEL_TYPE } from '../common/types/dyn';
-import { INT_CEL_TYPE, int64Constant } from '../common/types/int';
-import { LESS_DOUBLE_INT64_OVERLOAD } from '../overloads';
-import { STANDARD_MACRO_DECLARATIONS } from '../parser/macros';
+  FunctionDecl,
+  newConstant,
+  newVairable,
+  VariableDecl,
+} from '../common/decls';
 import {
   GREATER_DOUBLE_INT64_OVERLOAD,
   GREATER_DOUBLE_UINT64_OVERLOAD,
@@ -27,6 +21,7 @@ import {
   GREATER_INT64_UINT64_OVERLOAD,
   GREATER_UINT64_DOUBLE_OVERLOAD,
   GREATER_UINT64_INT64_OVERLOAD,
+  LESS_DOUBLE_INT64_OVERLOAD,
   LESS_DOUBLE_UINT64_OVERLOAD,
   LESS_EQUALS_DOUBLE_INT64_OVERLOAD,
   LESS_EQUALS_DOUBLE_UINT64_OVERLOAD,
@@ -38,7 +33,16 @@ import {
   LESS_INT64_UINT64_OVERLOAD,
   LESS_UINT64_DOUBLE_OVERLOAD,
   LESS_UINT64_INT64_OVERLOAD,
-} from './../overloads';
+} from '../common/overloads';
+import { Provider } from '../common/ref/provider';
+import {
+  DynType,
+  ErrorType,
+  IntType,
+  newTypeTypeWithParam,
+  Type,
+} from '../common/types/types';
+import { AllProtoMacros } from '../parser/macros';
 import { Scopes } from './scopes';
 
 export interface CheckerEnvOptions {
@@ -84,15 +88,15 @@ export const CROSS_TYPE_NUMERIC_COMPARISON_OVERLOADS = new Set([
  * related objects which can be used to assist with type-checking.
  */
 export class CheckerEnv {
-  readonly #container: CELContainer;
-  readonly #provider: TypeProvider;
+  readonly #container: Container;
+  readonly #provider: Provider;
   readonly #declarations: Scopes;
-  readonly #aggLitElemType = DYN_CEL_TYPE;
+  readonly #aggLitElemType = DynType;
   readonly #filteredOverloadIDs = new Set<string>();
 
   constructor(
-    container: CELContainer,
-    provider: TypeProvider,
+    container: Container,
+    provider: Provider,
     private readonly options?: CheckerEnvOptions
   ) {
     this.#container = container;
@@ -132,7 +136,7 @@ export class CheckerEnv {
   /**
    * AddIdents configures the checker with a list of variable declarations.
    */
-  addIdents(...decls: Decl[]) {
+  addIdents(...decls: VariableDecl[]) {
     const errs: Error[] = [];
     for (const decl of decls) {
       const err = this.addIdent(decl);
@@ -149,7 +153,7 @@ export class CheckerEnv {
   /**
    * AddFunctions configures the checker with a list of function declarations.
    */
-  addFunctions(...decls: Decl[]) {
+  addFunctions(...decls: FunctionDecl[]) {
     const errs: Error[] = [];
     for (const decl of decls) {
       const err = this.setFunction(decl);
@@ -167,7 +171,7 @@ export class CheckerEnv {
    * LookupIdent returns a Decl proto for typeName as an identifier in the Env.
    * Returns nil if no such identifier is found in the Env.
    */
-  lookupIdent(name: string): Decl | null {
+  lookupIdent(name: string): VariableDecl | null {
     for (const candidate of this.#container.resolveCandidateNames(name)) {
       const ident = this.#declarations.findIdent(candidate);
       if (!isNil(ident)) {
@@ -177,9 +181,16 @@ export class CheckerEnv {
       // Next try to import the name as a reference to a message type. If
       // found, the declaration is added to the outest (global) scope of the
       // environment, so next time we can access it faster.
-      const t = this.#provider.findType(candidate);
+      const t = this.#provider.findStructType(candidate);
       if (!isNil(t)) {
-        const decl = identDecl(candidate, { type: t });
+        const decl = newVairable(candidate, t);
+        this.#declarations.addIdent(decl);
+        return decl;
+      }
+
+      const i = this.#provider.findIdent(candidate);
+      if (!isNil(i)) {
+        const decl = newVairable(candidate, newTypeTypeWithParam(i as Type));
         this.#declarations.addIdent(decl);
         return decl;
       }
@@ -187,11 +198,8 @@ export class CheckerEnv {
       // Next try to import this as an enum value by splitting the name in a
       // type prefix and the enum inside.
       const enumValue = this.#provider.enumValue(candidate);
-      if (enumValue.type().typeName() !== RefTypeEnum.ERR) {
-        const decl = identDecl(candidate, {
-          type: INT_CEL_TYPE,
-          value: int64Constant(enumValue.value()),
-        });
+      if (enumValue.type() !== ErrorType) {
+        const decl = newConstant(candidate, IntType, enumValue);
         this.#declarations.addIdent(decl);
         return decl;
       }
@@ -203,7 +211,7 @@ export class CheckerEnv {
    * LookupFunction returns a Decl proto for typeName as a function in env.
    * Returns nil if no such function is found in env.
    */
-  lookupFunction(name: string): Decl | null {
+  lookupFunction(name: string): FunctionDecl | null {
     for (const candidate of this.#container.resolveCandidateNames(name)) {
       const fn = this.#declarations.findFunction(candidate);
       if (!isNil(fn)) {
@@ -219,24 +227,22 @@ export class CheckerEnv {
    * from the Decl. If overload overlaps with an existing overload, adds to the
    * errors in the Env instead.
    */
-  setFunction(fn: Decl) {
+  setFunction(fn: FunctionDecl) {
     const errors: Error[] = [];
-    let current = this.lookupFunction(fn.name);
+    let current = this.#declarations.findFunction(fn.name());
     if (!isNil(current)) {
-      const merged = mergeFunctionDecls(current, fn);
-      if (merged instanceof Error) {
-        errors.push(merged);
+      try {
+        current = current.merge(fn);
+      } catch (e) {
+        errors.push(e as Error);
         return errors;
-      } else {
-        current = merged;
       }
     } else {
       current = fn;
     }
-    const currentDecl = unwrapFunctionDecl(current)!;
-    for (const overload of currentDecl.overloads) {
-      for (const macroDecl of STANDARD_MACRO_DECLARATIONS) {
-        const macro = unwrapFunctionDecl(macroDecl)!;
+    for (const overload of current.overloadDecls()) {
+      for (const macroDecl of AllProtoMacros) {
+        const macro = macroDecl;
         const macroOverload = macro.overloads[0];
         if (
           macroDecl.name === current.name &&
@@ -264,13 +270,13 @@ export class CheckerEnv {
    * Returns a non-empty errorMsg if the identifier is already declared in the
    * scope.
    */
-  addIdent(decl: Decl): Error | null {
-    const current = this.#declarations.findIdentInScope(decl.name);
+  addIdent(decl: VariableDecl): Error | null {
+    const current = this.#declarations.findIdentInScope(decl.name());
     if (!isNil(current)) {
       if (dequal(current, decl)) {
         return null;
       }
-      return new Error(`overlapping identifier for name '${decl.name}'`);
+      return new Error(`overlapping identifier for name '${decl.name()}'`);
     }
     this.#declarations.addIdent(decl);
     return null;

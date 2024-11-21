@@ -1,14 +1,6 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { isNil } from '@bearclaw/is';
-import {
-  Decl,
-  Type,
-} from '@buf/google_cel-spec.bufbuild_es/cel/expr/checked_pb.js';
-import { identDecl, unwrapIdentDecl } from '../common/decls/ident-decl';
-import {
-  getCheckedWellKnownType,
-  isCheckedWellKnownType,
-} from '../common/types/wkt';
+import { FunctionDecl, VariableDecl } from '../common/decls';
 
 /**
  * Scopes represents nested Decl sets where the Scopes value contains a Groups
@@ -71,8 +63,8 @@ export class Scopes {
    * Note: If the name collides with an existing identifier in the scope, the
    * Decl is overwritten.
    */
-  addIdent(decl: Decl) {
-    this.#scopes.idents.set(decl.name, this.sanitizeIdent(decl));
+  addIdent(decl: VariableDecl) {
+    this.#scopes.idents.set(decl.name(), decl);
   }
 
   /**
@@ -81,7 +73,7 @@ export class Scopes {
    *
    * Note: The search is performed from innermost to outermost.
    */
-  findIdent(name: string): Decl | null {
+  findIdent(name: string): VariableDecl | null {
     if (this.#scopes.idents.has(name)) {
       return this.#scopes.idents.get(name)!;
     }
@@ -98,7 +90,7 @@ export class Scopes {
    * Note: The search is only performed on the current scope and does not
    * search outer scopes.
    */
-  findIdentInScope(name: string): Decl | null {
+  findIdentInScope(name: string): VariableDecl | null {
     if (this.#scopes.idents.has(name)) {
       return this.#scopes.idents.get(name)!;
     }
@@ -111,8 +103,8 @@ export class Scopes {
    * Note: Any previous entry for a function in the current scope with the same
    * name is overwritten.
    */
-  setFunction(decl: Decl) {
-    this.#scopes.functions.set(decl.name, decl);
+  setFunction(decl: FunctionDecl) {
+    this.#scopes.functions.set(decl.name(), decl);
   }
 
   /**
@@ -120,7 +112,7 @@ export class Scopes {
    * The search is performed from innermost to outermost. Returns nil if no
    * such function in Scopes.
    */
-  findFunction(name: string): Decl | null {
+  findFunction(name: string): FunctionDecl | null {
     if (this.#scopes.functions.has(name)) {
       return this.#scopes.functions.get(name)!;
     }
@@ -137,27 +129,11 @@ export class Scopes {
    * Note: The search is only performed on the current scope and does not
    * search outer scopes.
    */
-  findFunctionInScope(name: string): Decl | null {
+  findFunctionInScope(name: string): FunctionDecl | null {
     if (this.#scopes.functions.has(name)) {
       return this.#scopes.functions.get(name)!;
     }
     return null;
-  }
-
-  /**
-   * sanitizeIdent replaces the identifier's well-known types referenced by
-   * message name with references to CEL built-in type instances.
-   */
-  sanitizeIdent(decl: Decl) {
-    const ident = unwrapIdentDecl(decl)!;
-    if (!isNil(ident.type) && isCheckedWellKnownType(ident.type)) {
-      return identDecl(decl.name, {
-        type: getCheckedWellKnownType(
-          ident.type.typeKind.value as string
-        ) as Type,
-      });
-    }
-    return decl;
   }
 }
 
@@ -166,10 +142,13 @@ export class Scopes {
  * Contains separate namespaces for identifier and function Decls.
  */
 export class Group {
-  readonly #idents: Map<string, Decl>;
-  readonly #functions: Map<string, Decl>;
+  readonly #idents: Map<string, VariableDecl>;
+  readonly #functions: Map<string, FunctionDecl>;
 
-  constructor(idents?: Map<string, Decl>, functions?: Map<string, Decl>) {
+  constructor(
+    idents?: Map<string, VariableDecl>,
+    functions?: Map<string, FunctionDecl>
+  ) {
     this.#idents = idents ?? new Map();
     this.#functions = functions ?? new Map();
   }

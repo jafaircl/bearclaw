@@ -1,17 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { isFunction } from '@bearclaw/is';
-import { Value } from '@buf/google_cel-spec.bufbuild_es/cel/expr/value_pb';
 import { RefVal } from '../../ref/reference';
-import { matchStringValue } from '../string';
-
-export function matcher(value: Value, other: Value) {
-  switch (value.kind.case) {
-    case 'stringValue':
-      return matchStringValue(value, other);
-    default:
-      return new Error('no such overload');
-  }
-}
 
 /**
  * Matcher interface for supporting 'matches()' overloads.

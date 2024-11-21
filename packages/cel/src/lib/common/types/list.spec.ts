@@ -1,63 +1,64 @@
-import {
-  ConstantSchema,
-  ExprSchema,
-} from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb.js';
-import { ValueSchema } from '@buf/google_cel-spec.bufbuild_es/cel/expr/value_pb';
-import { create } from '@bufbuild/protobuf';
-import { int64Expr, int64Value } from './int';
-import { listExpr, listValue } from './list';
+import { isNil } from '@bearclaw/is';
+import { DoubleRefVal } from './double';
+import { ErrorRefVal } from './error';
+import { IntRefVal } from './int';
+import { DynamicList, StringList } from './list';
+import { Registry } from './provider';
 
 describe('list', () => {
-  it('listExpr', () => {
-    expect(
-      listExpr(BigInt(1), {
-        elements: [int64Expr(BigInt(2), BigInt(1))],
-      })
-    ).toEqual(
-      create(ExprSchema, {
-        id: BigInt(1),
-        exprKind: {
-          case: 'listExpr',
-          value: {
-            elements: [
-              create(ExprSchema, {
-                id: BigInt(2),
-                exprKind: {
-                  case: 'constExpr',
-                  value: create(ConstantSchema, {
-                    constantKind: {
-                      case: 'int64Value',
-                      value: BigInt(1),
-                    },
-                  }),
-                },
-              }),
-            ],
-          },
-        },
-      })
+  it('add empty', () => {
+    const reg = new Registry();
+    const list = new DynamicList(reg, [true]);
+    expect(list.add(new DynamicList(reg, [])) === list).toEqual(true);
+    expect(new DynamicList(reg, []).add(list) === list).toEqual(true);
+  });
+
+  it('add error', () => {
+    const reg = new Registry();
+    const list = new DynamicList(reg, [true]);
+    expect(list.add(new DoubleRefVal(3.14))).toStrictEqual(
+      new ErrorRefVal('no such overload')
     );
   });
 
-  it('listValue', () => {
-    expect(listValue({ values: [int64Value(BigInt(2))] })).toEqual(
-      create(ValueSchema, {
-        kind: {
-          case: 'listValue',
-          value: {
-            values: [
-              create(ValueSchema, {
-                kind: {
-                  case: 'int64Value',
-                  value: BigInt(2),
-                },
-              }),
-            ],
-          },
-        },
-      })
-    );
+  it('base contains', () => {
+    const reg = new Registry();
+    const list = new DynamicList(reg, [1.0, 2.0, 3.0]);
+    const tests = [
+      {
+        in: new DoubleRefVal(NaN),
+        out: false,
+      },
+    ];
+    for (const test of tests) {
+      expect(list.contains(test.in).value()).toEqual(test.out);
+    }
   });
 
-  // TODO: validations
+  it('convertToNative', () => {
+    const registry = new Registry();
+    const doubleList = new DynamicList(registry, [1.0, 2.0]);
+    expect(doubleList.convertToNative(Array)).toStrictEqual([1.0, 2.0]);
+    const stringList = new StringList(registry, ['hello', 'world']);
+    expect(stringList.convertToNative(Array)).toStrictEqual(['hello', 'world']);
+  });
+
+  it('iterator', () => {
+    const registry = new Registry();
+    const list = new DynamicList(registry, [1.0, 2.0]);
+    const iter = list.iterator();
+    let i = 0;
+    while (iter.hasNext().value() === true) {
+      const val = iter.next();
+      if (isNil(val)) {
+        expect(false).toEqual(true);
+        return;
+      }
+      expect(val.value()).toEqual(list.get(new IntRefVal(BigInt(i))).value());
+      i++;
+    }
+    expect(i).toEqual(2);
+  });
+
+  // TODO: more list tests
 });

@@ -3,6 +3,7 @@
 /* eslint-disable no-case-declarations */
 import { isFunction, isNil, isObject } from '@bearclaw/is';
 import { Value } from '@buf/google_cel-spec.bufbuild_es/cel/expr/value_pb.js';
+import { LOGICAL_OR_OPERATOR } from '../common/operators';
 import { TypeAdapter } from '../common/ref/adapter';
 import { FieldType } from '../common/ref/field-type';
 import { boolValue } from '../common/types/bool';
@@ -12,7 +13,6 @@ import { Trait } from '../common/types/traits/trait';
 import { isZeroValue } from '../common/types/traits/zeroer';
 import { isUnknownValue } from '../common/types/unknown';
 import { valueHasTrait } from '../common/types/value';
-import { LOGICAL_OR_OPERATOR } from '../operators';
 import { Activation } from './activation';
 import { Attribute, Qualifier } from './attribute-factory';
 import { Cost, Coster } from './coster';

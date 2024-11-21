@@ -1,60 +1,11 @@
-import {
-  ConstantSchema,
-  ExprSchema,
-} from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb.js';
-import { ValueSchema } from '@buf/google_cel-spec.bufbuild_es/cel/expr/value_pb.js';
-import { create } from '@bufbuild/protobuf';
-import { NullValue, NullValueSchema } from '@bufbuild/protobuf/wkt';
+import { NullValueSchema } from '@bufbuild/protobuf/wkt';
 import { BoolRefVal } from './bool';
 import { ErrorRefVal } from './error';
-import {
-  NULL_CONSTANT,
-  NULL_REF_TYPE,
-  NULL_VALUE,
-  nullExpr,
-  NullRefVal,
-} from './null';
-import { STRING_REF_TYPE, StringRefVal } from './string';
-import { TIMESTAMP_REF_TYPE } from './timestamp';
-import { TYPE_REF_TYPE } from './type';
+import { NullRefVal } from './null';
+import { StringRefVal } from './string';
+import { NullType, StringType, TimestampType, TypeType } from './types';
 
 describe('null', () => {
-  it('NULL_CONSTANT', () => {
-    expect(NULL_CONSTANT).toEqual(
-      create(ConstantSchema, {
-        constantKind: {
-          case: 'nullValue',
-          value: NullValue.NULL_VALUE,
-        },
-      })
-    );
-  });
-
-  it('nullExpr', () => {
-    expect(nullExpr(BigInt(1))).toEqual(
-      create(ExprSchema, {
-        id: BigInt(1),
-        exprKind: {
-          case: 'constExpr',
-          value: NULL_CONSTANT,
-        },
-      })
-    );
-  });
-
-  it('NULL_VALUE', () => {
-    expect(NULL_VALUE).toEqual(
-      create(ValueSchema, {
-        kind: {
-          case: 'nullValue',
-          value: NullValue.NULL_VALUE,
-        },
-      })
-    );
-  });
-
-  // TODO: validations
-
   it('nullConvertToNative', () => {
     const tests = [
       {
@@ -75,7 +26,7 @@ describe('null', () => {
       {
         input: new NullRefVal(),
         type: NullValueSchema,
-        want: NULL_VALUE,
+        want: new NullRefVal(),
       },
       {
         input: new NullRefVal(),
@@ -92,26 +43,23 @@ describe('null', () => {
     const tests = [
       {
         input: new NullRefVal(),
-        type: NULL_REF_TYPE,
+        type: NullType,
         want: new NullRefVal(),
       },
       {
         input: new NullRefVal(),
-        type: STRING_REF_TYPE,
+        type: StringType,
         want: new StringRefVal('null'),
       },
       {
         input: new NullRefVal(),
-        type: TYPE_REF_TYPE,
-        want: NULL_REF_TYPE,
+        type: TypeType,
+        want: NullType,
       },
       {
         input: new NullRefVal(),
-        type: TIMESTAMP_REF_TYPE,
-        want: ErrorRefVal.typeConversionError(
-          new NullRefVal(),
-          TIMESTAMP_REF_TYPE
-        ),
+        type: TimestampType,
+        want: ErrorRefVal.typeConversionError(new NullRefVal(), TimestampType),
       },
     ];
     for (const test of tests) {

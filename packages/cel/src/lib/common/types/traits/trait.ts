@@ -1,4 +1,6 @@
 export enum Trait {
+  UNSPECIFIED = 0,
+
   // AdderType types provide a '+' operator overload.
   ADDER_TYPE = 1,
 
@@ -47,3 +49,22 @@ export enum Trait {
   // FoldableType types support comprehensions v2 macros which iterate over (key, value) pairs.
   FOLDABLE_TYPE = 16,
 }
+
+export const AllTraits = new Set<Trait>([
+  Trait.ADDER_TYPE,
+  Trait.COMPARER_TYPE,
+  Trait.CONTAINER_TYPE,
+  Trait.DIVIDER_TYPE,
+  Trait.FIELD_TESTER_TYPE,
+  Trait.INDEXER_TYPE,
+  Trait.ITERABLE_TYPE,
+  Trait.ITERATOR_TYPE,
+  Trait.MATCHER_TYPE,
+  Trait.MODDER_TYPE,
+  Trait.MULTIPLIER_TYPE,
+  Trait.NEGATER_TYPE,
+  Trait.RECEIVER_TYPE,
+  Trait.SIZER_TYPE,
+  Trait.SUBTRACTOR_TYPE,
+  Trait.FOLDABLE_TYPE,
+]);

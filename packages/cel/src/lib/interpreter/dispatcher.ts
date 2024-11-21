@@ -1,4 +1,4 @@
-import { Overload } from './overload';
+import { Overload } from '../common/functions';
 
 /**
  * Dispatcher resolves function calls to their appropriate overload.

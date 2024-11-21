@@ -1,8 +1,3 @@
-import {
-  ConstantSchema,
-  ExprSchema,
-} from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb.js';
-import { ValueSchema } from '@buf/google_cel-spec.bufbuild_es/cel/expr/value_pb.js';
 import { create } from '@bufbuild/protobuf';
 import {
   AnySchema,
@@ -11,61 +6,14 @@ import {
   anyPack,
 } from '@bufbuild/protobuf/wkt';
 import { BoolRefVal } from './bool';
-import { DOUBLE_REF_TYPE, DoubleRefVal } from './double';
+import { DoubleRefVal } from './double';
 import { ErrorRefVal } from './error';
-import { INT_REF_TYPE, IntRefVal, MAX_INT64 } from './int';
-import { STRING_REF_TYPE, StringRefVal } from './string';
-import { TYPE_REF_TYPE } from './type';
-import {
-  UINT_REF_TYPE,
-  UintRefVal,
-  uint64Constant,
-  uint64Expr,
-  uint64Value,
-} from './uint';
+import { IntRefVal, MAX_INT64 } from './int';
+import { StringRefVal } from './string';
+import { DoubleType, IntType, StringType, TypeType, UintType } from './types';
+import { UintRefVal } from './uint';
 
 describe('uint', () => {
-  it('uint64Constant', () => {
-    expect(uint64Constant(BigInt(1))).toEqual(
-      create(ConstantSchema, {
-        constantKind: {
-          case: 'uint64Value',
-          value: BigInt(1),
-        },
-      })
-    );
-  });
-
-  it('uint64Expr', () => {
-    expect(uint64Expr(BigInt(1), BigInt(1))).toEqual(
-      create(ExprSchema, {
-        id: BigInt(1),
-        exprKind: {
-          case: 'constExpr',
-          value: create(ConstantSchema, {
-            constantKind: {
-              case: 'uint64Value',
-              value: BigInt(1),
-            },
-          }),
-        },
-      })
-    );
-  });
-
-  it('uint64Value', () => {
-    expect(uint64Value(BigInt(1))).toEqual(
-      create(ValueSchema, {
-        kind: {
-          case: 'uint64Value',
-          value: BigInt(1),
-        },
-      })
-    );
-  });
-
-  // TODO; validations
-
   it('convertUint64ValueToNative', () => {
     const tests = [
       {
@@ -114,37 +62,37 @@ describe('uint', () => {
     const tests = [
       {
         in: new UintRefVal(BigInt(42)),
-        type: TYPE_REF_TYPE,
-        out: UINT_REF_TYPE,
+        type: TypeType,
+        out: UintType,
       },
       {
         in: new UintRefVal(BigInt(46)),
-        type: UINT_REF_TYPE,
+        type: UintType,
         out: new UintRefVal(BigInt(46)),
       },
       {
         in: new UintRefVal(BigInt(312)),
-        type: INT_REF_TYPE,
+        type: IntType,
         out: new IntRefVal(BigInt(312)),
       },
       {
         in: new UintRefVal(BigInt(894)),
-        type: DOUBLE_REF_TYPE,
+        type: DoubleType,
         out: new DoubleRefVal(894),
       },
       {
         in: new UintRefVal(BigInt(5848)),
-        type: STRING_REF_TYPE,
+        type: StringType,
         out: new StringRefVal('5848'),
       },
       {
         in: new UintRefVal(MAX_INT64 + BigInt(1)),
-        type: INT_REF_TYPE,
+        type: IntType,
         out: ErrorRefVal.errIntOverflow,
       },
       {
         in: new UintRefVal(MAX_INT64 + BigInt(1)),
-        type: UINT_REF_TYPE,
+        type: UintType,
         out: ErrorRefVal.errUintOverflow,
       },
     ];

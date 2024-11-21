@@ -1,5 +1,5 @@
 import { Expr } from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb.js';
-import { callExpr } from './common/types/call';
+import { newGlobalCallProtoExpr } from './common/pb/expressions';
 
 export class LogicManager {
   private function: string;
@@ -38,10 +38,7 @@ export class LogicManager {
       return this.terms[0];
     }
     if (this.variadicASTs) {
-      return callExpr(this.ops[0], {
-        function: this.function,
-        args: this.terms,
-      });
+      return newGlobalCallProtoExpr(this.ops[0], this.function, this.terms);
     }
     return this.balancedTree(0, this.ops.length - 1);
   }
@@ -60,9 +57,6 @@ export class LogicManager {
     } else {
       right = this.balancedTree(mid + 1, hi);
     }
-    return callExpr(this.ops[mid], {
-      function: this.function,
-      args: [left, right],
-    });
+    return newGlobalCallProtoExpr(this.ops[mid], this.function, [left, right]);
   }
 }

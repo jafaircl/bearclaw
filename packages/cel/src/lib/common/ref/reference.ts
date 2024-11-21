@@ -3,24 +3,6 @@ import { isFunction } from '@bearclaw/is';
 import { NativeType } from '../types/native';
 import { Trait } from '../types/traits/trait';
 
-export enum RefTypeEnum {
-  BOOL = 'bool',
-  BYTES = 'bytes',
-  DOUBLE = 'double',
-  DURATION = 'google.protobuf.Duration',
-  ERR = 'error',
-  INT = 'int',
-  LIST = 'list',
-  MAP = 'map',
-  NULL = 'null_type',
-  OBJECT = 'object',
-  STRING = 'string',
-  TIMESTAMP = 'google.protobuf.Timestamp',
-  TYPE = 'type',
-  UINT = 'uint',
-  UNKNOWN = 'unknown',
-}
-
 /**
  * Type interface indicate the name of a given type.
  */
@@ -43,7 +25,10 @@ export interface RefType extends RefVal {
 
 export function isRefType(value: any): value is RefType {
   return (
-    isFunction(value.hasTrait) && isFunction(value.typeName) && isRefVal(value)
+    value &&
+    isFunction(value?.hasTrait) &&
+    isFunction(value?.typeName) &&
+    isRefVal(value)
   );
 }
 
@@ -87,7 +72,7 @@ export interface RefVal {
   equal(other: RefVal): RefVal;
 
   /**
-   * Type returns the TypeValue of the value.
+   * Type returns the CELType of the value.
    */
   type(): RefType;
 
@@ -100,10 +85,11 @@ export interface RefVal {
 
 export function isRefVal(value: any): value is RefVal {
   return (
-    isFunction(value.convertToNative) &&
-    isFunction(value.convertToType) &&
-    isFunction(value.equal) &&
-    isFunction(value.type) &&
-    isFunction(value.value)
+    value &&
+    isFunction(value?.convertToNative) &&
+    isFunction(value?.convertToType) &&
+    isFunction(value?.equal) &&
+    isFunction(value?.type) &&
+    isFunction(value?.value)
   );
 }

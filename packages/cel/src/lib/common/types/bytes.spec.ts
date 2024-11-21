@@ -1,65 +1,13 @@
-import {
-  ConstantSchema,
-  ExprSchema,
-} from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb.js';
-import { ValueSchema } from '@buf/google_cel-spec.bufbuild_es/cel/expr/value_pb';
 import { create } from '@bufbuild/protobuf';
 import { AnySchema, BytesValueSchema, anyPack } from '@bufbuild/protobuf/wkt';
-import { BOOL_REF_TYPE, BoolRefVal } from './bool';
-import {
-  BYTES_REF_TYPE,
-  BytesRefVal,
-  bytesConstant,
-  bytesExpr,
-  bytesValue,
-} from './bytes';
+import { BoolRefVal } from './bool';
+import { BytesRefVal } from './bytes';
 import { ErrorRefVal } from './error';
 import { IntRefVal } from './int';
-import { STRING_REF_TYPE, StringRefVal } from './string';
-import { TYPE_REF_TYPE } from './type';
+import { StringRefVal } from './string';
+import { BoolType, BytesType, StringType, TypeType } from './types';
 
 describe('bytes', () => {
-  it('bytesConstant', () => {
-    expect(bytesConstant(new Uint8Array([1, 2, 3]))).toEqual(
-      create(ConstantSchema, {
-        constantKind: {
-          case: 'bytesValue',
-          value: new Uint8Array([1, 2, 3]),
-        },
-      })
-    );
-  });
-
-  it('bytesExpr', () => {
-    expect(bytesExpr(BigInt(1), new Uint8Array([1, 2, 3]))).toEqual(
-      create(ExprSchema, {
-        id: BigInt(1),
-        exprKind: {
-          case: 'constExpr',
-          value: create(ConstantSchema, {
-            constantKind: {
-              case: 'bytesValue',
-              value: new Uint8Array([1, 2, 3]),
-            },
-          }),
-        },
-      })
-    );
-  });
-
-  it('bytesValue', () => {
-    expect(bytesValue(new Uint8Array([1, 2, 3]))).toEqual(
-      create(ValueSchema, {
-        kind: {
-          case: 'bytesValue',
-          value: new Uint8Array([1, 2, 3]),
-        },
-      })
-    );
-  });
-
-  // TODO: validations
-
   it('convertBytesValueToNative - js Uint8Array', () => {
     expect(
       new BytesRefVal(new Uint8Array([1, 2, 3])).convertToNative(Uint8Array)
@@ -91,13 +39,13 @@ describe('bytes', () => {
 
   it('convertBytesValueToType', () => {
     const value = new BytesRefVal(new TextEncoder().encode('helloworld'));
-    expect(value.convertToType(BYTES_REF_TYPE)).toStrictEqual(value);
-    expect(value.convertToType(STRING_REF_TYPE)).toStrictEqual(
+    expect(value.convertToType(BytesType)).toStrictEqual(value);
+    expect(value.convertToType(StringType)).toStrictEqual(
       new StringRefVal('helloworld')
     );
-    expect(value.convertToType(TYPE_REF_TYPE)).toStrictEqual(BYTES_REF_TYPE);
-    expect(value.convertToType(BOOL_REF_TYPE)).toStrictEqual(
-      ErrorRefVal.typeConversionError(value, BOOL_REF_TYPE)
+    expect(value.convertToType(TypeType)).toStrictEqual(BytesType);
+    expect(value.convertToType(BoolType)).toStrictEqual(
+      ErrorRefVal.typeConversionError(value, BoolType)
     );
   });
 

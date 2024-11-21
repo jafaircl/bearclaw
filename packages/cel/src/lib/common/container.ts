@@ -7,7 +7,7 @@ import { isNil } from '@bearclaw/is';
  * specification within CEL programs and behaves more or less like a C++
  * namespace. See resolveCandidateNames for more details.
  */
-export class CELContainer {
+export class Container {
   constructor(
     public readonly name = '',
     public readonly aliases = new Map<string, string>()
@@ -25,7 +25,7 @@ export class CELContainer {
     for (const [key, value] of aliases) {
       newAliases.set(key, value);
     }
-    return new CELContainer(name, newAliases);
+    return new Container(name, newAliases);
   }
 
   /**

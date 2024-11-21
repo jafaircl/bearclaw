@@ -1,23 +1,11 @@
 /* eslint-disable no-case-declarations */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
+import { clone, create } from '@bufbuild/protobuf';
 import {
-  Type,
-  TypeSchema,
-  Type_PrimitiveType,
-  Type_WellKnownType,
-} from '@buf/google_cel-spec.bufbuild_es/cel/expr/checked_pb.js';
-import {
-  Value,
-  ValueSchema,
-} from '@buf/google_cel-spec.bufbuild_es/cel/expr/value_pb.js';
-import { MessageInitShape, clone, create } from '@bufbuild/protobuf';
-import {
-  Any,
   AnySchema,
   Duration,
   DurationSchema,
   anyPack,
-  anyUnpack,
 } from '@bufbuild/protobuf/wkt';
 import {
   toSeconds as iso8601durationToSeconds,
@@ -28,15 +16,13 @@ import {
   TIME_GET_MILLISECONDS_OVERLOAD,
   TIME_GET_MINUTES_OVERLOAD,
   TIME_GET_SECONDS_OVERLOAD,
-} from '../../overloads';
-import { formatCELType } from '../format';
-import { RefType, RefTypeEnum, RefVal } from '../ref/reference';
+} from '../overloads';
+import { RefType, RefVal } from '../ref/reference';
 import { BoolRefVal } from './bool';
 import { ErrorRefVal } from './error';
-import { IntRefVal, MAX_INT64, MIN_INT64, int64Value } from './int';
+import { IntRefVal, MAX_INT64, MIN_INT64 } from './int';
 import { NativeType } from './native';
-import { isObjectValue } from './object';
-import { StringRefVal, stringValue } from './string';
+import { StringRefVal } from './string';
 import {
   MAX_UNIX_TIME,
   MIN_UNIX_TIME,
@@ -47,107 +33,19 @@ import {
 import { Comparer } from './traits/comparer';
 import { Adder, Negater, Subtractor } from './traits/math';
 import { Receiver } from './traits/receiver';
-import { Trait } from './traits/trait';
 import { Zeroer } from './traits/zeroer';
-import { TypeValue } from './type';
+import {
+  DurationType,
+  IntType,
+  StringType,
+  TimestampType,
+  TypeType,
+  UintType,
+} from './types';
 import { UintRefVal } from './uint';
-import { typeNameToUrl } from './utils';
-import { DURATION_WKT_CEL_TYPE, WKT_REGISTRY } from './wkt';
 
-export const DURATION_CEL_TYPE = create(TypeSchema, {
-  typeKind: {
-    case: 'wellKnown',
-    value: Type_WellKnownType.DURATION,
-  },
-});
-
-export function duration(seconds?: bigint, nanos?: number) {
+export function duration(seconds?: bigint, nanos?: number): Duration {
   return create(DurationSchema, { seconds, nanos });
-}
-
-export function durationValue(init: MessageInitShape<typeof DurationSchema>) {
-  return create(ValueSchema, {
-    kind: {
-      case: 'objectValue',
-      value: anyPack(DurationSchema, duration(init.seconds, init.nanos)),
-    },
-  });
-}
-
-export function isDurationValue(value: Value): value is Value & {
-  kind: { case: 'objectValue'; value: Any };
-} {
-  return (
-    isObjectValue(value) &&
-    value.kind.value.typeUrl === typeNameToUrl(DurationSchema.typeName)
-  );
-}
-
-export function unwrapDurationValue(value: Value) {
-  if (isDurationValue(value)) {
-    return anyUnpack(value.kind.value, WKT_REGISTRY) as Duration;
-  }
-  return null;
-}
-
-export function convertDurationValueToNative(value: Value, type: NativeType) {
-  if (!isDurationValue(value)) {
-    throw new Error('duration value is not a duration');
-  }
-  const duration = unwrapDurationValue(value)!;
-  switch (type) {
-    case AnySchema:
-      return anyPack(DurationSchema, duration);
-    case DurationSchema:
-      return clone(DurationSchema, duration);
-    default:
-      break;
-  }
-  return new Error(
-    `type conversion error from '${formatCELType(DURATION_WKT_CEL_TYPE)}' to '${
-      type.name
-    }'`
-  );
-}
-
-export function convertDurationValueToType(value: Value, type: Type) {
-  if (!isDurationValue(value)) {
-    throw new Error('duration value is not a duration');
-  }
-  const duration = unwrapDurationValue(value)!;
-  switch (type.typeKind.case) {
-    case 'primitive':
-      switch (type.typeKind.value) {
-        case Type_PrimitiveType.STRING:
-          return stringValue(
-            `${Number(duration.seconds) + duration.nanos * 1e-9}s`
-          );
-        case Type_PrimitiveType.INT64:
-          return int64Value(
-            duration.seconds * BigInt(1e9) + BigInt(duration.nanos)
-          );
-        default:
-          break;
-      }
-      break;
-    case 'wellKnown':
-      switch (type.typeKind.value) {
-        case Type_WellKnownType.DURATION:
-          return durationValue(clone(DurationSchema, duration));
-        default:
-          break;
-      }
-      break;
-    case 'type':
-      return DURATION_WKT_CEL_TYPE;
-    default:
-      break;
-  }
-  return new Error(
-    `type conversion error from '${formatCELType(
-      DURATION_WKT_CEL_TYPE
-    )}' to '${formatCELType(type)}'`
-  );
 }
 
 export function parseISO8061DurationString(text: string) {
@@ -182,19 +80,6 @@ export function durationToNanos(duration: Duration) {
 export function durationToSeconds(duration: Duration) {
   return Number(duration.seconds) + duration.nanos * 1e-9;
 }
-
-export const DURATION_TRAITS = new Set([
-  Trait.ADDER_TYPE,
-  Trait.COMPARER_TYPE,
-  Trait.NEGATER_TYPE,
-  Trait.RECEIVER_TYPE,
-  Trait.SUBTRACTOR_TYPE,
-]);
-
-export const DURATION_REF_TYPE = new TypeValue(
-  RefTypeEnum.DURATION,
-  DURATION_TRAITS
-);
 
 export class DurationRefVal
   implements RefVal, Adder, Comparer, Negater, Receiver, Subtractor, Zeroer
@@ -235,10 +120,6 @@ export class DurationRefVal
     [TIME_GET_MILLISECONDS_OVERLOAD, DurationRefVal.durationGetMilliseconds],
   ]);
 
-  celValue(): Value {
-    return durationValue(this._value);
-  }
-
   convertToNative(type: NativeType) {
     switch (type) {
       case BigInt:
@@ -255,16 +136,16 @@ export class DurationRefVal
   }
 
   convertToType(type: RefType): RefVal {
-    switch (type.typeName()) {
-      case RefTypeEnum.DURATION:
+    switch (type) {
+      case DurationType:
         return new DurationRefVal(this._value);
-      case RefTypeEnum.INT:
+      case IntType:
         return new IntRefVal(durationToNanos(this._value));
-      case RefTypeEnum.STRING:
+      case StringType:
         return new StringRefVal(`${durationToSeconds(this._value)}s`);
-      case RefTypeEnum.TYPE:
-        return DURATION_REF_TYPE;
-      case RefTypeEnum.UINT:
+      case TypeType:
+        return DurationType;
+      case UintType:
         return new UintRefVal(durationToNanos(this._value));
       default:
         return ErrorRefVal.typeConversionError(this, type);
@@ -272,8 +153,8 @@ export class DurationRefVal
   }
 
   equal(other: RefVal): RefVal {
-    switch (other.type().typeName()) {
-      case RefTypeEnum.DURATION:
+    switch (other.type()) {
+      case DurationType:
         return new BoolRefVal(
           this._value.seconds === other.value().seconds &&
             this._value.nanos === other.value().nanos
@@ -284,7 +165,7 @@ export class DurationRefVal
   }
 
   type(): RefType {
-    return DURATION_REF_TYPE;
+    return DurationType;
   }
 
   value() {
@@ -292,8 +173,8 @@ export class DurationRefVal
   }
 
   add(other: RefVal): RefVal {
-    switch (other.type().typeName()) {
-      case RefTypeEnum.DURATION:
+    switch (other.type()) {
+      case DurationType:
         const thisNanos = durationToNanos(this._value);
         const otherNanos = durationToNanos(other.value());
         if (
@@ -303,7 +184,7 @@ export class DurationRefVal
           return ErrorRefVal.errIntOverflow;
         }
         return new DurationRefVal(durationFromNanos(thisNanos + otherNanos));
-      case RefTypeEnum.TIMESTAMP:
+      case TimestampType:
         const durationNanos = durationToNanos(this._value);
         const tsNanos = timestampToNanos(other.value());
         if (
@@ -325,8 +206,8 @@ export class DurationRefVal
   }
 
   compare(other: RefVal): RefVal {
-    switch (other.type().typeName()) {
-      case RefTypeEnum.DURATION:
+    switch (other.type()) {
+      case DurationType:
         const d1 = durationToNanos(this._value);
         const d2 = durationToNanos(other.value());
         if (d1 < d2) {
@@ -359,8 +240,8 @@ export class DurationRefVal
   }
 
   subtract(subtrahend: RefVal): RefVal {
-    switch (subtrahend.type().typeName()) {
-      case RefTypeEnum.DURATION:
+    switch (subtrahend.type()) {
+      case DurationType:
         const thisNanos = durationToNanos(this._value);
         const otherNanos = durationToNanos(subtrahend.value());
         if (

@@ -24,7 +24,7 @@ export const ACCUMULATOR_VAR = '__result__';
  * @param text the text to parse
  * @returns a Constant representing the parsed integer
  */
-export function parseIntConstant(text: string) {
+export function parseIntFromText(text: string) {
   const isNegative = text.startsWith('-');
   if (isNegative) {
     text = text.substring(1);
@@ -41,6 +41,11 @@ export function parseIntConstant(text: string) {
       0
     );
   }
+  return value;
+}
+
+export function parseIntConstant(text: string) {
+  const value = parseIntFromText(text);
   return create(ConstantSchema, {
     constantKind: {
       case: 'int64Value',
@@ -55,7 +60,7 @@ export function parseIntConstant(text: string) {
  * @param text the text to parse
  * @returns a Constant representing the parsed unsigned integer
  */
-export function parseUintConstant(text: string) {
+export function parseUintFromText(text: string) {
   if (!text.endsWith('u') && !text.endsWith('U')) {
     throw new ParseException(
       "Unsigned integer literal is missing trailing 'u' suffix",
@@ -80,6 +85,11 @@ export function parseUintConstant(text: string) {
       0
     );
   }
+  return value;
+}
+
+export function parseUintConstant(text: string) {
+  const value = parseUintFromText(text);
   return create(ConstantSchema, {
     constantKind: {
       case: 'uint64Value',
@@ -94,7 +104,7 @@ export function parseUintConstant(text: string) {
  * @param text the text to parse
  * @returns a Constant representing the parsed double
  */
-export function parseDoubleConstant(text: string) {
+export function parseDoubleFromText(text: string) {
   let value: number;
 
   try {
@@ -108,6 +118,11 @@ export function parseDoubleConstant(text: string) {
       0
     );
   }
+  return value;
+}
+
+export function parseDoubleConstant(text: string) {
+  const value = parseDoubleFromText(text);
   return create(ConstantSchema, {
     constantKind: {
       case: 'doubleValue',
@@ -603,7 +618,7 @@ function decodeString<T>(
   }
 }
 
-export function parseStringConstant(text: string) {
+export function parseString(text: string) {
   let offset = 0;
   let isRawLiteral = false;
 
@@ -640,10 +655,15 @@ export function parseStringConstant(text: string) {
   const buffer = new DecodeStringBuffer();
   decodeString(offset, text, buffer, isRawLiteral, false);
 
+  return buffer.toDecodedValue();
+}
+
+export function parseStringConstant(text: string) {
+  const value = parseString(text);
   return create(ConstantSchema, {
     constantKind: {
       case: 'stringValue',
-      value: buffer.toDecodedValue(),
+      value,
     },
   });
 }

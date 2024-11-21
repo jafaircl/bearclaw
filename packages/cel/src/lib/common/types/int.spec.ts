@@ -1,8 +1,3 @@
-import {
-  ConstantSchema,
-  ExprSchema,
-} from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb.js';
-import { ValueSchema } from '@buf/google_cel-spec.bufbuild_es/cel/expr/value_pb.js';
 import { create } from '@bufbuild/protobuf';
 import {
   AnySchema,
@@ -11,70 +6,27 @@ import {
   anyPack,
 } from '@bufbuild/protobuf/wkt';
 import { BoolRefVal } from './bool';
-import { DOUBLE_REF_TYPE, DoubleRefVal } from './double';
+import { DoubleRefVal } from './double';
 import { ErrorRefVal } from './error';
-import {
-  INT_REF_TYPE,
-  IntRefVal,
-  MAX_INT64,
-  MIN_INT64,
-  int64Constant,
-  int64Expr,
-  int64Value,
-} from './int';
-import { STRING_REF_TYPE, StringRefVal } from './string';
+import { IntRefVal, MAX_INT64, MIN_INT64 } from './int';
+import { StringRefVal } from './string';
 import {
   MAX_UNIX_TIME,
   MIN_UNIX_TIME,
-  TIMESTAMP_REF_TYPE,
   TimestampRefVal,
   timestamp,
 } from './timestamp';
-import { TYPE_REF_TYPE } from './type';
-import { UINT_REF_TYPE, UintRefVal } from './uint';
+import {
+  DoubleType,
+  IntType,
+  StringType,
+  TimestampType,
+  TypeType,
+  UintType,
+} from './types';
+import { UintRefVal } from './uint';
 
 describe('int', () => {
-  it('int64Constant', () => {
-    expect(int64Constant(BigInt(1))).toEqual(
-      create(ConstantSchema, {
-        constantKind: {
-          case: 'int64Value',
-          value: BigInt(1),
-        },
-      })
-    );
-  });
-
-  it('int64Expr', () => {
-    expect(int64Expr(BigInt(1), BigInt(1))).toEqual(
-      create(ExprSchema, {
-        id: BigInt(1),
-        exprKind: {
-          case: 'constExpr',
-          value: create(ConstantSchema, {
-            constantKind: {
-              case: 'int64Value',
-              value: BigInt(1),
-            },
-          }),
-        },
-      })
-    );
-  });
-
-  it('int64Value', () => {
-    expect(int64Value(BigInt(1))).toEqual(
-      create(ValueSchema, {
-        kind: {
-          case: 'int64Value',
-          value: BigInt(1),
-        },
-      })
-    );
-  });
-
-  // TODO: validations
-
   it('convertInt64ValueToNative - js BigInt', () => {
     const value = new IntRefVal(BigInt(42));
     expect(value.convertToNative(BigInt)).toEqual(BigInt(42));
@@ -132,47 +84,47 @@ describe('int', () => {
     const tests = [
       {
         in: new IntRefVal(BigInt(42)),
-        type: TYPE_REF_TYPE,
-        out: INT_REF_TYPE,
+        type: TypeType,
+        out: IntType,
       },
       {
         in: new IntRefVal(BigInt(42)),
-        type: INT_REF_TYPE,
+        type: IntType,
         out: new IntRefVal(BigInt(42)),
       },
       {
         in: new IntRefVal(BigInt(42)),
-        type: UINT_REF_TYPE,
+        type: UintType,
         out: new UintRefVal(BigInt(42)),
       },
       {
         in: new IntRefVal(BigInt(-42)),
-        type: UINT_REF_TYPE,
+        type: UintType,
         out: ErrorRefVal.errUintOverflow,
       },
       {
         in: new IntRefVal(BigInt(42)),
-        type: DOUBLE_REF_TYPE,
+        type: DoubleType,
         out: new DoubleRefVal(42),
       },
       {
         in: new IntRefVal(BigInt(-42)),
-        type: STRING_REF_TYPE,
+        type: StringType,
         out: new StringRefVal('-42'),
       },
       {
         in: new IntRefVal(BigInt(946684800)),
-        type: TIMESTAMP_REF_TYPE,
+        type: TimestampType,
         out: new TimestampRefVal(timestamp(BigInt(946684800))),
       },
       {
         in: new IntRefVal(MAX_UNIX_TIME + BigInt(1)),
-        type: TIMESTAMP_REF_TYPE,
+        type: TimestampType,
         out: ErrorRefVal.errTimestampOverflow,
       },
       {
         in: new IntRefVal(MIN_UNIX_TIME - BigInt(1)),
-        type: TIMESTAMP_REF_TYPE,
+        type: TimestampType,
         out: ErrorRefVal.errTimestampOverflow,
       },
     ];

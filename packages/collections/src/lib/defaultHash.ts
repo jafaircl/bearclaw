@@ -1,4 +1,4 @@
-import stringify from 'fast-json-stable-stringify';
+import stringify from 'safe-stable-stringify';
 import { HashFn } from './types';
 
 /**

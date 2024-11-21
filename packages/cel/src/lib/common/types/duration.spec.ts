@@ -1,4 +1,3 @@
-import { create } from '@bufbuild/protobuf';
 import { AnySchema, DurationSchema, anyPack } from '@bufbuild/protobuf/wkt';
 import {
   DURATION_TO_HOURS_OVERLOAD,
@@ -9,36 +8,23 @@ import {
   TIME_GET_MILLISECONDS_OVERLOAD,
   TIME_GET_MINUTES_OVERLOAD,
   TIME_GET_SECONDS_OVERLOAD,
-} from '../../overloads';
-import { BOOL_REF_TYPE, BoolRefVal } from './bool';
-import {
-  DURATION_REF_TYPE,
-  DurationRefVal,
-  duration,
-  durationFromNanos,
-  durationValue,
-} from './duration';
+} from '../overloads';
+import { BoolRefVal } from './bool';
+import { DurationRefVal, duration, durationFromNanos } from './duration';
 import { ErrorRefVal } from './error';
-import { INT_REF_TYPE, IntRefVal, MAX_INT64, MIN_INT64 } from './int';
-import { objectValue } from './object';
-import { STRING_REF_TYPE, StringRefVal } from './string';
-import { TYPE_REF_TYPE } from './type';
-import { UINT_REF_TYPE, UintRefVal } from './uint';
+import { IntRefVal, MAX_INT64, MIN_INT64 } from './int';
+import { StringRefVal } from './string';
+import {
+  BoolType,
+  DurationType,
+  IntType,
+  StringType,
+  TypeType,
+  UintType,
+} from './types';
+import { UintRefVal } from './uint';
 
 describe('duration', () => {
-  it('durationValue', () => {
-    expect(durationValue({ seconds: BigInt(100) })).toEqual(
-      objectValue(
-        anyPack(
-          DurationSchema,
-          create(DurationSchema, { seconds: BigInt(100) })
-        )
-      )
-    );
-  });
-
-  // TODO: validations
-
   it('convertDurationValueToNative', () => {
     const tests = [
       {
@@ -79,40 +65,40 @@ describe('duration', () => {
     const tests = [
       {
         value: new DurationRefVal(duration(BigInt(42))),
-        type: STRING_REF_TYPE,
+        type: StringType,
         want: new StringRefVal('42s'),
       },
       {
         value: new DurationRefVal(duration(BigInt(42), 1234)),
-        type: STRING_REF_TYPE,
+        type: StringType,
         want: new StringRefVal('42.000001234s'),
       },
       {
         value: new DurationRefVal(duration(BigInt(42), 1234)),
-        type: INT_REF_TYPE,
+        type: IntType,
         want: new IntRefVal(BigInt(42000001234)),
       },
       {
         value: new DurationRefVal(duration(BigInt(42), 1234)),
-        type: DURATION_REF_TYPE,
+        type: DurationType,
         want: new DurationRefVal(duration(BigInt(42), 1234)),
       },
       {
         value: new DurationRefVal(duration(BigInt(42), 1234)),
-        type: TYPE_REF_TYPE,
-        want: DURATION_REF_TYPE,
+        type: TypeType,
+        want: DurationType,
       },
       {
         value: new DurationRefVal(duration(BigInt(42), 1234)),
-        type: UINT_REF_TYPE,
+        type: UintType,
         want: new UintRefVal(BigInt(42 * 1e9) + BigInt(1234)),
       },
       {
         value: new DurationRefVal(duration(BigInt(42), 1234)),
-        type: BOOL_REF_TYPE,
+        type: BoolType,
         want: ErrorRefVal.typeConversionError(
           new DurationRefVal(duration(BigInt(42), 1234)),
-          BOOL_REF_TYPE
+          BoolType
         ),
       },
     ];

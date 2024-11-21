@@ -1,29 +1,16 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { Type } from '@buf/google_cel-spec.bufbuild_es/cel/expr/checked_pb';
-import { ErrorSetSchema } from '@buf/google_cel-spec.bufbuild_es/cel/expr/eval_pb.js';
-import {
-  SourceInfo,
-  SourceInfoSchema,
-} from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb.js';
-import {
-  Status,
-  StatusSchema,
-} from '@buf/googleapis_googleapis.bufbuild_es/google/rpc/status_pb.js';
-import { create, createRegistry } from '@bufbuild/protobuf';
-import { anyPack, anyUnpack } from '@bufbuild/protobuf/wkt';
 import { ErrorListener, RecognitionException, Recognizer, Token } from 'antlr4';
-import { formatFunctionType } from '../checker/types';
-import { Location } from './ast';
-import { CELContainer } from './container';
-import { formatCELType } from './format';
+import { Container } from './container';
+import { CELError } from './error';
+import { Location } from './location';
+import { Source, TextSource } from './source';
 
 export class Errors {
-  public readonly errors = create(ErrorSetSchema);
-  public numErrors = 0;
+  public readonly errors: CELError[] = [];
 
   constructor(
-    public readonly source: string,
-    public readonly sourceDescription = '<input>',
+    public readonly source: Source = new TextSource(''),
     public readonly maxErrorsToReport = 100
   ) {}
 
@@ -32,28 +19,10 @@ export class Errors {
   }
 
   public reportErrorAtId(id: bigint, location: Location, message: string) {
-    this.numErrors++;
-    if (this.numErrors > this.maxErrorsToReport) {
+    if (this.errors.length > this.maxErrorsToReport) {
       return;
     }
-    const err = create(StatusSchema, {
-      code: 0,
-      message,
-      details: [
-        anyPack(
-          SourceInfoSchema,
-          create(SourceInfoSchema, {
-            positions: {
-              [id.toString()]: location.column,
-            },
-            lineOffsets: [location.line],
-            location: `${location.line}:${location.column}`,
-            syntaxVersion: 'cel1',
-          })
-        ),
-      ],
-    });
-    this.errors.errors.push(err);
+    this.errors.push(new CELError(id, location, message));
   }
 
   public reportInternalError(message: string) {
@@ -80,7 +49,7 @@ export class Errors {
   public reportUndeclaredReference(
     id: bigint,
     location: Location,
-    container: CELContainer,
+    container: Container,
     name: string
   ) {
     return this.reportErrorAtId(
@@ -111,7 +80,7 @@ export class Errors {
     return this.reportErrorAtId(
       id,
       location,
-      `type '${formatCELType(type)}' does not support field selection`
+      `type '${type.toString()}' does not support field selection`
     );
   }
 
@@ -138,7 +107,9 @@ export class Errors {
     args: Type[],
     isInstance: boolean
   ) {
-    const signature = formatFunctionType(null, args, isInstance);
+    // TODO: Implement formatFunctionType.
+    // const signature = formatFunctionType(null, args, isInstance);
+    const signature = '';
     return this.reportErrorAtId(
       id,
       location,
@@ -168,9 +139,7 @@ export class Errors {
     return this.reportErrorAtId(
       id,
       location,
-      `expected type of field '${name}' is '${formatCELType(
-        field
-      )}' but provided type is '${formatCELType(value)}'`
+      `expected type of field '${name}' is '${field.toString()}' but provided type is '${value.toString()}'`
     );
   }
 
@@ -190,17 +159,15 @@ export class Errors {
     return this.reportErrorAtId(
       id,
       location,
-      `expression of type '${formatCELType(
-        t
-      )}' cannot be range of a comprehension (must be list, map, or dynamic)`
+      `expression of type '${t.toString()}' cannot be range of a comprehension (must be list, map, or dynamic)`
     );
   }
 
   public toDisplayString() {
     let hasRecursionError = false;
     const errors = [];
-    for (const error of this.errors.errors) {
-      const str = this._errorToDisplayString(error);
+    for (const error of this.errors) {
+      const str = error.toDisplayString(this.source);
       // Deduplicate recursion errors.
       if (
         str.includes('expression recursion limit exceeded') ||
@@ -216,30 +183,6 @@ export class Errors {
     }
 
     return errors.join('\n ');
-  }
-
-  private _errorToDisplayString(err: Status) {
-    const sourceInfo = anyUnpack(
-      err.details[0],
-      createRegistry(SourceInfoSchema)
-    ) as SourceInfo;
-    if (sourceInfo?.$typeName !== SourceInfoSchema.typeName) {
-      throw new Error('Invalid source info');
-    }
-    const [line, column] = sourceInfo.location.split(':').map(Number);
-    const result = `ERROR: ${this.sourceDescription}:${line}:${column + 1}: ${
-      err.message
-    }`;
-    if (line < 0 || column < 0) {
-      return result;
-    }
-    const sourceLine = '\n | ' + this.source.split('\n')[line - 1];
-    let indLine = '\n | ';
-    for (let i = 0; i < column; i++) {
-      indLine += '.';
-    }
-    indLine += '^';
-    return result + sourceLine + indLine;
   }
 }
 
@@ -261,7 +204,10 @@ export class LexerErrorListener extends ErrorListener<number> {
 }
 
 export class ParserErrorListener extends ErrorListener<Token> {
-  constructor(private readonly errors: Errors) {
+  constructor(
+    // private readonly parserHelper: ParserHelper,
+    private readonly errors: Errors
+  ) {
     super();
   }
 
@@ -273,6 +219,27 @@ export class ParserErrorListener extends ErrorListener<Token> {
     msg: string,
     e: RecognitionException | undefined
   ): void {
+    // const offset = this.parserHelper
+    //   .getSourceInfo()
+    //   .computeOffset(line, charPositionInLine);
+    // const l = this.parserHelper.getLocationByOffset(offset);
+    // // // Hack to keep existing error messages consistent with previous versions of CEL when a reserved word
+    // // // is used as an identifier. This behavior needs to be overhauled to provide consistent, normalized error
+    // // // messages out of ANTLR to prevent future breaking changes related to error message content.
+    // // if (msg.indexOf("no viable alternative") > -1) {
+    // // 	msg = reservedIdentifier.ReplaceAllString(msg, mismatchedReservedIdentifier)
+    // // }
+    // // Ensure that no more than 100 syntax errors are reported as this will halt attempts to recover from a
+    // // seriously broken expression.
+    // if (this.errors.errors.length < this.errors.maxErrorsToReport) {
+    //   this.errors.reportSyntaxError(l, msg);
+    // } else {
+    //   this.errors.reportSyntaxError(
+    //     l,
+    //     `More than ${this.errors.maxErrorsToReport} errors.`
+    //   );
+    //   throw new Error('too many errors');
+    // }
     if (msg.startsWith('expression recursion limit exceeded')) {
       this.errors.reportInternalError(msg);
     } else {

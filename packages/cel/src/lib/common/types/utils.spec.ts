@@ -1,89 +1,57 @@
-import { Type_PrimitiveType } from '@buf/google_cel-spec.bufbuild_es/cel/expr/checked_pb';
-import { ScalarType } from '@bufbuild/protobuf';
-import { BOOL_CEL_TYPE } from './bool';
-import { BYTES_CEL_TYPE } from './bytes';
-import { DYN_CEL_TYPE } from './dyn';
-import { ERROR_TYPE } from './error';
-import { INT_CEL_TYPE } from './int';
-import { primitiveType } from './primitive';
-import { STRING_CEL_TYPE } from './string';
-import { UINT_CEL_TYPE } from './uint';
-import { isDynTypeOrErrorType, scalarTypeToPrimitiveType } from './utils';
+import {
+  TestAllTypes_NestedEnum,
+  TestAllTypesSchema,
+} from '@buf/cel_spec.bufbuild_es/proto/test/v1/proto3/test_all_types_pb.js';
+import { create, DescField } from '@bufbuild/protobuf';
+import { isMessageFieldSet, sanitizeProtoName } from './utils';
 
 describe('utils', () => {
-  it('isDynTypeOrErrorType', () => {
-    expect(isDynTypeOrErrorType(DYN_CEL_TYPE)).toBe(true);
-    expect(isDynTypeOrErrorType(ERROR_TYPE)).toBe(true);
-    expect(isDynTypeOrErrorType(BOOL_CEL_TYPE)).toBe(false);
-    expect(isDynTypeOrErrorType(BYTES_CEL_TYPE)).toBe(false);
-    expect(isDynTypeOrErrorType(INT_CEL_TYPE)).toBe(false);
-    expect(isDynTypeOrErrorType(STRING_CEL_TYPE)).toBe(false);
-    expect(isDynTypeOrErrorType(UINT_CEL_TYPE)).toBe(false);
+  it('isMessageFieldSet', () => {
+    const empty = create(TestAllTypesSchema);
+    const set = create(TestAllTypesSchema, {
+      singleInt64: BigInt(42),
+      standaloneEnum: TestAllTypes_NestedEnum.BAR,
+      listValue: {
+        values: [{ kind: { case: 'stringValue', value: 'hello world' } }],
+      },
+      mapStringDouble: { a: 3.14 },
+      standaloneMessage: { bb: 867.5309 },
+    });
+
+    const scalarField = TestAllTypesSchema.fields.find(
+      (f) => f.name === 'single_int64'
+    ) as DescField;
+    expect(isMessageFieldSet(scalarField, empty)).toEqual(false);
+    expect(isMessageFieldSet(scalarField, set)).toEqual(true);
+
+    const enumField = TestAllTypesSchema.fields.find(
+      (f) => f.name === 'standalone_enum'
+    ) as DescField;
+    expect(isMessageFieldSet(enumField, empty)).toEqual(false);
+    expect(isMessageFieldSet(enumField, set)).toEqual(true);
+
+    const listField = TestAllTypesSchema.fields.find(
+      (f) => f.name === 'list_value'
+    ) as DescField;
+    expect(isMessageFieldSet(listField, empty)).toEqual(false);
+    expect(isMessageFieldSet(listField, set)).toEqual(true);
+
+    const mapField = TestAllTypesSchema.fields.find(
+      (f) => f.name === 'map_string_double'
+    ) as DescField;
+    expect(isMessageFieldSet(mapField, empty)).toEqual(false);
+    expect(isMessageFieldSet(mapField, set)).toEqual(true);
+
+    const nestedMessage = TestAllTypesSchema.fields.find(
+      (f) => f.name === 'standalone_message'
+    ) as DescField;
+    expect(isMessageFieldSet(nestedMessage, empty)).toEqual(false);
+    expect(isMessageFieldSet(nestedMessage, set)).toEqual(true);
   });
 
-  it('scalarTypeToPrimitiveType', () => {
-    const testCases = [
-      {
-        in: ScalarType.BOOL,
-        out: Type_PrimitiveType.BOOL,
-      },
-      {
-        in: ScalarType.BYTES,
-        out: Type_PrimitiveType.BYTES,
-      },
-      {
-        in: ScalarType.DOUBLE,
-        out: Type_PrimitiveType.DOUBLE,
-      },
-      {
-        in: ScalarType.INT64,
-        out: Type_PrimitiveType.INT64,
-      },
-      {
-        in: ScalarType.STRING,
-        out: Type_PrimitiveType.STRING,
-      },
-      {
-        in: ScalarType.UINT64,
-        out: Type_PrimitiveType.UINT64,
-      },
-      {
-        in: ScalarType.FIXED32,
-        out: Type_PrimitiveType.DOUBLE,
-      },
-      {
-        in: ScalarType.FIXED64,
-        out: Type_PrimitiveType.DOUBLE,
-      },
-      {
-        in: ScalarType.FLOAT,
-        out: Type_PrimitiveType.DOUBLE,
-      },
-      {
-        in: ScalarType.SFIXED32,
-        out: Type_PrimitiveType.DOUBLE,
-      },
-      {
-        in: ScalarType.SFIXED64,
-        out: Type_PrimitiveType.DOUBLE,
-      },
-      {
-        in: ScalarType.SINT32,
-        out: Type_PrimitiveType.INT64,
-      },
-      {
-        in: ScalarType.SINT64,
-        out: Type_PrimitiveType.INT64,
-      },
-      {
-        in: ScalarType.UINT32,
-        out: Type_PrimitiveType.UINT64,
-      },
-    ];
-    for (const testCase of testCases) {
-      expect(scalarTypeToPrimitiveType(testCase.in)).toEqual(
-        primitiveType(testCase.out)
-      );
-    }
+  it('sanitizeProtoName', () => {
+    expect(sanitizeProtoName(' foo  ')).toEqual('foo');
+    expect(sanitizeProtoName('foo.bar.baz')).toEqual('foo.bar.baz');
+    expect(sanitizeProtoName('.foo.bar.baz')).toEqual('foo.bar.baz');
   });
 });

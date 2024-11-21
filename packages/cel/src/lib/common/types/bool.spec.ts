@@ -1,64 +1,12 @@
-import {
-  ConstantSchema,
-  ExprSchema,
-} from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb';
-import { ValueSchema } from '@buf/google_cel-spec.bufbuild_es/cel/expr/value_pb';
 import { create } from '@bufbuild/protobuf';
 import { AnySchema, BoolValueSchema, anyPack } from '@bufbuild/protobuf/wkt';
-import {
-  BOOL_REF_TYPE,
-  BoolRefVal,
-  boolConstant,
-  boolExpr,
-  boolValue,
-} from './bool';
+import { BoolRefVal } from './bool';
 import { ErrorRefVal } from './error';
 import { IntRefVal } from './int';
-import { STRING_REF_TYPE, StringRefVal } from './string';
-import { TYPE_REF_TYPE } from './type';
+import { StringRefVal } from './string';
+import { BoolType, StringType, TypeType } from './types';
 
 describe('bool', () => {
-  it('boolConstant', () => {
-    expect(boolConstant(true)).toEqual(
-      create(ConstantSchema, {
-        constantKind: {
-          case: 'boolValue',
-          value: true,
-        },
-      })
-    );
-  });
-
-  it('boolExpr', () => {
-    expect(boolExpr(BigInt(1), true)).toEqual(
-      create(ExprSchema, {
-        id: BigInt(1),
-        exprKind: {
-          case: 'constExpr',
-          value: create(ConstantSchema, {
-            constantKind: {
-              case: 'boolValue',
-              value: true,
-            },
-          }),
-        },
-      })
-    );
-  });
-
-  it('boolValue', () => {
-    expect(boolValue(true)).toEqual(
-      create(ValueSchema, {
-        kind: {
-          case: 'boolValue',
-          value: true,
-        },
-      })
-    );
-  });
-
-  // TODO: validations
-
   it('convertBoolValueToNative - js boolean', () => {
     const value = new BoolRefVal(true);
     expect(value.convertToNative(Boolean)).toEqual(true);
@@ -89,13 +37,11 @@ describe('bool', () => {
 
   it('convertBoolValueToType', () => {
     const value = new BoolRefVal(true);
-    expect(value.convertToType(BOOL_REF_TYPE)).toStrictEqual(
-      new BoolRefVal(true)
-    );
-    expect(value.convertToType(STRING_REF_TYPE)).toStrictEqual(
+    expect(value.convertToType(BoolType)).toStrictEqual(new BoolRefVal(true));
+    expect(value.convertToType(StringType)).toStrictEqual(
       new StringRefVal('true')
     );
-    expect(value.convertToType(TYPE_REF_TYPE)).toStrictEqual(BOOL_REF_TYPE);
+    expect(value.convertToType(TypeType)).toStrictEqual(BoolType);
   });
 
   it('equalBoolValue', () => {

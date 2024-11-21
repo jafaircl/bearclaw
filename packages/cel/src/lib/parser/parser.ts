@@ -2,7 +2,7 @@
 import { assert, isNil } from '@bearclaw/is';
 import {
   Expr,
-  ExprSchema,
+  Expr_CreateList,
   Expr_CreateStruct,
   Expr_CreateStruct_Entry,
   ParsedExprSchema,
@@ -16,33 +16,34 @@ import {
   ParserRuleContext,
   Token,
 } from 'antlr4';
-import { Location, OffsetRange } from '../common/ast';
-import {
-  RESERVED_IDS,
-  parseBytesConstant,
-  parseDoubleConstant,
-  parseIntConstant,
-  parseStringConstant,
-  parseUintConstant,
-} from '../common/constants';
+import { OffsetRange } from '../common/ast';
+import { parseBytes, parseString } from '../common/constants';
+import { CELError } from '../common/error';
 import {
   Errors,
   LexerErrorListener,
   ParserErrorListener,
 } from '../common/errors';
-import { boolExpr } from '../common/types/bool';
-import { callExpr } from '../common/types/call';
-import { constExpr } from '../common/types/constant';
-import { identExpr } from '../common/types/ident';
-import { listExpr } from '../common/types/list';
-import { nullExpr } from '../common/types/null';
-import { selectExpr } from '../common/types/select';
-import { stringExpr } from '../common/types/string';
+import { Location, NoLocation } from '../common/location';
 import {
-  structExpr,
-  structFieldEntry,
-  structMapEntry,
-} from '../common/types/struct';
+  CONDITIONAL_OPERATOR,
+  INDEX_OPERATOR,
+  LOGICAL_AND_OPERATOR,
+  LOGICAL_NOT_OPERATOR,
+  LOGICAL_OR_OPERATOR,
+  NEGATE_OPERATOR,
+  OPT_INDEX_OPERATOR,
+  OPT_SELECT_OPERATOR,
+  getOperatorFromText,
+} from '../common/operators';
+import {
+  newListProtoExpr,
+  newMapProtoExpr,
+  newMessageProtoExpr,
+} from '../common/pb/expressions';
+import { Source } from '../common/source';
+import { reflectNativeType } from '../common/types/native';
+import { NullRefVal } from '../common/types/null';
 import { ParseException } from '../exceptions';
 import CELLexer from '../gen/CELLexer';
 import {
@@ -80,42 +81,121 @@ import {
   UintContext,
 } from '../gen/CELParser';
 import { default as GeneratedCelVisitor } from '../gen/CELVisitor';
-import { LogicManager } from '../logic-manager';
-import {
-  CONDITIONAL_OPERATOR,
-  INDEX_OPERATOR,
-  LOGICAL_AND_OPERATOR,
-  LOGICAL_NOT_OPERATOR,
-  LOGICAL_OR_OPERATOR,
-  NEGATE_OPERATOR,
-  OPT_INDEX_OPERATOR,
-  OPT_SELECT_OPERATOR,
-  getOperatorFromText,
-} from '../operators';
-import { MacroError, expandMacro, findMacro } from './macros';
-import { ParserHelper } from './parser-helper';
+import { ExprHelper, LogicManager, ParserHelper } from './helper';
+import { AllMacros, Macro, makeMacroKey, makeVarArgMacroKey } from './macro';
 
-export interface CELParserOptions {
-  enableOptionalSyntax?: boolean;
-  retainRepeatedUnaryOperators?: boolean;
+export const reservedIds = new Set([
+  'as',
+  'break',
+  'const',
+  'continue',
+  'else',
+  'false',
+  'for',
+  'function',
+  'if',
+  'import',
+  'in',
+  'let',
+  'loop',
+  'package',
+  'namespace',
+  'null',
+  'return',
+  'true',
+  'var',
+  'void',
+  'while',
+]);
+
+export interface ParserOptions {
+  /**
+   * MaxRecursionDepth limits the maximum depth the parser will attempt to
+   * parse the expression before giving up.
+   */
   maxRecursionDepth?: number;
+  /**
+   * ErrorRecoveryLookaheadTokenLimit limits the number of lexer tokens that may be considered during error recovery.
+   *
+   * Error recovery often involves looking ahead in the input to determine if
+   * there's a point at which parsing may successfully resume. In some
+   * pathological cases, the parser can look through quite a large set of input
+   * which in turn generates a lot of back-tracking and performance degredation.
+   *
+   * The limit must be >= 1, and is recommended to be less than the default of
+   * 256.
+   */
+  errorRecoveryTokenLookaheadLimit?: number;
+  /**
+   * ErrorRecoveryLimit limits the number of attempts the parser will perform
+   * to recover from an error.
+   */
+  errorRecoveryLimit?: number;
+  /**
+   * ErrorReportingLimit limits the number of syntax error reports before
+   * terminating parsing.
+   *
+   * The limit must be at least 1. If unset, the limit will be 100.
+   */
+  errorReportingLimit?: number;
+  /**
+   * ExpressionSizeCodePointLimit is an option which limits the maximum code
+   * point count of an expression.
+   */
+  expressionSizeCodePointLimit?: number;
+  /**
+   * Macros adds the given macros to the parser.
+   */
+  macros?: Macro[];
+  populateMacroCalls?: boolean;
+  enableOptionalSyntax?: boolean;
+  enableVariadicOperatorASTs?: boolean;
 }
 
-export class CELParser extends GeneratedCelVisitor<Expr> {
+export class Parser extends GeneratedCelVisitor<Expr> {
+  readonly #source!: Source;
   readonly #helper!: ParserHelper;
   readonly #errors!: Errors;
-  readonly #maxRecursionDepth: number = 100;
+  #macros: Map<string, Macro> = new Map();
+  #errorReportingLimit = 100;
   #recursionDepth = 0;
+  #maxRecursionDepth = 250;
+  #errorRecoveryTokenLookaheadLimit = 256;
+  #errorRecoveryLimit = 30;
+  #expressionSizeCodePointLimit = 100_000;
 
-  constructor(
-    public readonly source: string,
-    private readonly options?: CELParserOptions
-  ) {
+  constructor(source: Source, private readonly options?: ParserOptions) {
     super();
-    this.#helper = new ParserHelper(source);
-    this.#errors = new Errors(source);
+    this.#source = source;
+    this.#helper = new ParserHelper(this.#source);
+    this.#errors = new Errors(this.#source);
+    if (this.options?.errorReportingLimit) {
+      this.#errorReportingLimit = this.options.errorReportingLimit;
+    }
     if (this.options?.maxRecursionDepth) {
       this.#maxRecursionDepth = this.options.maxRecursionDepth;
+    }
+    if (this.options?.errorRecoveryTokenLookaheadLimit) {
+      this.#errorRecoveryTokenLookaheadLimit =
+        this.options.errorRecoveryTokenLookaheadLimit;
+    }
+    if (this.options?.errorRecoveryLimit) {
+      this.#errorRecoveryLimit = this.options.errorRecoveryLimit;
+    }
+    if (this.options?.expressionSizeCodePointLimit) {
+      this.#expressionSizeCodePointLimit =
+        this.options.expressionSizeCodePointLimit;
+    }
+    // If the parser options include macros, add them to the parser. Otherwise,
+    // add the default set of macros.
+    if (this.options?.macros) {
+      for (const macro of this.options.macros) {
+        this.#macros.set(macro.macroKey(), macro);
+      }
+    } else {
+      for (const macro of AllMacros) {
+        this.#macros.set(macro.macroKey(), macro);
+      }
     }
   }
 
@@ -124,7 +204,7 @@ export class CELParser extends GeneratedCelVisitor<Expr> {
   }
 
   parse() {
-    const chars = new CharStream(this.source);
+    const chars = new CharStream(this.#source.content());
     const lexer = new CELLexer(chars);
     lexer.removeErrorListeners();
     lexer.addErrorListener(new LexerErrorListener(this.#errors));
@@ -138,7 +218,7 @@ export class CELParser extends GeneratedCelVisitor<Expr> {
     const expr = this.visit(parser.start());
     return create(ParsedExprSchema, {
       expr,
-      sourceInfo: this.#helper.sourceInfo,
+      sourceInfo: this.#helper.getSourceInfo().toProto(),
     });
   }
 
@@ -169,10 +249,10 @@ export class CELParser extends GeneratedCelVisitor<Expr> {
     if (isNil(ctx._op)) {
       return result;
     }
-    const opId = this.#helper.nextId(ctx._op);
+    const opId = this.#helper.id(ctx._op);
     const ifTrue = this.visit(ctx._e1);
     const ifFalse = this.visit(ctx._e2);
-    return this._globalCallOrMacro(ctx, opId, CONDITIONAL_OPERATOR, [
+    return this._globalCallOrMacro(opId, CONDITIONAL_OPERATOR, [
       result,
       ifTrue,
       ifFalse,
@@ -192,7 +272,7 @@ export class CELParser extends GeneratedCelVisitor<Expr> {
       }
       const term = this.visit(rest[i]);
       const op = ctx._ops[i];
-      logicManager.addTerm(this.#helper.nextId(op), term);
+      logicManager.addTerm(this.#helper.id(op), term);
     }
     return logicManager.toExpr();
   };
@@ -210,7 +290,7 @@ export class CELParser extends GeneratedCelVisitor<Expr> {
       }
       const term = this.visit(rest[i]);
       const op = ctx._ops[i];
-      logicManager.addTerm(this.#helper.nextId(op), term);
+      logicManager.addTerm(this.#helper.id(op), term);
     }
     return logicManager.toExpr();
   };
@@ -223,9 +303,9 @@ export class CELParser extends GeneratedCelVisitor<Expr> {
     const operator = getOperatorFromText(opText);
     if (!isNil(operator)) {
       const left = this.visit(ctx.relation(0));
-      const id = this.#helper.nextId(ctx._op);
+      const id = this.#helper.id(ctx._op);
       const right = this.visit(ctx.relation(1));
-      return this._globalCallOrMacro(ctx, id, operator, [left, right]);
+      return this._globalCallOrMacro(id, operator, [left, right]);
     }
     return this._reportError(ctx, 'operator not found');
   };
@@ -238,9 +318,9 @@ export class CELParser extends GeneratedCelVisitor<Expr> {
     const operator = getOperatorFromText(opText);
     if (!isNil(operator)) {
       const lhs = this.visit(ctx.calc(0));
-      const opId = this.#helper.nextId(ctx._op);
+      const opId = this.#helper.id(ctx._op);
       const rhs = this.visit(ctx.calc(1));
-      return this._globalCallOrMacro(ctx, opId, operator, [lhs, rhs]);
+      return this._globalCallOrMacro(opId, operator, [lhs, rhs]);
     }
     return this._reportError(ctx, 'operator not found');
   };
@@ -253,54 +333,54 @@ export class CELParser extends GeneratedCelVisitor<Expr> {
     if (!isNil(ctx._ops) && ctx._ops.length % 2 === 0) {
       return this.visit(ctx.member());
     }
-    const id = this.#helper.nextId(ctx._ops[0]);
+    const id = this.#helper.id(ctx._ops[0]);
     const target = this.visit(ctx.member());
-    return this._globalCallOrMacro(ctx, id, LOGICAL_NOT_OPERATOR, [target]);
+    return this._globalCallOrMacro(id, LOGICAL_NOT_OPERATOR, [target]);
   };
 
   override visitNegate = (ctx: NegateContext): Expr => {
     if (isNil(ctx._ops) || ctx._ops.length % 2 === 0) {
       return this.visit(ctx.member());
     }
-    const opId = this.#helper.nextId(ctx._ops[0]);
+    const opId = this.#helper.id(ctx._ops[0]);
     const target = this.visit(ctx.member());
-    return this._globalCallOrMacro(ctx, opId, NEGATE_OPERATOR, [target]);
+    return this._globalCallOrMacro(opId, NEGATE_OPERATOR, [target]);
   };
 
   override visitMemberCall = (ctx: MemberCallContext): Expr => {
     const operand = this.visit(ctx.member());
+    // Handle the error case where no valid identifier is specified.
+    if (isNil(ctx._id)) {
+      return this.#helper.newUnspecifiedExpr(ctx);
+    }
     const id = ctx._id.text;
-    const opId = this.#helper.nextId(ctx._open);
+    const opId = this.#helper.id(ctx._open);
     let args: Expr[] = [];
     if (!isNil(ctx._args?.expr_list)) {
       args = this.visitSlice(ctx._args.expr_list());
     }
-    return this._receiverCallOrMacro(ctx, opId, id, operand, args);
+    return this._receiverCallOrMacro(opId, id, operand, args);
   };
 
   override visitSelect = (ctx: SelectContext): Expr => {
     const operand = this.visit(ctx.member());
+    // Handle the error case where no valid identifier is specified.
+    if (isNil(ctx._id) || isNil(ctx._op)) {
+      return this.#helper.newUnspecifiedExpr(ctx);
+    }
     const id = ctx._id.text;
     if (!isNil(ctx._opt)) {
       if (!this.options?.enableOptionalSyntax) {
         return this._reportError(ctx._op, "unsupported syntax '.?'");
       }
-      const constant = stringExpr(this.#helper.nextId(ctx._id), id);
-      return create(ExprSchema, {
-        id: this.#helper.nextId(ctx._op),
-        exprKind: {
-          case: 'callExpr',
-          value: {
-            function: OPT_SELECT_OPERATOR,
-            args: [operand, constant],
-          },
-        },
-      });
+      return this.#helper.newGlobalCall(
+        ctx._op,
+        OPT_SELECT_OPERATOR,
+        operand,
+        this.#helper.newLiteralString(ctx._id, id)
+      );
     }
-    return selectExpr(this.#helper.nextId(ctx._op), {
-      operand,
-      field: id,
-    });
+    return this.#helper.newSelect(ctx._op, operand, id);
   };
 
   override visitPrimaryExpr = (ctx: PrimaryExprContext): Expr => {
@@ -309,10 +389,11 @@ export class CELParser extends GeneratedCelVisitor<Expr> {
 
   override visitIndex = (ctx: IndexContext): Expr => {
     const target = this.visit(ctx.member());
+    // Handle the error case where no valid identifier is specified.
     if (isNil(ctx._op)) {
-      return this._reportError(ctx, 'no valid identifier is specified');
+      return this.#helper.newUnspecifiedExpr(ctx);
     }
-    const opId = this.#helper.nextId(ctx._op);
+    const opId = this.#helper.id(ctx._op);
     const index = this.visit(ctx._index);
     let operator = INDEX_OPERATOR;
     if (!isNil(ctx._opt)) {
@@ -321,7 +402,7 @@ export class CELParser extends GeneratedCelVisitor<Expr> {
       }
       operator = OPT_INDEX_OPERATOR;
     }
-    return this._globalCallOrMacro(ctx, opId, operator, [target, index]);
+    return this._globalCallOrMacro(opId, operator, [target, index]);
   };
 
   override visitIdentOrGlobalCall = (ctx: IdentOrGlobalCallContext): Expr => {
@@ -329,23 +410,24 @@ export class CELParser extends GeneratedCelVisitor<Expr> {
     if (!isNil(ctx._leadingDot)) {
       identName = '.';
     }
+    // Handle the error case where no valid identifier is specified.
     if (isNil(ctx._id)) {
-      return this._reportError(ctx, 'no valid identifier specified');
+      return this.#helper.newUnspecifiedExpr(ctx);
     }
     const id = ctx._id.text;
-    if (RESERVED_IDS.has(id)) {
+    if (reservedIds.has(id)) {
       return this._reportError(ctx, `reserved identifier: ${id}`);
     }
     identName += id;
     if (!isNil(ctx._op)) {
-      const opId = this.#helper.nextId(ctx._op);
+      const opId = this.#helper.id(ctx._op);
       let args: Expr[] = [];
       if (!isNil(ctx._args)) {
         args = this.visitSlice(ctx._args.expr_list());
       }
-      return this._globalCallOrMacro(ctx, opId, identName, args);
+      return this._globalCallOrMacro(opId, identName, args);
     }
-    return identExpr(this.#helper.nextId(ctx._id), { name: identName });
+    return this.#helper.newIdent(ctx._id, identName);
   };
 
   //   override visitNested = (ctx: NestedContext): Expr => {
@@ -353,36 +435,30 @@ export class CELParser extends GeneratedCelVisitor<Expr> {
   //   };
 
   override visitCreateList = (ctx: CreateListContext): Expr => {
-    const listId = this.#helper.nextId(ctx._op);
-    let elements: Expr[] = [];
-    let optionalIndices: number[] = [];
-    if (!isNil(ctx._elems)) {
-      const listInit = this.visit(ctx._elems);
-      if (listInit.exprKind.case !== 'listExpr') {
-        // This should never happen, but just in case.
-        return this._reportError(ctx, 'no list initializer');
-      }
-      elements = listInit.exprKind.value.elements;
-      optionalIndices = listInit.exprKind.value.optionalIndices;
-    }
-    return listExpr(listId, {
-      elements,
-      optionalIndices,
-    });
+    const listId = this.#helper.id(ctx._op);
+    const listInit = this.visitListInit(ctx._elems);
+    const listExpr = listInit.exprKind.value as Expr_CreateList;
+    return this.#helper.newList(
+      listId,
+      listExpr.elements,
+      listExpr.optionalIndices
+    );
   };
 
   override visitCreateStruct = (ctx: CreateStructContext): Expr => {
-    const structId = this.#helper.nextId(ctx._op);
-    let entries: Expr_CreateStruct_Entry[] = [];
+    const structId = this.#helper.id(ctx._op);
+    const entries: Expr_CreateStruct_Entry[] = [];
     if (!isNil(ctx._entries)) {
-      const mapInit = this.visit(ctx._entries);
-      if (mapInit.exprKind.case !== 'structExpr') {
-        // This should never happen, but just in case.
-        return this._reportError(ctx, 'no struct initializer');
+      const initializer = this.visit(ctx._entries);
+      const entriesInitializer = initializer.exprKind
+        .value as Expr_CreateStruct;
+      if (isNil(entriesInitializer)) {
+        // This is the result of a syntax error detected elsewhere.
+        return this.#helper.newUnspecifiedExpr(ctx);
       }
-      entries = mapInit.exprKind.value.entries;
+      entries.push(...entriesInitializer.entries);
     }
-    return structExpr(structId, { entries });
+    return this.#helper.newMap(structId, entries);
   };
 
   override visitCreateMessage = (ctx: CreateMessageContext): Expr => {
@@ -394,46 +470,35 @@ export class CELParser extends GeneratedCelVisitor<Expr> {
       messageName += id.text;
     }
     if (!isNil(ctx._leadingDot)) {
-      messageName = `.${messageName}`;
+      messageName = '.' + messageName;
     }
-    const id = this.#helper.nextId(ctx._op);
-    let entries: Expr_CreateStruct_Entry[] = [];
-    if (!isNil(ctx._entries)) {
-      const initializer = this.visit(ctx._entries);
-      const entriesInitializer = initializer.exprKind
-        .value as Expr_CreateStruct;
-      if (isNil(entriesInitializer)) {
-        // This is the result of a syntax error detected elsewhere.
-        return create(ExprSchema);
-      }
-      entries = entriesInitializer.entries;
-    }
-    return structExpr(id, { messageName, entries });
+    const objID = this.#helper.id(ctx._op);
+    const entriesInitializer = this.visitFieldInitializerList(ctx._entries);
+    const entries = entriesInitializer.exprKind.value as Expr_CreateStruct;
+    return this.#helper.newObject(objID, messageName, entries?.entries ?? []);
   };
 
-  override visitConstantLiteral = (ctx: ConstantLiteralContext): Expr => {
-    const expr = this.visit(ctx.literal());
-    if (expr.exprKind.case !== 'constExpr') {
-      // This should never happen, but just in case.
-      return this._reportError(ctx, 'expr is not a constant');
-    }
-    return constExpr(this.#helper.nextId(ctx), expr.exprKind.value);
-  };
+  // override visitConstantLiteral = (ctx: ConstantLiteralContext): Expr => {
+  //   const expr = this.visit(ctx.literal());
+  //   if (expr.exprKind.case !== 'constExpr') {
+  //     // This should never happen, but just in case.
+  //     return this._reportError(ctx, 'expr is not a constant');
+  //   }
+  //   return this.#helper.newLiteral(ctx, expr);
+  // };
 
   override visitExprList = (ctx: ExprListContext): Expr => {
-    return listExpr(this.#helper.nextId(ctx), {
-      elements: this.visitSlice(ctx.expr_list()),
-    });
+    return newListProtoExpr(BigInt(0), this.visitSlice(ctx.expr_list()));
   };
 
   override visitListInit = (ctx: ListInitContext): Expr => {
-    const elements = ctx._elems;
+    const elements = ctx?._elems ?? [];
     const result: Expr[] = [];
     const optionals: number[] = [];
     for (let i = 0; i < elements.length; i++) {
       const ex = this.visit(elements[i]._e);
       if (isNil(ex)) {
-        return listExpr(BigInt(0), {});
+        return newListProtoExpr(BigInt(0), []);
       }
       result.push(ex);
       if (elements[i]._opt != null) {
@@ -444,42 +509,49 @@ export class CELParser extends GeneratedCelVisitor<Expr> {
         optionals.push(i);
       }
     }
-    return listExpr(BigInt(0), {
-      elements: result,
-      optionalIndices: optionals,
-    });
+    return newListProtoExpr(BigInt(0), result, optionals);
   };
 
   override visitFieldInitializerList = (
     ctx: FieldInitializerListContext
   ): Expr => {
-    const fields: Expr_CreateStruct_Entry[] = [];
+    if (isNil(ctx) || isNil(ctx._fields)) {
+      // This is the result of a syntax error handled elswhere, return empty.
+      return this.#helper.newUnspecifiedExpr(ctx);
+    }
+    const result: Expr_CreateStruct_Entry[] = [];
+    const cols = ctx._cols;
+    const vals = ctx._values;
     for (let i = 0; i < ctx._fields.length; i++) {
-      if (i >= ctx._values.length || i >= ctx._fields.length) {
+      if (i >= cols.length || i >= vals.length) {
         // This is the result of a syntax error detected elsewhere.
-        return create(ExprSchema);
+        return this.#helper.newUnspecifiedExpr(ctx);
       }
-      const field = ctx._fields[i];
-      const exprId = this.#helper.nextId(ctx._cols[i]);
-      const optionalEntry = !isNil(field._opt);
-      if (optionalEntry && !this.options?.enableOptionalSyntax) {
-        this._reportError(field, "unsupported syntax '?'");
+      const initID = this.#helper.id(cols[i]);
+      const optField = ctx._fields[i];
+      const optional = !isNil(optField._opt);
+      if (this.options?.enableOptionalSyntax === false && optional) {
+        this._reportError(optField, "unsupported syntax '?'");
         continue;
       }
-      const id = field.IDENTIFIER();
+      // The field may be empty due to a prior error
+      const id = optField.IDENTIFIER();
       if (isNil(id)) {
-        return this._reportError(ctx, 'no valid identifier specified');
+        return this.#helper.newUnspecifiedExpr(optField);
       }
-      fields.push(
-        structFieldEntry(
-          exprId,
-          id.getText(),
-          this.visit(ctx._values[i]),
-          optionalEntry
-        )
+      const fieldName = id.getText();
+      const value = this.visit(vals[i]);
+      const field = this.#helper.newObjectField(
+        initID,
+        fieldName,
+        value,
+        optional
       );
+      result.push(field);
     }
-    return structExpr(this.#helper.nextId(ctx), { entries: fields });
+    // The only purpose of this method is to get the fields. We don't care
+    // about the id or message name
+    return newMessageProtoExpr(BigInt(0), '', result);
   };
 
   //   override visitOptField = (ctx: OptFieldContext): Expr => {
@@ -487,24 +559,33 @@ export class CELParser extends GeneratedCelVisitor<Expr> {
   //   };
 
   override visitMapInitializerList = (ctx: MapInitializerListContext): Expr => {
-    const fields: Expr_CreateStruct_Entry[] = [];
+    if (isNil(ctx) || isNil(ctx._keys)) {
+      // This is the result of a syntax error handled elswhere, return empty.
+      return this.#helper.newUnspecifiedExpr(ctx);
+    }
+    const result: Expr_CreateStruct_Entry[] = [];
+    const keys = ctx._keys;
+    const values = ctx._values;
     for (let i = 0; i < ctx._cols.length; i++) {
-      if (i >= ctx._values.length || i >= ctx._cols.length) {
+      const colID = this.#helper.id(ctx._cols[i]);
+      if (i >= keys.length || i >= values.length) {
         // This is the result of a syntax error detected elsewhere.
-        return create(ExprSchema);
+        return this.#helper.newUnspecifiedExpr(ctx);
       }
-      const colId = this.#helper.nextId(ctx._cols[i]);
-      const optKey = ctx._keys[i];
-      const optionalEntry = !isNil(optKey._opt);
-      if (optionalEntry && !this.options?.enableOptionalSyntax) {
+      const optKey = keys[i];
+      const optional = !isNil(optKey._opt);
+      if (this.options?.enableOptionalSyntax === false && optional) {
         this._reportError(optKey, "unsupported syntax '?'");
         continue;
       }
       const key = this.visit(optKey._e);
-      const value = this.visit(ctx._values[i]);
-      fields.push(structMapEntry(colId, key, value, optionalEntry));
+      const value = this.visit(values[i]);
+      const entry = this.#helper.newMapEntry(colID, key, value, optional);
+      result.push(entry);
     }
-    return structExpr(this.#helper.nextId(ctx), { entries: fields });
+    // We don't want to increment the id for the map initializer list, so we
+    // pass in 0 for the id.
+    return newMapProtoExpr(BigInt(0), result);
   };
 
   //   override visitOptExpr = (ctx: OptExprContext): Expr => {
@@ -512,43 +593,76 @@ export class CELParser extends GeneratedCelVisitor<Expr> {
   //   };
 
   override visitInt = (ctx: IntContext): Expr => {
-    const constant = parseIntConstant(ctx.getText());
-    return constExpr(this.#helper.nextId(ctx), constant);
+    let text = ctx._tok.text;
+    let base = 10;
+    if (text.startsWith('0x')) {
+      base = 16;
+      text = text.substring(2);
+    }
+    if (!isNil(ctx._sign)) {
+      text = ctx._sign.text + text;
+    }
+    try {
+      const i = parseInt(text, base);
+      return this.#helper.newLiteralInt(ctx, BigInt(i));
+    } catch (e) {
+      return this._reportError(ctx, 'invalid int literal');
+    }
   };
 
   override visitUint = (ctx: UintContext): Expr => {
-    const constant = parseUintConstant(ctx.getText());
-    return constExpr(this.#helper.nextId(ctx), constant);
+    let text = ctx._tok.text;
+    // trim the 'u' designator included in the uint literal.
+    text = text.substring(0, text.length - 1);
+    let base = 10;
+    if (text.startsWith('0x')) {
+      base = 16;
+      text = text.substring(2);
+    }
+    try {
+      const u = parseInt(text, base);
+      return this.#helper.newLiteralUint(ctx, BigInt(u));
+    } catch {
+      return this._reportError(ctx, 'invalid uint literal');
+    }
   };
 
   override visitDouble = (ctx: DoubleContext): Expr => {
-    const constant = parseDoubleConstant(ctx.getText());
-    return constExpr(this.#helper.nextId(ctx), constant);
+    let text = ctx._tok.text;
+    if (!isNil(ctx._sign)) {
+      text = ctx._sign.text + text;
+    }
+    try {
+      const f = parseFloat(text);
+      return this.#helper.newLiteralDouble(ctx, f);
+    } catch {
+      return this._reportError(ctx, 'invalid double literal');
+    }
   };
 
   override visitString = (ctx: StringContext): Expr => {
-    const constant = parseStringConstant(ctx.getText());
-    return constExpr(this.#helper.nextId(ctx), constant);
+    const str = parseString(ctx.getText());
+    return this.#helper.newLiteralString(ctx, str);
   };
 
   override visitBytes = (ctx: BytesContext): Expr => {
-    const constant = parseBytesConstant(ctx.getText());
-    return constExpr(this.#helper.nextId(ctx), constant);
+    const bytes = parseBytes(ctx.getText());
+    return this.#helper.newLiteralBytes(ctx, bytes);
   };
 
   override visitBoolTrue = (ctx: BoolTrueContext): Expr => {
     assert(ctx.getText() === 'true', new ParseException('true expected', 0));
-    return boolExpr(this.#helper.nextId(ctx), true);
+    return this.#helper.newLiteralBool(ctx, true);
   };
 
   override visitBoolFalse = (ctx: BoolFalseContext): Expr => {
     assert(ctx.getText() === 'false', new ParseException('false expected', 0));
-    return boolExpr(this.#helper.nextId(ctx), false);
+    return this.#helper.newLiteralBool(ctx, false);
   };
 
   override visitNull = (ctx: NullContext): Expr => {
     assert(ctx.getText() === 'null', new ParseException('null expected', 0));
-    return nullExpr(this.#helper.nextId(ctx));
+    return this.#helper.newLiteral(ctx, new NullRefVal());
   };
 
   visitSlice = (expressions: ExprContext[]): Expr[] => {
@@ -558,9 +672,8 @@ export class CELParser extends GeneratedCelVisitor<Expr> {
     return expressions.map((e) => this.visit(e));
   };
 
-  public getLocationForId(id: string): Location {
-    const offset = this.#helper.sourceInfo.positions[id];
-    return this.#helper.getLocationByOffset(offset);
+  public getLocationForId(id: bigint): Location {
+    return this.#helper.getLocation(id);
   }
 
   private _unnest(tree: ParseTree) {
@@ -622,88 +735,89 @@ export class CELParser extends GeneratedCelVisitor<Expr> {
     return tree;
   }
 
-  private _globalCallOrMacro(
-    ctx: ParserRuleContext,
-    exprId: bigint,
-    fn: string,
-    args: Expr[]
-  ) {
-    const macro = this._expandMacro(ctx, fn, null, args);
+  private _globalCallOrMacro(exprId: bigint, fn: string, args: Expr[]) {
+    const macro = this._expandMacro(exprId, fn, null, args);
     if (!isNil(macro)) {
       return macro;
     }
-    return callExpr(exprId, { function: fn, args });
+    return this.#helper.newGlobalCall(exprId, fn, ...args);
   }
 
   private _receiverCallOrMacro(
-    ctx: ParserRuleContext,
     exprId: bigint,
     fn: string,
     target: Expr,
     args: Expr[]
   ) {
-    const macro = this._expandMacro(ctx, fn, target, args);
+    const macro = this._expandMacro(exprId, fn, target, args);
     if (!isNil(macro)) {
       return macro;
     }
-    return callExpr(exprId, { function: fn, args, target });
+    return this.#helper.newReceiverCall(exprId, fn, target, ...args);
   }
 
   private _expandMacro(
-    ctx: ParserRuleContext,
+    exprID: bigint,
     fn: string,
     target: Expr | null,
     args: Expr[]
   ) {
-    const macro = findMacro(fn);
+    let macro = this.#macros.get(makeMacroKey(fn, args.length, !isNil(target)));
     if (isNil(macro)) {
+      macro = this.#macros.get(makeVarArgMacroKey(fn, !isNil(target)));
+      if (isNil(macro)) {
+        return null;
+      }
+    }
+    const eh = new ExprHelper(exprID, this.#helper);
+    const expr = macro.expander()(eh, target, args);
+    // An error indicates that the macro was matched, but the arguments were
+    // not well-formed.
+    if (expr instanceof CELError) {
+      let loc = expr.location;
+      if (isNil(loc)) {
+        loc = this.#helper.getLocation(exprID);
+      }
+      this.#helper.deleteId(exprID);
+      return this._reportError(loc, expr.message);
+    }
+    // A nil value from the macro indicates that the macro implementation
+    // decided that an expansion should not be performed.
+    if (isNil(expr)) {
       return null;
     }
-    try {
-      const expanded = expandMacro(ctx, this.#helper, macro, target, args);
-      return expanded;
-    } catch (e) {
-      // A MacroError has additional data that can be used to provide a better
-      // error message.
-      if (e instanceof MacroError) {
-        if (!isNil(e.expr)) {
-          const location = this.getLocationForId(e.expr.id.toString());
-          return this._reportError(location, e.message);
-        }
-        return this._reportError(e.ctx ?? ctx, e.message);
-      }
-      return this._reportError(ctx, (e as Error).message);
+    if (this.options?.populateMacroCalls) {
+      this.#helper.addMacroCall(exprID, fn, target, ...args);
     }
+    this.#helper.deleteId(exprID);
+    return expr;
   }
 
   private _reportError(
     ctx: ParserRuleContext | Token | Location | OffsetRange,
     message: string
   ) {
-    const error = create(ExprSchema, {
-      id: this.#helper.nextId(ctx),
-      exprKind: {
-        case: 'constExpr',
-        value: {
-          constantKind: {
-            case: 'stringValue',
-            value: '<<error>>',
-          },
-        },
-      },
-    });
-    let location: Location;
+    const err = this.#helper.newUnspecifiedExpr(ctx);
+    let location: Location = NoLocation;
+    // This is outside the switch because there are many classes that extend
+    // ParserRuleContext which we want to handle the same way.
+    // `reflectNativeType` will only handle it if it is exactly a
+    // ParserRuleContext.
     if (ctx instanceof ParserRuleContext) {
-      location = { line: ctx.start.line, column: ctx.start.column };
-    } else if (ctx instanceof Token) {
-      location = { line: ctx.line, column: ctx.column };
-    } else if ('line' in ctx && 'column' in ctx) {
-      location = ctx;
-    } else {
-      location = { line: -1, column: -1 };
+      location = this.#helper.getLocation(err.id);
     }
-    this.#errors.reportErrorAtId(error.id, location, message);
-    return error;
+    switch (reflectNativeType(ctx)) {
+      case Location:
+        location = ctx as Location;
+        break;
+      case Token:
+        location = this.#helper.getLocation(err.id);
+        break;
+      default:
+        break;
+    }
+    this.#errors.reportErrorAtId(err.id, location!, message);
+    return err;
   }
 
   private _checkAndIncrementRecusionDepth() {

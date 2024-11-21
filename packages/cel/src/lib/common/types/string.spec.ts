@@ -1,8 +1,3 @@
-import {
-  ConstantSchema,
-  ExprSchema,
-} from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb.js';
-import { ValueSchema } from '@buf/google_cel-spec.bufbuild_es/cel/expr/value_pb.js';
 import { create } from '@bufbuild/protobuf';
 import {
   AnySchema,
@@ -10,66 +5,29 @@ import {
   anyPack,
   timestampFromDate,
 } from '@bufbuild/protobuf/wkt';
-import { CONTAINS_OVERLOAD } from '../../overloads';
-import { BOOL_REF_TYPE, BoolRefVal } from './bool';
-import { BYTES_REF_TYPE, BytesRefVal } from './bytes';
-import { DOUBLE_REF_TYPE, DoubleRefVal } from './double';
-import { DURATION_REF_TYPE, DurationRefVal, duration } from './duration';
+import { CONTAINS_OVERLOAD } from '../overloads';
+import { BoolRefVal } from './bool';
+import { BytesRefVal } from './bytes';
+import { DoubleRefVal } from './double';
+import { DurationRefVal, duration } from './duration';
 import { ErrorRefVal } from './error';
-import { INT_REF_TYPE, IntRefVal } from './int';
+import { IntRefVal } from './int';
+import { StringRefVal } from './string';
+import { TimestampRefVal } from './timestamp';
 import {
-  STRING_REF_TYPE,
-  StringRefVal,
-  stringConstant,
-  stringExpr,
-  stringValue,
-} from './string';
-import { TIMESTAMP_REF_TYPE, TimestampRefVal } from './timestamp';
-import { TYPE_REF_TYPE } from './type';
-import { UINT_REF_TYPE, UintRefVal } from './uint';
+  BoolType,
+  BytesType,
+  DoubleType,
+  DurationType,
+  IntType,
+  StringType,
+  TimestampType,
+  TypeType,
+  UintType,
+} from './types';
+import { UintRefVal } from './uint';
 
 describe('string', () => {
-  it('stringConstant', () => {
-    expect(stringConstant('hello')).toEqual(
-      create(ConstantSchema, {
-        constantKind: {
-          case: 'stringValue',
-          value: 'hello',
-        },
-      })
-    );
-  });
-
-  it('stringExpr', () => {
-    expect(stringExpr(BigInt(1), 'hello')).toEqual(
-      create(ExprSchema, {
-        id: BigInt(1),
-        exprKind: {
-          case: 'constExpr',
-          value: create(ConstantSchema, {
-            constantKind: {
-              case: 'stringValue',
-              value: 'hello',
-            },
-          }),
-        },
-      })
-    );
-  });
-
-  it('stringValue', () => {
-    expect(stringValue('hello')).toEqual(
-      create(ValueSchema, {
-        kind: {
-          case: 'stringValue',
-          value: 'hello',
-        },
-      })
-    );
-  });
-
-  // TODO: validations
-
   it('convertStringValueToNative ', () => {
     expect(new StringRefVal('hello').convertToNative(String)).toStrictEqual(
       'hello'
@@ -98,65 +56,64 @@ describe('string', () => {
     const tests = [
       {
         value: new StringRefVal('hello'),
-        type: TYPE_REF_TYPE,
-        expected: STRING_REF_TYPE,
+        type: TypeType,
+        expected: StringType,
       },
       {
         value: new StringRefVal('hello'),
-        type: STRING_REF_TYPE,
+        type: StringType,
         expected: new StringRefVal('hello'),
       },
       {
         value: new StringRefVal('-1'),
-        type: INT_REF_TYPE,
+        type: IntType,
         expected: new IntRefVal(BigInt(-1)),
       },
       {
         value: new StringRefVal('3.14'),
-        type: DOUBLE_REF_TYPE,
+        type: DoubleType,
         expected: new DoubleRefVal(3.14),
       },
       {
         value: new StringRefVal('42'),
-        type: UINT_REF_TYPE,
+        type: UintType,
         expected: new UintRefVal(BigInt(42)),
       },
       {
         value: new StringRefVal('true'),
-        type: BOOL_REF_TYPE,
+        type: BoolType,
         expected: new BoolRefVal(true),
       },
       {
         value: new StringRefVal('false'),
-        type: BOOL_REF_TYPE,
+        type: BoolType,
         expected: new BoolRefVal(false),
       },
       {
         value: new StringRefVal('hello'),
-        type: BYTES_REF_TYPE,
+        type: BytesType,
         expected: new BytesRefVal(new TextEncoder().encode('hello')),
       },
-      // TODO: timestamp & duration types
       {
         value: new StringRefVal('2021-01-01T00:00:00Z'),
-        type: TIMESTAMP_REF_TYPE,
+        type: TimestampType,
         expected: new TimestampRefVal(
           timestampFromDate(new Date('2021-01-01T00:00:00Z'))
         ),
       },
       {
         value: new StringRefVal('42s'),
-        type: DURATION_REF_TYPE,
+        type: DurationType,
         expected: new DurationRefVal(duration(BigInt(42), 0)),
       },
       {
         value: new StringRefVal('1h5s'),
-        type: DURATION_REF_TYPE,
+        type: DurationType,
         expected: new DurationRefVal(duration(BigInt(3605), 0)),
       },
       {
         value: new StringRefVal('3.14s'),
-        type: DURATION_REF_TYPE,
+        type: DurationType,
         expected: new DurationRefVal(duration(BigInt(3), 0.14 * 1e9)),
       },
     ];

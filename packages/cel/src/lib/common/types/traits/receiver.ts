@@ -1,22 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { isFunction } from '@bearclaw/is';
-import { Value } from '@buf/google_cel-spec.bufbuild_es/cel/expr/value_pb.js';
-import { receiveStringValue } from '../string';
 import { RefVal } from './../../ref/reference';
-
-export function receiver(
-  value: Value,
-  fn: string,
-  overload: string,
-  ...args: Value[]
-) {
-  switch (value.kind.case) {
-    case 'stringValue':
-      return receiveStringValue(value, fn, overload, ...args);
-    default:
-      return new Error('no such overload');
-  }
-}
 
 /**
  * Receiver interface for routing instance method calls within a value.

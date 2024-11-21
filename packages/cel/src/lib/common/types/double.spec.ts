@@ -1,8 +1,3 @@
-import {
-  ConstantSchema,
-  ExprSchema,
-} from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb.js';
-import { ValueSchema } from '@buf/google_cel-spec.bufbuild_es/cel/expr/value_pb.js';
 import { create } from '@bufbuild/protobuf';
 import {
   AnySchema,
@@ -11,61 +6,14 @@ import {
   anyPack,
 } from '@bufbuild/protobuf/wkt';
 import { BoolRefVal } from './bool';
-import {
-  DOUBLE_REF_TYPE,
-  DoubleRefVal,
-  doubleConstant,
-  doubleExpr,
-  doubleValue,
-} from './double';
+import { DoubleRefVal } from './double';
 import { ErrorRefVal } from './error';
-import { INT_REF_TYPE, IntRefVal } from './int';
-import { STRING_REF_TYPE, StringRefVal } from './string';
-import { TYPE_REF_TYPE } from './type';
-import { UINT_REF_TYPE, UintRefVal } from './uint';
+import { IntRefVal } from './int';
+import { StringRefVal } from './string';
+import { DoubleType, IntType, StringType, TypeType, UintType } from './types';
+import { UintRefVal } from './uint';
 
 describe('double', () => {
-  it('doubleConstant', () => {
-    expect(doubleConstant(1.1)).toEqual(
-      create(ConstantSchema, {
-        constantKind: {
-          case: 'doubleValue',
-          value: 1.1,
-        },
-      })
-    );
-  });
-
-  it('doubleExpr', () => {
-    expect(doubleExpr(BigInt(1), 1.1)).toEqual(
-      create(ExprSchema, {
-        id: BigInt(1),
-        exprKind: {
-          case: 'constExpr',
-          value: create(ConstantSchema, {
-            constantKind: {
-              case: 'doubleValue',
-              value: 1.1,
-            },
-          }),
-        },
-      })
-    );
-  });
-
-  it('doubleValue', () => {
-    expect(doubleValue(1.1)).toEqual(
-      create(ValueSchema, {
-        kind: {
-          case: 'doubleValue',
-          value: 1.1,
-        },
-      })
-    );
-  });
-
-  // TODO: validations
-
   it('convertDoubleValueToNative - js Number', () => {
     const value = new DoubleRefVal(3.14);
     expect(value.convertToNative(Number)).toStrictEqual(3.14);
@@ -103,39 +51,39 @@ describe('double', () => {
 
   it('convertDoubleValueToType', () => {
     const value = new DoubleRefVal(1234.5);
-    expect(value.convertToType(DOUBLE_REF_TYPE)).toStrictEqual(value);
-    expect(value.convertToType(STRING_REF_TYPE)).toStrictEqual(
+    expect(value.convertToType(DoubleType)).toStrictEqual(value);
+    expect(value.convertToType(StringType)).toStrictEqual(
       new StringRefVal('1234.5')
     );
-    expect(value.convertToType(TYPE_REF_TYPE)).toStrictEqual(DOUBLE_REF_TYPE);
+    expect(value.convertToType(TypeType)).toStrictEqual(DoubleType);
     // Int64 errors
-    expect(new DoubleRefVal(NaN).convertToType(INT_REF_TYPE)).toStrictEqual(
+    expect(new DoubleRefVal(NaN).convertToType(IntType)).toStrictEqual(
+      ErrorRefVal.errIntOverflow
+    );
+    expect(new DoubleRefVal(Infinity).convertToType(IntType)).toStrictEqual(
+      ErrorRefVal.errIntOverflow
+    );
+    expect(new DoubleRefVal(-Infinity).convertToType(IntType)).toStrictEqual(
       ErrorRefVal.errIntOverflow
     );
     expect(
-      new DoubleRefVal(Infinity).convertToType(INT_REF_TYPE)
+      new DoubleRefVal(Number.MAX_VALUE).convertToType(IntType)
     ).toStrictEqual(ErrorRefVal.errIntOverflow);
     expect(
-      new DoubleRefVal(-Infinity).convertToType(INT_REF_TYPE)
-    ).toStrictEqual(ErrorRefVal.errIntOverflow);
-    expect(
-      new DoubleRefVal(Number.MAX_VALUE).convertToType(INT_REF_TYPE)
-    ).toStrictEqual(ErrorRefVal.errIntOverflow);
-    expect(
-      new DoubleRefVal(-1 * Number.MAX_VALUE).convertToType(INT_REF_TYPE)
+      new DoubleRefVal(-1 * Number.MAX_VALUE).convertToType(IntType)
     ).toStrictEqual(ErrorRefVal.errIntOverflow);
     // Uint64 errors
-    expect(new DoubleRefVal(NaN).convertToType(UINT_REF_TYPE)).toStrictEqual(
+    expect(new DoubleRefVal(NaN).convertToType(UintType)).toStrictEqual(
+      ErrorRefVal.errUintOverflow
+    );
+    expect(new DoubleRefVal(Infinity).convertToType(UintType)).toStrictEqual(
+      ErrorRefVal.errUintOverflow
+    );
+    expect(new DoubleRefVal(-1).convertToType(UintType)).toStrictEqual(
       ErrorRefVal.errUintOverflow
     );
     expect(
-      new DoubleRefVal(Infinity).convertToType(UINT_REF_TYPE)
-    ).toStrictEqual(ErrorRefVal.errUintOverflow);
-    expect(new DoubleRefVal(-1).convertToType(UINT_REF_TYPE)).toStrictEqual(
-      ErrorRefVal.errUintOverflow
-    );
-    expect(
-      new DoubleRefVal(Number.MAX_VALUE).convertToType(UINT_REF_TYPE)
+      new DoubleRefVal(Number.MAX_VALUE).convertToType(UintType)
     ).toStrictEqual(ErrorRefVal.errUintOverflow);
   });
 

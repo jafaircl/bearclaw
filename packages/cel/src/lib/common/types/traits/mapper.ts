@@ -9,7 +9,12 @@ import { Sizer, isSizer } from './sizer';
 /**
  * Mapper interface which aggregates the traits of a maps.
  */
-export interface Mapper extends RefVal, Container, Indexer, Iterable, Sizer {
+export interface Mapper<K = any, V = any>
+  extends RefVal,
+    Container,
+    Indexer,
+    Iterable,
+    Sizer {
   /**
    * Find returns a value, if one exists, for the input key.
    *
@@ -17,7 +22,7 @@ export interface Mapper extends RefVal, Container, Indexer, Iterable, Sizer {
    * key is not valid for the map, or is Err or Unknown the function returns
    * (Unknown|Err, false).
    */
-  find(key: RefVal): RefVal;
+  find(key: K): V | null;
 }
 
 export function isMapper(value: any): value is Mapper {

@@ -1,23 +1,14 @@
 /* eslint-disable no-case-declarations */
 import { isNil } from '@bearclaw/is';
+import { clone, create } from '@bufbuild/protobuf';
 import {
-  TypeSchema,
-  Type_WellKnownType,
-} from '@buf/google_cel-spec.bufbuild_es/cel/expr/checked_pb.js';
-import {
-  Value,
-  ValueSchema,
-} from '@buf/google_cel-spec.bufbuild_es/cel/expr/value_pb.js';
-import { MessageInitShape, clone, create } from '@bufbuild/protobuf';
-import {
-  Any,
   AnySchema,
   Timestamp,
   TimestampSchema,
   anyPack,
-  anyUnpack,
   timestampDate,
   timestampFromDate,
+  timestampNow,
 } from '@bufbuild/protobuf/wkt';
 import {
   TIME_GET_DATE_OVERLOAD,
@@ -30,24 +21,26 @@ import {
   TIME_GET_MINUTES_OVERLOAD,
   TIME_GET_MONTH_OVERLOAD,
   TIME_GET_SECONDS_OVERLOAD,
-} from '../../overloads';
-import { RefType, RefTypeEnum, RefVal } from './../ref/reference';
+} from '../overloads';
+import { RefType, RefVal } from './../ref/reference';
 import { BoolRefVal } from './bool';
 import { DurationRefVal, durationFromNanos, durationToNanos } from './duration';
 import { ErrorRefVal } from './error';
 import { IntRefVal, MAX_INT64, MIN_INT64 } from './int';
 import { NativeType } from './native';
-import { isObjectValue } from './object';
 import { StringRefVal } from './string';
 import { timeZoneOffsetMap } from './timezones';
 import { Comparer } from './traits/comparer';
 import { Adder, Subtractor } from './traits/math';
 import { Receiver } from './traits/receiver';
-import { Trait } from './traits/trait';
 import { Zeroer } from './traits/zeroer';
-import { TypeValue } from './type';
-import { typeNameToUrl } from './utils';
-import { WKT_REGISTRY } from './wkt';
+import {
+  DurationType,
+  IntType,
+  StringType,
+  TimestampType,
+  TypeType,
+} from './types';
 
 /**
  * The number of seconds between year 1 and year 1970. This is borrowed from
@@ -68,14 +61,10 @@ export const MIN_UNIX_TIME = BigInt(-62135596800);
  */
 export const MAX_UNIX_TIME = BigInt(253402300799);
 
-export const TIMESTAMP_CEL_TYPE = create(TypeSchema, {
-  typeKind: {
-    case: 'wellKnown',
-    value: Type_WellKnownType.TIMESTAMP,
-  },
-});
-
 export function timestamp(seconds?: bigint, nanos?: number) {
+  if (isNil(seconds) && isNil(nanos)) {
+    return timestampNow();
+  }
   return create(TimestampSchema, {
     seconds,
     nanos,
@@ -84,31 +73,6 @@ export function timestamp(seconds?: bigint, nanos?: number) {
 
 export function isValidTimestamp(value: Timestamp) {
   return value.seconds >= MIN_UNIX_TIME && value.seconds <= MAX_UNIX_TIME;
-}
-
-export function timestampValue(ts: MessageInitShape<typeof TimestampSchema>) {
-  return create(ValueSchema, {
-    kind: {
-      case: 'objectValue',
-      value: anyPack(TimestampSchema, timestamp(ts.seconds, ts.nanos)),
-    },
-  });
-}
-
-export function isTimestampValue(value: Value): value is Value & {
-  kind: { case: 'objectValue'; value: Any };
-} {
-  return (
-    isObjectValue(value) &&
-    value.kind.value.typeUrl === typeNameToUrl(TimestampSchema.typeName)
-  );
-}
-
-export function unwrapTimestampValue(value: Value) {
-  if (isTimestampValue(value)) {
-    return anyUnpack(value.kind.value, WKT_REGISTRY) as Timestamp;
-  }
-  return null;
 }
 
 export function timestampFromNanos(nanos: bigint) {
@@ -230,18 +194,6 @@ export function timestampToDateString(ts: Timestamp) {
   return date.toISOString().replace(/\.\d+Z$/, `.${paddedNanos}Z`);
 }
 
-export const TIMESTAMP_TRAITS = new Set<Trait>([
-  Trait.ADDER_TYPE,
-  Trait.COMPARER_TYPE,
-  Trait.RECEIVER_TYPE,
-  Trait.SUBTRACTOR_TYPE,
-]);
-
-export const TIMESTAMP_REF_TYPE = new TypeValue(
-  RefTypeEnum.TIMESTAMP,
-  TIMESTAMP_TRAITS
-);
-
 export class TimestampRefVal
   implements RefVal, Adder, Comparer, Receiver, Subtractor, Zeroer
 {
@@ -311,8 +263,8 @@ export class TimestampRefVal
     visitor: (ts: Timestamp) => RefVal
   ): (ts: Timestamp) => RefVal {
     return (ts: Timestamp) => {
-      switch (tz.type().typeName()) {
-        case RefTypeEnum.STRING:
+      switch (tz.type()) {
+        case StringType:
           const date = timestampDate(ts);
           const tzStr = (tz as StringRefVal).value();
           // Handle cases where the timezone is an IANA timezone such as
@@ -424,10 +376,6 @@ export class TimestampRefVal
     ],
   ]);
 
-  celValue(): Value {
-    return timestampValue(this._value);
-  }
-
   convertToNative(type: NativeType) {
     switch (type) {
       // TODO: should we do bigints and numbers? The go and projectnessie java implementations do not but you can use convertToType to get an IntRefVal.
@@ -445,23 +393,23 @@ export class TimestampRefVal
   }
 
   convertToType(type: RefType): RefVal {
-    switch (type.typeName()) {
-      case RefTypeEnum.INT:
+    switch (type) {
+      case IntType:
         return new IntRefVal(this._value.seconds);
-      case RefTypeEnum.STRING:
+      case StringType:
         return new StringRefVal(timestampToDateString(this._value));
-      case RefTypeEnum.TIMESTAMP:
+      case TimestampType:
         return new TimestampRefVal(this._value);
-      case RefTypeEnum.TYPE:
-        return TIMESTAMP_REF_TYPE;
+      case TypeType:
+        return TimestampType;
       default:
         return ErrorRefVal.typeConversionError(this, type);
     }
   }
 
   equal(other: RefVal): RefVal {
-    switch (other.type().typeName()) {
-      case RefTypeEnum.TIMESTAMP:
+    switch (other.type()) {
+      case TimestampType:
         return new BoolRefVal(
           timestampToNanos(this._value) ===
             timestampToNanos((other as TimestampRefVal)._value)
@@ -472,7 +420,7 @@ export class TimestampRefVal
   }
 
   type(): RefType {
-    return TIMESTAMP_REF_TYPE;
+    return TimestampType;
   }
 
   value() {
@@ -480,8 +428,8 @@ export class TimestampRefVal
   }
 
   add(other: RefVal): RefVal {
-    switch (other.type().typeName()) {
-      case RefTypeEnum.DURATION:
+    switch (other.type()) {
+      case DurationType:
         return (other as DurationRefVal).add(this);
       default:
         return ErrorRefVal.maybeNoSuchOverload(other);
@@ -489,8 +437,8 @@ export class TimestampRefVal
   }
 
   compare(other: RefVal): RefVal {
-    switch (other.type().typeName()) {
-      case RefTypeEnum.TIMESTAMP:
+    switch (other.type()) {
+      case TimestampType:
         const ts1 = timestampToNanos(this._value);
         const ts2 = timestampToNanos((other as TimestampRefVal).value());
         if (ts1 < ts2) {
@@ -526,8 +474,8 @@ export class TimestampRefVal
   }
 
   subtract(subtrahend: RefVal): RefVal {
-    switch (subtrahend.type().typeName()) {
-      case RefTypeEnum.DURATION:
+    switch (subtrahend.type()) {
+      case DurationType:
         const durationNanos = durationToNanos(subtrahend.value());
         const tsNanos = timestampToNanos(this._value);
         if (
@@ -543,7 +491,7 @@ export class TimestampRefVal
           return ErrorRefVal.errTimestampOverflow;
         }
         return new TimestampRefVal(ts);
-      case RefTypeEnum.TIMESTAMP:
+      case TimestampType:
         const otherNanos = timestampToNanos(
           (subtrahend as TimestampRefVal).value()
         );

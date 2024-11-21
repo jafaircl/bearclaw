@@ -1,23 +1,24 @@
 import { Value } from '@buf/google_cel-spec.bufbuild_es/cel/expr/value_pb.js';
+import { newIntProtoValue } from '../pb/values';
 import { RefVal } from '../ref/reference';
 import { ErrorRefVal } from './error';
-import { IntRefVal, int64Value } from './int';
-import { isNumberRefVal, isNumberValue } from './number';
+import { IntRefVal } from './int';
+import { isNumberProtoValue, isNumberRefVal } from './number';
 
 export function compareNumberValues(value: Value, other: Value) {
-  if (!isNumberValue(value)) {
+  if (!isNumberProtoValue(value)) {
     return new Error('value is not a number (double, int64, or uint64)');
   }
-  if (!isNumberValue(other)) {
+  if (!isNumberProtoValue(other)) {
     return new Error('other is not a number (double, int64, or uint64)');
   }
   if (value.kind.value < other.kind.value) {
-    return int64Value(BigInt(-1));
+    return newIntProtoValue(BigInt(-1));
   }
   if (value.kind.value > other.kind.value) {
-    return int64Value(BigInt(1));
+    return newIntProtoValue(BigInt(1));
   }
-  return int64Value(BigInt(0));
+  return newIntProtoValue(BigInt(0));
 }
 
 export function compareNumberRefVals(
