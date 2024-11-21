@@ -1,5 +1,6 @@
+import { Type } from './types/types';
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import { Type } from '@buf/google_cel-spec.bufbuild_es/cel/expr/checked_pb';
+import { Expr } from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb';
 import { ErrorListener, RecognitionException, Recognizer, Token } from 'antlr4';
 import { Container } from './container';
 import { CELError } from './error';
@@ -68,7 +69,7 @@ export class Errors {
     return this.reportErrorAtId(
       id,
       location,
-      `expected type ${expected.$typeName} but found ${actual.$typeName}`
+      `expected type ${expected.typeName()} but found ${actual.typeName()}`
     );
   }
 
@@ -160,6 +161,22 @@ export class Errors {
       id,
       location,
       `expression of type '${t.toString()}' cannot be range of a comprehension (must be list, map, or dynamic)`
+    );
+  }
+
+  public reportIncompatibleTypes(
+    id: bigint,
+    location: Location,
+    ex: Expr,
+    prev: Type,
+    next: Type
+  ) {
+    return this.reportErrorAtId(
+      id,
+      location,
+      `incompatible type already exists for expression: ${ex}(${
+        ex.id
+      }) old:${prev.toString()}, new:${next.toString()}`
     );
   }
 

@@ -114,6 +114,7 @@ export function newBuffer(data: string, lines: boolean): [Buffer, number[]] {
   }
 
   data = convertUnicodeEscapes(data);
+  data = lowerCaseUtf8Encoding(data);
 
   let idx = 0;
   let charIndex = 0;
@@ -236,7 +237,17 @@ export function newBuffer(data: string, lines: boolean): [Buffer, number[]] {
  */
 export function convertUnicodeEscapes(str: string) {
   // prettier-ignore
-  return str.replace(/\U([0-9A-Fa-f]{8})/g, (_, p1) => {
+  return str.replace(/\U([0-9A-Fa-f]{8})/gi, (_, p1) => {
     return String.fromCodePoint(parseInt(p1, 16));
+  });
+}
+
+/**
+ * Lower case the UTF-8 encoding of the input string. This will ensure strings
+ * like "\XBF" are converted to "\xbf".
+ */
+export function lowerCaseUtf8Encoding(s: string): string {
+  return s.replace(/\X([0-9A-Fa-f]{2})/g, (_, p1) => {
+    return String.fromCharCode(parseInt(p1, 16)).toLowerCase();
   });
 }

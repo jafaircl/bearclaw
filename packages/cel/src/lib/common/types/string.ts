@@ -209,3 +209,33 @@ export function isStringRefVal(val: RefVal): val is StringRefVal {
       return false;
   }
 }
+
+export function stringContains(str: RefVal, subStr: RefVal): RefVal {
+  if (!isStringRefVal(str)) {
+    return ErrorRefVal.maybeNoSuchOverload(str);
+  }
+  if (!isStringRefVal(subStr)) {
+    return ErrorRefVal.maybeNoSuchOverload(subStr);
+  }
+  return new BoolRefVal(str.value().indexOf(subStr.value()) > -1);
+}
+
+export function stringEndsWith(str: RefVal, suffix: RefVal): RefVal {
+  if (!isStringRefVal(str)) {
+    return ErrorRefVal.maybeNoSuchOverload(str);
+  }
+  if (!isStringRefVal(suffix)) {
+    return ErrorRefVal.maybeNoSuchOverload(suffix);
+  }
+  return new BoolRefVal(str.value().endsWith(suffix.value()));
+}
+
+export function stringStartsWith(str: RefVal, prefix: RefVal): RefVal {
+  if (!isStringRefVal(str)) {
+    return ErrorRefVal.maybeNoSuchOverload(str);
+  }
+  if (!isStringRefVal(prefix)) {
+    return ErrorRefVal.maybeNoSuchOverload(prefix);
+  }
+  return new BoolRefVal(str.value().startsWith(prefix.value()));
+}

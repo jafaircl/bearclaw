@@ -147,8 +147,23 @@ export interface ParserOptions {
    * Macros adds the given macros to the parser.
    */
   macros?: Macro[];
+  /**
+   * PopulateMacroCalls ensures that the original call signatures replaced by
+   * expanded macros are preserved in the `SourceInfo` of parse result.
+   */
   populateMacroCalls?: boolean;
+  /**
+   * EnableOptionalSyntax enables syntax for optional field and index selection.
+   */
   enableOptionalSyntax?: boolean;
+  /**
+   * EnableVariadicOperatorASTs enables a compact representation of chained
+   * like-kind commutative operators. e.g. `a || b || c || d` -> `call(op='||',
+   * args=[a, b, c, d])`
+   *
+   * The benefit of enabling variadic operators ASTs is a more compact
+   * representation deeply nested logic graphs.
+   */
   enableVariadicOperatorASTs?: boolean;
 }
 
@@ -163,6 +178,7 @@ export class Parser extends GeneratedCelVisitor<Expr> {
   #errorRecoveryTokenLookaheadLimit = 256;
   #errorRecoveryLimit = 30;
   #expressionSizeCodePointLimit = 100_000;
+  #enableOptionalSyntax = false;
 
   constructor(source: Source, private readonly options?: ParserOptions) {
     super();
@@ -185,6 +201,9 @@ export class Parser extends GeneratedCelVisitor<Expr> {
     if (this.options?.expressionSizeCodePointLimit) {
       this.#expressionSizeCodePointLimit =
         this.options.expressionSizeCodePointLimit;
+    }
+    if (!isNil(this.options?.enableOptionalSyntax)) {
+      this.#enableOptionalSyntax = this.options.enableOptionalSyntax;
     }
     // If the parser options include macros, add them to the parser. Otherwise,
     // add the default set of macros.
@@ -351,7 +370,7 @@ export class Parser extends GeneratedCelVisitor<Expr> {
     const operand = this.visit(ctx.member());
     // Handle the error case where no valid identifier is specified.
     if (isNil(ctx._id)) {
-      return this.#helper.newUnspecifiedExpr(ctx);
+      return this.#helper.newExpr(ctx);
     }
     const id = ctx._id.text;
     const opId = this.#helper.id(ctx._open);
@@ -366,11 +385,11 @@ export class Parser extends GeneratedCelVisitor<Expr> {
     const operand = this.visit(ctx.member());
     // Handle the error case where no valid identifier is specified.
     if (isNil(ctx._id) || isNil(ctx._op)) {
-      return this.#helper.newUnspecifiedExpr(ctx);
+      return this.#helper.newExpr(ctx);
     }
     const id = ctx._id.text;
     if (!isNil(ctx._opt)) {
-      if (!this.options?.enableOptionalSyntax) {
+      if (!this.#enableOptionalSyntax) {
         return this._reportError(ctx._op, "unsupported syntax '.?'");
       }
       return this.#helper.newGlobalCall(
@@ -391,13 +410,13 @@ export class Parser extends GeneratedCelVisitor<Expr> {
     const target = this.visit(ctx.member());
     // Handle the error case where no valid identifier is specified.
     if (isNil(ctx._op)) {
-      return this.#helper.newUnspecifiedExpr(ctx);
+      return this.#helper.newExpr(ctx);
     }
     const opId = this.#helper.id(ctx._op);
     const index = this.visit(ctx._index);
     let operator = INDEX_OPERATOR;
     if (!isNil(ctx._opt)) {
-      if (!this.options?.enableOptionalSyntax) {
+      if (this.#enableOptionalSyntax === false) {
         return this._reportError(ctx._op, "unsupported syntax '[?'");
       }
       operator = OPT_INDEX_OPERATOR;
@@ -412,7 +431,7 @@ export class Parser extends GeneratedCelVisitor<Expr> {
     }
     // Handle the error case where no valid identifier is specified.
     if (isNil(ctx._id)) {
-      return this.#helper.newUnspecifiedExpr(ctx);
+      return this.#helper.newExpr(ctx);
     }
     const id = ctx._id.text;
     if (reservedIds.has(id)) {
@@ -454,7 +473,7 @@ export class Parser extends GeneratedCelVisitor<Expr> {
         .value as Expr_CreateStruct;
       if (isNil(entriesInitializer)) {
         // This is the result of a syntax error detected elsewhere.
-        return this.#helper.newUnspecifiedExpr(ctx);
+        return this.#helper.newExpr(ctx);
       }
       entries.push(...entriesInitializer.entries);
     }
@@ -502,7 +521,7 @@ export class Parser extends GeneratedCelVisitor<Expr> {
       }
       result.push(ex);
       if (elements[i]._opt != null) {
-        if (!this.options?.enableOptionalSyntax) {
+        if (this.#enableOptionalSyntax === false) {
           this._reportError(elements[i], "unsupported syntax '?'");
           continue;
         }
@@ -517,7 +536,7 @@ export class Parser extends GeneratedCelVisitor<Expr> {
   ): Expr => {
     if (isNil(ctx) || isNil(ctx._fields)) {
       // This is the result of a syntax error handled elswhere, return empty.
-      return this.#helper.newUnspecifiedExpr(ctx);
+      return this.#helper.newExpr(ctx);
     }
     const result: Expr_CreateStruct_Entry[] = [];
     const cols = ctx._cols;
@@ -525,19 +544,19 @@ export class Parser extends GeneratedCelVisitor<Expr> {
     for (let i = 0; i < ctx._fields.length; i++) {
       if (i >= cols.length || i >= vals.length) {
         // This is the result of a syntax error detected elsewhere.
-        return this.#helper.newUnspecifiedExpr(ctx);
+        return this.#helper.newExpr(ctx);
       }
       const initID = this.#helper.id(cols[i]);
       const optField = ctx._fields[i];
       const optional = !isNil(optField._opt);
-      if (this.options?.enableOptionalSyntax === false && optional) {
+      if (this.#enableOptionalSyntax === false && optional) {
         this._reportError(optField, "unsupported syntax '?'");
         continue;
       }
       // The field may be empty due to a prior error
       const id = optField.IDENTIFIER();
       if (isNil(id)) {
-        return this.#helper.newUnspecifiedExpr(optField);
+        return this.#helper.newExpr(optField);
       }
       const fieldName = id.getText();
       const value = this.visit(vals[i]);
@@ -561,7 +580,7 @@ export class Parser extends GeneratedCelVisitor<Expr> {
   override visitMapInitializerList = (ctx: MapInitializerListContext): Expr => {
     if (isNil(ctx) || isNil(ctx._keys)) {
       // This is the result of a syntax error handled elswhere, return empty.
-      return this.#helper.newUnspecifiedExpr(ctx);
+      return this.#helper.newExpr(ctx);
     }
     const result: Expr_CreateStruct_Entry[] = [];
     const keys = ctx._keys;
@@ -570,11 +589,11 @@ export class Parser extends GeneratedCelVisitor<Expr> {
       const colID = this.#helper.id(ctx._cols[i]);
       if (i >= keys.length || i >= values.length) {
         // This is the result of a syntax error detected elsewhere.
-        return this.#helper.newUnspecifiedExpr(ctx);
+        return this.#helper.newExpr(ctx);
       }
       const optKey = keys[i];
       const optional = !isNil(optKey._opt);
-      if (this.options?.enableOptionalSyntax === false && optional) {
+      if (this.#enableOptionalSyntax === false && optional) {
         this._reportError(optKey, "unsupported syntax '?'");
         continue;
       }
@@ -797,21 +816,20 @@ export class Parser extends GeneratedCelVisitor<Expr> {
     ctx: ParserRuleContext | Token | Location | OffsetRange,
     message: string
   ) {
-    const err = this.#helper.newUnspecifiedExpr(ctx);
+    const err = this.#helper.newExpr(ctx);
     let location: Location = NoLocation;
     // This is outside the switch because there are many classes that extend
-    // ParserRuleContext which we want to handle the same way.
+    // ParserRuleContext and Token which we want to handle the same way.
     // `reflectNativeType` will only handle it if it is exactly a
-    // ParserRuleContext.
+    // ParserRuleContext or Token.
     if (ctx instanceof ParserRuleContext) {
+      location = this.#helper.getLocation(err.id);
+    } else if (ctx instanceof Token) {
       location = this.#helper.getLocation(err.id);
     }
     switch (reflectNativeType(ctx)) {
       case Location:
         location = ctx as Location;
-        break;
-      case Token:
-        location = this.#helper.getLocation(err.id);
         break;
       default:
         break;

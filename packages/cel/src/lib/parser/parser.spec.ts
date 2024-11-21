@@ -22,6 +22,7 @@ import {
   MULTIPLY_OPERATOR,
   NEGATE_OPERATOR,
   NOT_EQUALS_OPERATOR,
+  NOT_STRICTLY_FALSE_OPERATOR,
   OPT_INDEX_OPERATOR,
   OPT_SELECT_OPERATOR,
   SUBTRACT_OPERATOR,
@@ -29,6 +30,7 @@ import {
 import {
   newBoolProtoExpr,
   newBytesProtoExpr,
+  newComprehensionProtoExpr,
   newDoubleProtoExpr,
   newGlobalCallProtoExpr,
   newIdentProtoExpr,
@@ -45,6 +47,7 @@ import {
   newTestOnlySelectProtoExpr,
   newUintProtoExpr,
 } from '../common/pb/expressions';
+import { AccumulatorName } from './macro';
 import { Parser, ParserOptions } from './parser';
 
 interface TestInfo {
@@ -93,13 +96,12 @@ const testCases: TestInfo[] = [
   	| e.map(1, t)
   	| ......^`,
   },
-  // TODO
-  // {
-  //   I: `e.filter(1, t)`,
-  //   E: `ERROR: <input>:1:10: argument is not an identifier
-  // 	| e.filter(1, t)
-  // 	| .........^`,
-  // },
+  {
+    I: `e.filter(1, t)`,
+    E: `ERROR: <input>:1:10: argument is not an identifier
+  	| e.filter(1, t)
+  	| .........^`,
+  },
 
   // Tests from Go parser
   {
@@ -654,27 +656,26 @@ const testCases: TestInfo[] = [
       []
     ),
   },
-  // TODO
-  // {
-  //   I: `a.b(c)`,
-  //   // P: `a^#1:*expr.Expr_IdentExpr#.b(
-  //   // 	c^#3:*expr.Expr_IdentExpr#
-  //   // )^#2:*expr.Expr_CallExpr#`,
-  //   // L: `a^#1[1,0]#.b(
-  //   // 		  c^#3[1,4]#
-  //   // 		)^#2[1,3]#`,
-  //   P: newReceiverCallProtoExpr(
-  //     BigInt(2),
-  //     'b',
-  //     newIdentProtoExpr(BigInt(1), 'a'),
-  //     [newIdentProtoExpr(BigInt(3), 'c')]
-  //   ),
-  //   L: {
-  //     '1': { line: 1, column: 0 },
-  //     '2': { line: 1, column: 3 },
-  //     '3': { line: 1, column: 4 },
-  //   },
-  // },
+  {
+    I: `a.b(c)`,
+    // P: `a^#1:*expr.Expr_IdentExpr#.b(
+    // 	c^#3:*expr.Expr_IdentExpr#
+    // )^#2:*expr.Expr_CallExpr#`,
+    // L: `a^#1[1,0]#.b(
+    // 		  c^#3[1,4]#
+    // 		)^#2[1,3]#`,
+    P: newReceiverCallProtoExpr(
+      BigInt(2),
+      'b',
+      newIdentProtoExpr(BigInt(1), 'a'),
+      [newIdentProtoExpr(BigInt(3), 'c')]
+    ),
+    L: {
+      '1': { line: 1, column: 0 },
+      '2': { line: 1, column: 3 },
+      '3': { line: 1, column: 4 },
+    },
+  },
   // TODO: Parse error tests
   // // Parse error tests
   // {
@@ -737,310 +738,301 @@ const testCases: TestInfo[] = [
     //   '4': { line: 1, column: 3 },
     // },
   },
-  // TODO
-  // {
-  //   I: `m.exists(v, f)`,
-  //   // P: `__comprehension__(
-  //   // 	// Variable
-  //   // 	v,
-  //   // 	// Target
-  //   // 	m^#1:*expr.Expr_IdentExpr#,
-  //   // 	// Accumulator
-  //   // 	__result__,
-  //   // 	// Init
-  //   // 	false^#5:*expr.Constant_BoolValue#,
-  //   // 	// LoopCondition
-  //   // 	@not_strictly_false(
-  //   //             !_(
-  //   //               __result__^#6:*expr.Expr_IdentExpr#
-  //   //             )^#7:*expr.Expr_CallExpr#
-  //   // 	)^#8:*expr.Expr_CallExpr#,
-  //   // 	// LoopStep
-  //   // 	_||_(
-  //   //             __result__^#9:*expr.Expr_IdentExpr#,
-  //   //             f^#4:*expr.Expr_IdentExpr#
-  //   // 	)^#10:*expr.Expr_CallExpr#,
-  //   // 	// Result
-  //   // 	__result__^#11:*expr.Expr_IdentExpr#)^#12:*expr.Expr_ComprehensionExpr#`,
-  //   // M: `m^#1:*expr.Expr_IdentExpr#.exists(
-  //   // 	v^#3:*expr.Expr_IdentExpr#,
-  //   // 	f^#4:*expr.Expr_IdentExpr#
-  //   //   	)^#12:exists#`,
-  //   P: newComprehensionProtoExpr(BigInt(12), {
-  //     iterRange: newIdentProtoExpr(BigInt(1), 'm'),
-  //     iterVar: 'v',
-  //     accuVar: ACCUMULATOR_VAR,
-  //     accuInit: newBoolProtoExpr(BigInt(5), false),
-  //     loopCondition: newGlobalCallProtoExpr(
-  //       BigInt(8),
-  //       NOT_STRICTLY_FALSE_OPERATOR,
-  //       [
-  //         newGlobalCallProtoExpr(BigInt(7), LOGICAL_NOT_OPERATOR, [
-  //           newIdentProtoExpr(BigInt(6), ACCUMULATOR_VAR),
-  //         ]),
-  //       ]
-  //     ),
-  //     loopStep: newGlobalCallProtoExpr(BigInt(10), LOGICAL_OR_OPERATOR, [
-  //       newIdentProtoExpr(BigInt(9), ACCUMULATOR_VAR),
-  //       newIdentProtoExpr(BigInt(4), 'f'),
-  //     ]),
-  //     result: newIdentProtoExpr(BigInt(11), ACCUMULATOR_VAR),
-  //   }),
-  // },
-  // TODO
-  // {
-  //   I: `m.all(v, f)`,
-  //   // P: `__comprehension__(
-  //   // 	// Variable
-  //   // 	v,
-  //   // 	// Target
-  //   // 	m^#1:*expr.Expr_IdentExpr#,
-  //   // 	// Accumulator
-  //   // 	__result__,
-  //   // 	// Init
-  //   // 	true^#5:*expr.Constant_BoolValue#,
-  //   // 	// LoopCondition
-  //   // 	@not_strictly_false(
-  //   //             __result__^#6:*expr.Expr_IdentExpr#
-  //   //         )^#7:*expr.Expr_CallExpr#,
-  //   // 	// LoopStep
-  //   // 	_&&_(
-  //   //             __result__^#8:*expr.Expr_IdentExpr#,
-  //   //             f^#4:*expr.Expr_IdentExpr#
-  //   //         )^#9:*expr.Expr_CallExpr#,
-  //   // 	// Result
-  //   // 	__result__^#10:*expr.Expr_IdentExpr#)^#11:*expr.Expr_ComprehensionExpr#`,
-  //   // M: `m^#1:*expr.Expr_IdentExpr#.all(
-  //   // 	v^#3:*expr.Expr_IdentExpr#,
-  //   // 	f^#4:*expr.Expr_IdentExpr#
-  //   //   	)^#11:all#`,
-  //   P: newComprehensionProtoExpr(BigInt(11), {
-  //     iterRange: newIdentProtoExpr(BigInt(1), 'm'),
-  //     iterVar: 'v',
-  //     accuVar: ACCUMULATOR_VAR,
-  //     accuInit: newBoolProtoExpr(BigInt(5), true),
-  //     loopCondition: newGlobalCallProtoExpr(
-  //       BigInt(7),
-  //       NOT_STRICTLY_FALSE_OPERATOR,
-  //       [newIdentProtoExpr(BigInt(6), ACCUMULATOR_VAR)]
-  //     ),
-  //     loopStep: newGlobalCallProtoExpr(BigInt(9), LOGICAL_AND_OPERATOR, [
-  //       newIdentProtoExpr(BigInt(8), ACCUMULATOR_VAR),
-  //       newIdentProtoExpr(BigInt(4), 'f'),
-  //     ]),
-  //     result: newIdentProtoExpr(BigInt(10), ACCUMULATOR_VAR),
-  //   }),
-  // },
-  // TODO
-  // {
-  //   I: `m.exists_one(v, f)`,
-  //   // P: `__comprehension__(
-  //   // 	// Variable
-  //   // 	v,
-  //   // 	// Target
-  //   // 	m^#1:*expr.Expr_IdentExpr#,
-  //   // 	// Accumulator
-  //   // 	__result__,
-  //   // 	// Init
-  //   // 	0^#5:*expr.Constant_Int64Value#,
-  //   // 	// LoopCondition
-  //   // 	true^#6:*expr.Constant_BoolValue#,
-  //   // 	// LoopStep
-  //   // 	_?_:_(
-  //   // 		f^#4:*expr.Expr_IdentExpr#,
-  //   // 		_+_(
-  //   // 			  __result__^#7:*expr.Expr_IdentExpr#,
-  //   // 		  1^#8:*expr.Constant_Int64Value#
-  //   // 		)^#9:*expr.Expr_CallExpr#,
-  //   // 		__result__^#10:*expr.Expr_IdentExpr#
-  //   // 	)^#11:*expr.Expr_CallExpr#,
-  //   // 	// Result
-  //   // 	_==_(
-  //   // 		__result__^#12:*expr.Expr_IdentExpr#,
-  //   // 		1^#13:*expr.Constant_Int64Value#
-  //   // 	)^#14:*expr.Expr_CallExpr#)^#15:*expr.Expr_ComprehensionExpr#`,
-  //   // M: `m^#1:*expr.Expr_IdentExpr#.exists_one(
-  //   // 	v^#3:*expr.Expr_IdentExpr#,
-  //   // 	f^#4:*expr.Expr_IdentExpr#
-  //   //   	)^#15:exists_one#`,
-  //   P: newComprehensionProtoExpr(BigInt(15), {
-  //     iterRange: newIdentProtoExpr(BigInt(1), 'm'),
-  //     iterVar: 'v',
-  //     accuVar: ACCUMULATOR_VAR,
-  //     accuInit: newIntProtoExpr(BigInt(5), BigInt(0)),
-  //     loopCondition: newBoolProtoExpr(BigInt(6), true),
-  //     loopStep: newGlobalCallProtoExpr(BigInt(11), CONDITIONAL_OPERATOR, [
-  //       newIdentProtoExpr(BigInt(4), 'f'),
-  //       newGlobalCallProtoExpr(BigInt(9), ADD_OPERATOR, [
-  //         newIdentProtoExpr(BigInt(7), ACCUMULATOR_VAR),
-  //         newIntProtoExpr(BigInt(8), BigInt(1)),
-  //       ]),
-  //       newIdentProtoExpr(BigInt(10), ACCUMULATOR_VAR),
-  //     ]),
-  //     result: newGlobalCallProtoExpr(BigInt(14), '_==_', [
-  //       newIdentProtoExpr(BigInt(12), ACCUMULATOR_VAR),
-  //       newIntProtoExpr(BigInt(13), BigInt(1)),
-  //     ]),
-  //   }),
-  // },
-  // TODO
-  // {
-  //   I: `m.map(v, f)`,
-  //   // P: `__comprehension__(
-  //   // 	// Variable
-  //   // 	v,
-  //   // 	// Target
-  //   // 	m^#1:*expr.Expr_IdentExpr#,
-  //   // 	// Accumulator
-  //   // 	__result__,
-  //   // 	// Init
-  //   // 	[]^#5:*expr.Expr_ListExpr#,
-  //   // 	// LoopCondition
-  //   // 	true^#6:*expr.Constant_BoolValue#,
-  //   // 	// LoopStep
-  //   // 	_+_(
-  //   // 		__result__^#7:*expr.Expr_IdentExpr#,
-  //   // 		[
-  //   // 			f^#4:*expr.Expr_IdentExpr#
-  //   // 		]^#8:*expr.Expr_ListExpr#
-  //   // 	)^#9:*expr.Expr_CallExpr#,
-  //   // 	// Result
-  //   // 	__result__^#10:*expr.Expr_IdentExpr#)^#11:*expr.Expr_ComprehensionExpr#`,
-  //   // M: `m^#1:*expr.Expr_IdentExpr#.map(
-  //   // 	v^#3:*expr.Expr_IdentExpr#,
-  //   // 	f^#4:*expr.Expr_IdentExpr#
-  //   //   	)^#11:map#`,
-  //   P: newComprehensionProtoExpr(BigInt(11), {
-  //     iterRange: newIdentProtoExpr(BigInt(1), 'm'),
-  //     iterVar: 'v',
-  //     accuVar: ACCUMULATOR_VAR,
-  //     accuInit: newListProtoExpr(BigInt(5), []),
-  //     loopCondition: newBoolProtoExpr(BigInt(6), true),
-  //     loopStep: newGlobalCallProtoExpr(BigInt(9), ADD_OPERATOR, [
-  //       newIdentProtoExpr(BigInt(7), ACCUMULATOR_VAR),
-  //       newListProtoExpr(BigInt(8), [newIdentProtoExpr(BigInt(4), 'f')]),
-  //     ]),
-  //     result: newIdentProtoExpr(BigInt(10), ACCUMULATOR_VAR),
-  //   }),
-  // },
-  // TODO
-  // {
-  //   I: `m.map(__result__, __result__)`,
-  //   E: `ERROR: <input>:1:7: iteration variable overwrites accumulator variable
-  //       | m.map(__result__, __result__)
-  //       | ......^`,
-  // },
-  // TODO
-  // {
-  //   I: `m.map(v, p, f)`,
-  //   // P: `__comprehension__(
-  //   // 	// Variable
-  //   // 	v,
-  //   // 	// Target
-  //   // 	m^#1:*expr.Expr_IdentExpr#,
-  //   // 	// Accumulator
-  //   // 	__result__,
-  //   // 	// Init
-  //   // 	[]^#6:*expr.Expr_ListExpr#,
-  //   // 	// LoopCondition
-  //   // 	true^#7:*expr.Constant_BoolValue#,
-  //   // 	// LoopStep
-  //   // 	_?_:_(
-  //   // 		p^#4:*expr.Expr_IdentExpr#,
-  //   // 		_+_(
-  //   // 			__result__^#8:*expr.Expr_IdentExpr#,
-  //   // 			[
-  //   // 				f^#5:*expr.Expr_IdentExpr#
-  //   // 			]^#9:*expr.Expr_ListExpr#
-  //   // 		)^#10:*expr.Expr_CallExpr#,
-  //   // 		__result__^#11:*expr.Expr_IdentExpr#
-  //   // 	)^#12:*expr.Expr_CallExpr#,
-  //   // 	// Result
-  //   // 	__result__^#13:*expr.Expr_IdentExpr#)^#14:*expr.Expr_ComprehensionExpr#`,
-  //   // M: `m^#1:*expr.Expr_IdentExpr#.map(
-  //   // 	v^#3:*expr.Expr_IdentExpr#,
-  //   // 	p^#4:*expr.Expr_IdentExpr#,
-  //   // 	f^#5:*expr.Expr_IdentExpr#
-  //   //   	)^#14:map#`,
-  //   P: newComprehensionProtoExpr(BigInt(14), {
-  //     iterRange: newIdentProtoExpr(BigInt(1), 'm'),
-  //     iterVar: 'v',
-  //     accuVar: ACCUMULATOR_VAR,
-  //     accuInit: newListProtoExpr(BigInt(6), []),
-  //     loopCondition: newBoolProtoExpr(BigInt(7), true),
-  //     loopStep: newGlobalCallProtoExpr(BigInt(12), CONDITIONAL_OPERATOR, [
-  //       newIdentProtoExpr(BigInt(4), 'p'),
-  //       newGlobalCallProtoExpr(BigInt(10), ADD_OPERATOR, [
-  //         newIdentProtoExpr(BigInt(8), ACCUMULATOR_VAR),
-  //         newListProtoExpr(BigInt(9), [newIdentProtoExpr(BigInt(5), 'f')]),
-  //       ]),
-  //       newIdentProtoExpr(BigInt(11), ACCUMULATOR_VAR),
-  //     ]),
-  //     result: newIdentProtoExpr(BigInt(13), ACCUMULATOR_VAR),
-  //   }),
-  // },
-  // TODO
-  // {
-  //   I: `m.filter(v, p)`,
-  //   // P: `__comprehension__(
-  //   // 	// Variable
-  //   // 	v,
-  //   // 	// Target
-  //   // 	m^#1:*expr.Expr_IdentExpr#,
-  //   // 	// Accumulator
-  //   // 	__result__,
-  //   // 	// Init
-  //   // 	[]^#5:*expr.Expr_ListExpr#,
-  //   // 	// LoopCondition
-  //   // 	true^#6:*expr.Constant_BoolValue#,
-  //   // 	// LoopStep
-  //   // 	_?_:_(
-  //   // 		p^#4:*expr.Expr_IdentExpr#,
-  //   // 		_+_(
-  //   // 			__result__^#7:*expr.Expr_IdentExpr#,
-  //   // 			[
-  //   // 				v^#3:*expr.Expr_IdentExpr#
-  //   // 			]^#8:*expr.Expr_ListExpr#
-  //   // 		)^#9:*expr.Expr_CallExpr#,
-  //   // 		__result__^#10:*expr.Expr_IdentExpr#
-  //   // 	)^#11:*expr.Expr_CallExpr#,
-  //   // 	// Result
-  //   // 	__result__^#12:*expr.Expr_IdentExpr#)^#13:*expr.Expr_ComprehensionExpr#`,
-  //   // M: `m^#1:*expr.Expr_IdentExpr#.filter(
-  //   // 	v^#3:*expr.Expr_IdentExpr#,
-  //   // 	p^#4:*expr.Expr_IdentExpr#
-  //   //   	)^#13:filter#`,
-  //   P: newComprehensionProtoExpr(BigInt(13), {
-  //     iterRange: newIdentProtoExpr(BigInt(1), 'm'),
-  //     iterVar: 'v',
-  //     accuVar: ACCUMULATOR_VAR,
-  //     accuInit: newListProtoExpr(BigInt(5), []),
-  //     loopCondition: newBoolProtoExpr(BigInt(6), true),
-  //     loopStep: newGlobalCallProtoExpr(BigInt(11), CONDITIONAL_OPERATOR, [
-  //       newIdentProtoExpr(BigInt(4), 'p'),
-  //       newGlobalCallProtoExpr(BigInt(9), ADD_OPERATOR, [
-  //         newIdentProtoExpr(BigInt(7), ACCUMULATOR_VAR),
-  //         newListProtoExpr(BigInt(8), [newIdentProtoExpr(BigInt(3), 'v')]),
-  //       ]),
-  //       newIdentProtoExpr(BigInt(10), ACCUMULATOR_VAR),
-  //     ]),
-  //     result: newIdentProtoExpr(BigInt(12), ACCUMULATOR_VAR),
-  //   }),
-  // },
-  // TODO
-  // {
-  //   I: `m.filter(__result__, false)`,
-  //   E: `ERROR: <input>:1:10: iteration variable overwrites accumulator variable
-  //       | m.filter(__result__, false)
-  //       | .........^`,
-  // },
-  // TODO
-  // {
-  //   I: `m.filter(a.b, false)`,
-  //   E: `ERROR: <input>:1:11: argument is not an identifier
-  //       | m.filter(a.b, false)
-  //       | ..........^`,
-  // },
+  {
+    I: `m.exists(v, f)`,
+    // P: `__comprehension__(
+    // 	// Variable
+    // 	v,
+    // 	// Target
+    // 	m^#1:*expr.Expr_IdentExpr#,
+    // 	// Accumulator
+    // 	__result__,
+    // 	// Init
+    // 	false^#5:*expr.Constant_BoolValue#,
+    // 	// LoopCondition
+    // 	@not_strictly_false(
+    //             !_(
+    //               __result__^#6:*expr.Expr_IdentExpr#
+    //             )^#7:*expr.Expr_CallExpr#
+    // 	)^#8:*expr.Expr_CallExpr#,
+    // 	// LoopStep
+    // 	_||_(
+    //             __result__^#9:*expr.Expr_IdentExpr#,
+    //             f^#4:*expr.Expr_IdentExpr#
+    // 	)^#10:*expr.Expr_CallExpr#,
+    // 	// Result
+    // 	__result__^#11:*expr.Expr_IdentExpr#)^#12:*expr.Expr_ComprehensionExpr#`,
+    // M: `m^#1:*expr.Expr_IdentExpr#.exists(
+    // 	v^#3:*expr.Expr_IdentExpr#,
+    // 	f^#4:*expr.Expr_IdentExpr#
+    //   	)^#12:exists#`,
+    P: newComprehensionProtoExpr(BigInt(12), {
+      iterRange: newIdentProtoExpr(BigInt(1), 'm'),
+      iterVar: 'v',
+      accuVar: AccumulatorName,
+      accuInit: newBoolProtoExpr(BigInt(5), false),
+      loopCondition: newGlobalCallProtoExpr(
+        BigInt(8),
+        NOT_STRICTLY_FALSE_OPERATOR,
+        [
+          newGlobalCallProtoExpr(BigInt(7), LOGICAL_NOT_OPERATOR, [
+            newIdentProtoExpr(BigInt(6), AccumulatorName),
+          ]),
+        ]
+      ),
+      loopStep: newGlobalCallProtoExpr(BigInt(10), LOGICAL_OR_OPERATOR, [
+        newIdentProtoExpr(BigInt(9), AccumulatorName),
+        newIdentProtoExpr(BigInt(4), 'f'),
+      ]),
+      result: newIdentProtoExpr(BigInt(11), AccumulatorName),
+    }),
+  },
+  {
+    I: `m.all(v, f)`,
+    // P: `__comprehension__(
+    // 	// Variable
+    // 	v,
+    // 	// Target
+    // 	m^#1:*expr.Expr_IdentExpr#,
+    // 	// Accumulator
+    // 	__result__,
+    // 	// Init
+    // 	true^#5:*expr.Constant_BoolValue#,
+    // 	// LoopCondition
+    // 	@not_strictly_false(
+    //             __result__^#6:*expr.Expr_IdentExpr#
+    //         )^#7:*expr.Expr_CallExpr#,
+    // 	// LoopStep
+    // 	_&&_(
+    //             __result__^#8:*expr.Expr_IdentExpr#,
+    //             f^#4:*expr.Expr_IdentExpr#
+    //         )^#9:*expr.Expr_CallExpr#,
+    // 	// Result
+    // 	__result__^#10:*expr.Expr_IdentExpr#)^#11:*expr.Expr_ComprehensionExpr#`,
+    // M: `m^#1:*expr.Expr_IdentExpr#.all(
+    // 	v^#3:*expr.Expr_IdentExpr#,
+    // 	f^#4:*expr.Expr_IdentExpr#
+    //   	)^#11:all#`,
+    P: newComprehensionProtoExpr(BigInt(11), {
+      iterRange: newIdentProtoExpr(BigInt(1), 'm'),
+      iterVar: 'v',
+      accuVar: AccumulatorName,
+      accuInit: newBoolProtoExpr(BigInt(5), true),
+      loopCondition: newGlobalCallProtoExpr(
+        BigInt(7),
+        NOT_STRICTLY_FALSE_OPERATOR,
+        [newIdentProtoExpr(BigInt(6), AccumulatorName)]
+      ),
+      loopStep: newGlobalCallProtoExpr(BigInt(9), LOGICAL_AND_OPERATOR, [
+        newIdentProtoExpr(BigInt(8), AccumulatorName),
+        newIdentProtoExpr(BigInt(4), 'f'),
+      ]),
+      result: newIdentProtoExpr(BigInt(10), AccumulatorName),
+    }),
+  },
+  {
+    I: `m.exists_one(v, f)`,
+    // P: `__comprehension__(
+    // 	// Variable
+    // 	v,
+    // 	// Target
+    // 	m^#1:*expr.Expr_IdentExpr#,
+    // 	// Accumulator
+    // 	__result__,
+    // 	// Init
+    // 	0^#5:*expr.Constant_Int64Value#,
+    // 	// LoopCondition
+    // 	true^#6:*expr.Constant_BoolValue#,
+    // 	// LoopStep
+    // 	_?_:_(
+    // 		f^#4:*expr.Expr_IdentExpr#,
+    // 		_+_(
+    // 			  __result__^#7:*expr.Expr_IdentExpr#,
+    // 		  1^#8:*expr.Constant_Int64Value#
+    // 		)^#9:*expr.Expr_CallExpr#,
+    // 		__result__^#10:*expr.Expr_IdentExpr#
+    // 	)^#11:*expr.Expr_CallExpr#,
+    // 	// Result
+    // 	_==_(
+    // 		__result__^#12:*expr.Expr_IdentExpr#,
+    // 		1^#13:*expr.Constant_Int64Value#
+    // 	)^#14:*expr.Expr_CallExpr#)^#15:*expr.Expr_ComprehensionExpr#`,
+    // M: `m^#1:*expr.Expr_IdentExpr#.exists_one(
+    // 	v^#3:*expr.Expr_IdentExpr#,
+    // 	f^#4:*expr.Expr_IdentExpr#
+    //   	)^#15:exists_one#`,
+    P: newComprehensionProtoExpr(BigInt(15), {
+      iterRange: newIdentProtoExpr(BigInt(1), 'm'),
+      iterVar: 'v',
+      accuVar: AccumulatorName,
+      accuInit: newIntProtoExpr(BigInt(5), BigInt(0)),
+      loopCondition: newBoolProtoExpr(BigInt(6), true),
+      loopStep: newGlobalCallProtoExpr(BigInt(11), CONDITIONAL_OPERATOR, [
+        newIdentProtoExpr(BigInt(4), 'f'),
+        newGlobalCallProtoExpr(BigInt(9), ADD_OPERATOR, [
+          newIdentProtoExpr(BigInt(7), AccumulatorName),
+          newIntProtoExpr(BigInt(8), BigInt(1)),
+        ]),
+        newIdentProtoExpr(BigInt(10), AccumulatorName),
+      ]),
+      result: newGlobalCallProtoExpr(BigInt(14), '_==_', [
+        newIdentProtoExpr(BigInt(12), AccumulatorName),
+        newIntProtoExpr(BigInt(13), BigInt(1)),
+      ]),
+    }),
+  },
+  {
+    I: `m.map(v, f)`,
+    // P: `__comprehension__(
+    // 	// Variable
+    // 	v,
+    // 	// Target
+    // 	m^#1:*expr.Expr_IdentExpr#,
+    // 	// Accumulator
+    // 	__result__,
+    // 	// Init
+    // 	[]^#5:*expr.Expr_ListExpr#,
+    // 	// LoopCondition
+    // 	true^#6:*expr.Constant_BoolValue#,
+    // 	// LoopStep
+    // 	_+_(
+    // 		__result__^#7:*expr.Expr_IdentExpr#,
+    // 		[
+    // 			f^#4:*expr.Expr_IdentExpr#
+    // 		]^#8:*expr.Expr_ListExpr#
+    // 	)^#9:*expr.Expr_CallExpr#,
+    // 	// Result
+    // 	__result__^#10:*expr.Expr_IdentExpr#)^#11:*expr.Expr_ComprehensionExpr#`,
+    // M: `m^#1:*expr.Expr_IdentExpr#.map(
+    // 	v^#3:*expr.Expr_IdentExpr#,
+    // 	f^#4:*expr.Expr_IdentExpr#
+    //   	)^#11:map#`,
+    P: newComprehensionProtoExpr(BigInt(11), {
+      iterRange: newIdentProtoExpr(BigInt(1), 'm'),
+      iterVar: 'v',
+      accuVar: AccumulatorName,
+      accuInit: newListProtoExpr(BigInt(5), []),
+      loopCondition: newBoolProtoExpr(BigInt(6), true),
+      loopStep: newGlobalCallProtoExpr(BigInt(9), ADD_OPERATOR, [
+        newIdentProtoExpr(BigInt(7), AccumulatorName),
+        newListProtoExpr(BigInt(8), [newIdentProtoExpr(BigInt(4), 'f')]),
+      ]),
+      result: newIdentProtoExpr(BigInt(10), AccumulatorName),
+    }),
+  },
+  {
+    I: `m.map(__result__, __result__)`,
+    E: `ERROR: <input>:1:7: iteration variable overwrites accumulator variable
+        | m.map(__result__, __result__)
+        | ......^`,
+  },
+  {
+    I: `m.map(v, p, f)`,
+    // P: `__comprehension__(
+    // 	// Variable
+    // 	v,
+    // 	// Target
+    // 	m^#1:*expr.Expr_IdentExpr#,
+    // 	// Accumulator
+    // 	__result__,
+    // 	// Init
+    // 	[]^#6:*expr.Expr_ListExpr#,
+    // 	// LoopCondition
+    // 	true^#7:*expr.Constant_BoolValue#,
+    // 	// LoopStep
+    // 	_?_:_(
+    // 		p^#4:*expr.Expr_IdentExpr#,
+    // 		_+_(
+    // 			__result__^#8:*expr.Expr_IdentExpr#,
+    // 			[
+    // 				f^#5:*expr.Expr_IdentExpr#
+    // 			]^#9:*expr.Expr_ListExpr#
+    // 		)^#10:*expr.Expr_CallExpr#,
+    // 		__result__^#11:*expr.Expr_IdentExpr#
+    // 	)^#12:*expr.Expr_CallExpr#,
+    // 	// Result
+    // 	__result__^#13:*expr.Expr_IdentExpr#)^#14:*expr.Expr_ComprehensionExpr#`,
+    // M: `m^#1:*expr.Expr_IdentExpr#.map(
+    // 	v^#3:*expr.Expr_IdentExpr#,
+    // 	p^#4:*expr.Expr_IdentExpr#,
+    // 	f^#5:*expr.Expr_IdentExpr#
+    //   	)^#14:map#`,
+    P: newComprehensionProtoExpr(BigInt(14), {
+      iterRange: newIdentProtoExpr(BigInt(1), 'm'),
+      iterVar: 'v',
+      accuVar: AccumulatorName,
+      accuInit: newListProtoExpr(BigInt(6), []),
+      loopCondition: newBoolProtoExpr(BigInt(7), true),
+      loopStep: newGlobalCallProtoExpr(BigInt(12), CONDITIONAL_OPERATOR, [
+        newIdentProtoExpr(BigInt(4), 'p'),
+        newGlobalCallProtoExpr(BigInt(10), ADD_OPERATOR, [
+          newIdentProtoExpr(BigInt(8), AccumulatorName),
+          newListProtoExpr(BigInt(9), [newIdentProtoExpr(BigInt(5), 'f')]),
+        ]),
+        newIdentProtoExpr(BigInt(11), AccumulatorName),
+      ]),
+      result: newIdentProtoExpr(BigInt(13), AccumulatorName),
+    }),
+  },
+  {
+    I: `m.filter(v, p)`,
+    // P: `__comprehension__(
+    // 	// Variable
+    // 	v,
+    // 	// Target
+    // 	m^#1:*expr.Expr_IdentExpr#,
+    // 	// Accumulator
+    // 	__result__,
+    // 	// Init
+    // 	[]^#5:*expr.Expr_ListExpr#,
+    // 	// LoopCondition
+    // 	true^#6:*expr.Constant_BoolValue#,
+    // 	// LoopStep
+    // 	_?_:_(
+    // 		p^#4:*expr.Expr_IdentExpr#,
+    // 		_+_(
+    // 			__result__^#7:*expr.Expr_IdentExpr#,
+    // 			[
+    // 				v^#3:*expr.Expr_IdentExpr#
+    // 			]^#8:*expr.Expr_ListExpr#
+    // 		)^#9:*expr.Expr_CallExpr#,
+    // 		__result__^#10:*expr.Expr_IdentExpr#
+    // 	)^#11:*expr.Expr_CallExpr#,
+    // 	// Result
+    // 	__result__^#12:*expr.Expr_IdentExpr#)^#13:*expr.Expr_ComprehensionExpr#`,
+    // M: `m^#1:*expr.Expr_IdentExpr#.filter(
+    // 	v^#3:*expr.Expr_IdentExpr#,
+    // 	p^#4:*expr.Expr_IdentExpr#
+    //   	)^#13:filter#`,
+    P: newComprehensionProtoExpr(BigInt(13), {
+      iterRange: newIdentProtoExpr(BigInt(1), 'm'),
+      iterVar: 'v',
+      accuVar: AccumulatorName,
+      accuInit: newListProtoExpr(BigInt(5), []),
+      loopCondition: newBoolProtoExpr(BigInt(6), true),
+      loopStep: newGlobalCallProtoExpr(BigInt(11), CONDITIONAL_OPERATOR, [
+        newIdentProtoExpr(BigInt(4), 'p'),
+        newGlobalCallProtoExpr(BigInt(9), ADD_OPERATOR, [
+          newIdentProtoExpr(BigInt(7), AccumulatorName),
+          newListProtoExpr(BigInt(8), [newIdentProtoExpr(BigInt(3), 'v')]),
+        ]),
+        newIdentProtoExpr(BigInt(10), AccumulatorName),
+      ]),
+      result: newIdentProtoExpr(BigInt(12), AccumulatorName),
+    }),
+  },
+  {
+    I: `m.filter(__result__, false)`,
+    E: `ERROR: <input>:1:10: iteration variable overwrites accumulator variable
+        | m.filter(__result__, false)
+        | .........^`,
+  },
+  {
+    I: `m.filter(a.b, false)`,
+    E: `ERROR: <input>:1:11: argument is not an identifier
+        | m.filter(a.b, false)
+        | ..........^`,
+  },
 
   // Tests from C++ parser
   {
@@ -1373,7 +1365,7 @@ const testCases: TestInfo[] = [
   		| ^`,
   },
   {
-    I: `"\\""`, // TODO: revisit this test
+    I: `"\\""`, // TODO: revisit this test. removing the double escape breaks it
     // P: `"\""^#1:*expr.Constant_StringValue#`,
     P: newStringProtoExpr(BigInt(1), '"'),
   },
@@ -1545,22 +1537,11 @@ const testCases: TestInfo[] = [
     | {"a": 1}."a"
     | .........^`,
   },
-  // { // TODO: this comes up with the wrong value
-  //   I: `"\xC3\XBF"`,
-  //   // P: `"Ã¿"^#1:*expr.Constant_StringValue#`,
-  //   P: create(ExprSchema, {
-  //     id: BigInt(1),
-  //     exprKind: {
-  //       case: 'constExpr',
-  //       value: {
-  //         constantKind: {
-  //           case: 'stringValue',
-  //           value: 'Ã¿',
-  //         },
-  //       },
-  //     },
-  //   }),
-  // },
+  {
+    I: `"\xC3\Xbf"`,
+    // P: `"Ã¿"^#1:*expr.Constant_StringValue#`,
+    P: newStringProtoExpr(BigInt(1), 'Ã¿'),
+  },
   // JS throws an error "octal escape sequences are not allowed in strict mode"
   // {
   // 	I: `"\303\277"`,
@@ -1571,37 +1552,15 @@ const testCases: TestInfo[] = [
     // P: `"hi☺ ☺there"^#1:*expr.Constant_StringValue#`,
     P: newStringProtoExpr(BigInt(1), 'hi☺ ☺there'),
   },
-  // {
-  //   I: `"\U000003A8\?"`, // TODO: it parses this wrong
-  //   // P: `"Ψ?"^#1:*expr.Constant_StringValue#`,
-  //   P: create(ExprSchema, {
-  //     id: BigInt(1),
-  //     exprKind: {
-  //       case: 'constExpr',
-  //       value: {
-  //         constantKind: {
-  //           case: 'stringValue',
-  //           value: 'Ψ?',
-  //         },
-  //       },
-  //     },
-  //   }),
-  // },
+  {
+    I: `"\U000003A8\?"`,
+    // P: `"Ψ?"^#1:*expr.Constant_StringValue#`,
+    P: newStringProtoExpr(BigInt(1), 'Ψ?'),
+  },
   // {
   //   I: `"\a\b\f\n\r\t\v'\"\\\? Legal escapes"`, // TODO: it struggles with this too
   //   // P: `"\a\b\f\n\r\t\v'\"\\? Legal escapes"^#1:*expr.Constant_StringValue#`,
-  //   P: create(ExprSchema, {
-  //     id: BigInt(1),
-  //     exprKind: {
-  //       case: 'constExpr',
-  //       value: {
-  //         constantKind: {
-  //           case: 'stringValue',
-  //           value: `a\b\f\n\r\t\v\'"\\? Legal escapes`,
-  //         },
-  //       },
-  //     },
-  //   }),
+  //   P: newStringProtoExpr(BigInt(1), 'a\b\f\n\r\t\v\'"\\? Legal escapes'),
   // },
   // {
   // 	I: `"\xFh"`, // TODO: JS won't run this
@@ -1646,9 +1605,10 @@ const testCases: TestInfo[] = [
       ]),
     ]),
   },
-  // { // TODO: the error message points at the wrong characters
+  // {
+  //   // TODO: the error message points at the wrong characters
   //   I: `      '😁' in ['😁', '😑', '😦']
-  // && in.😁`,
+  // 	 && in.😁`,
   //   E: `ERROR: <input>:2:7: Syntax error: extraneous input 'in' expecting {'[', '{', '(', '.', '-', '!', 'true', 'false', 'null', NUM_FLOAT, NUM_INT, NUM_UINT, STRING, BYTES, IDENTIFIER}
   // 	|    && in.😁
   // 	| ......^
@@ -1770,21 +1730,22 @@ const testCases: TestInfo[] = [
 		| while
 		| ^`,
   },
-  // { // TODO: the errors in the message are in the wrong order
-  //   I: '[1, 2, 3].map(var, var * var)',
-  //   E: `ERROR: <input>:1:15: reserved identifier: var
-  // 	| [1, 2, 3].map(var, var * var)
-  // 	| ..............^
-  // 	ERROR: <input>:1:15: argument is not an identifier
-  // 	| [1, 2, 3].map(var, var * var)
-  // 	| ..............^
-  // 	ERROR: <input>:1:20: reserved identifier: var
-  // 	| [1, 2, 3].map(var, var * var)
-  // 	| ...................^
-  // 	ERROR: <input>:1:26: reserved identifier: var
-  // 	| [1, 2, 3].map(var, var * var)
-  // 	| .........................^`,
-  // },
+  // TODO: "argument is not an identifier" is out of order
+  {
+    I: '[1, 2, 3].map(var, var * var)',
+    E: `ERROR: <input>:1:15: reserved identifier: var
+  	| [1, 2, 3].map(var, var * var)
+  	| ..............^
+  	ERROR: <input>:1:20: reserved identifier: var
+  	| [1, 2, 3].map(var, var * var)
+  	| ...................^
+  	ERROR: <input>:1:26: reserved identifier: var
+  	| [1, 2, 3].map(var, var * var)
+  	| .........................^
+  	ERROR: <input>:1:15: argument is not an identifier
+  	| [1, 2, 3].map(var, var * var)
+  	| ..............^`,
+  },
   {
     I: 'func{{a}}',
     E: `ERROR: <input>:1:6: Syntax error: extraneous input '{' expecting {'}', ',', '?', IDENTIFIER}
@@ -1915,284 +1876,479 @@ const testCases: TestInfo[] = [
   // },
   // TODO: javascript doesn't like the one that starts with "I: `ó"
   // Macro Calls Tests
-  // TODO: these are very complicated
-  // {
-  //   I: `x.filter(y, y.filter(z, z > 0))`,
-  //   P: `__comprehension__(
-  //   	// Variable
-  //   	y,
-  //   	// Target
-  //   	x^#1:*expr.Expr_IdentExpr#,
-  //   	// Accumulator
-  //   	__result__,
-  //   	// Init
-  //   	[]^#19:*expr.Expr_ListExpr#,
-  //   	// LoopCondition
-  //   	true^#20:*expr.Constant_BoolValue#,
-  //   	// LoopStep
-  //   	_?_:_(
-  //   	  __comprehension__(
-  //   		// Variable
-  //   		z,
-  //   		// Target
-  //   		y^#4:*expr.Expr_IdentExpr#,
-  //   		// Accumulator
-  //   		__result__,
-  //   		// Init
-  //   		[]^#10:*expr.Expr_ListExpr#,
-  //   		// LoopCondition
-  //   		true^#11:*expr.Constant_BoolValue#,
-  //   		// LoopStep
-  //   		_?_:_(
-  //   		  _>_(
-  //   			z^#7:*expr.Expr_IdentExpr#,
-  //   			0^#9:*expr.Constant_Int64Value#
-  //   		  )^#8:*expr.Expr_CallExpr#,
-  //   		  _+_(
-  //   			__result__^#12:*expr.Expr_IdentExpr#,
-  //   			[
-  //   			  z^#6:*expr.Expr_IdentExpr#
-  //   			]^#13:*expr.Expr_ListExpr#
-  //   		  )^#14:*expr.Expr_CallExpr#,
-  //   		  __result__^#15:*expr.Expr_IdentExpr#
-  //   		)^#16:*expr.Expr_CallExpr#,
-  //   		// Result
-  //   		__result__^#17:*expr.Expr_IdentExpr#)^#18:*expr.Expr_ComprehensionExpr#,
-  //   	  _+_(
-  //   		__result__^#21:*expr.Expr_IdentExpr#,
-  //   		[
-  //   		  y^#3:*expr.Expr_IdentExpr#
-  //   		]^#22:*expr.Expr_ListExpr#
-  //   	  )^#23:*expr.Expr_CallExpr#,
-  //   	  __result__^#24:*expr.Expr_IdentExpr#
-  //   	)^#25:*expr.Expr_CallExpr#,
-  //   	// Result
-  //   	__result__^#26:*expr.Expr_IdentExpr#)^#27:*expr.Expr_ComprehensionExpr#`,
-  //   M: `x^#1:*expr.Expr_IdentExpr#.filter(
-  //   	y^#3:*expr.Expr_IdentExpr#,
-  //   	^#18:filter#
-  //     )^#27:filter#,
-  //     y^#4:*expr.Expr_IdentExpr#.filter(
-  //   	z^#6:*expr.Expr_IdentExpr#,
-  //   	_>_(
-  //   	  z^#7:*expr.Expr_IdentExpr#,
-  //   	  0^#9:*expr.Constant_Int64Value#
-  //   	)^#8:*expr.Expr_CallExpr#
-  //     )^#18:filter#`,
-  // },
-  // {
-  // 	I: `has(a.b).filter(c, c)`,
-  // 	P: `__comprehension__(
-  // 		// Variable
-  // 		c,
-  // 		// Target
-  // 		a^#2:*expr.Expr_IdentExpr#.b~test-only~^#4:*expr.Expr_SelectExpr#,
-  // 		// Accumulator
-  // 		__result__,
-  // 		// Init
-  // 		[]^#8:*expr.Expr_ListExpr#,
-  // 		// LoopCondition
-  // 		true^#9:*expr.Constant_BoolValue#,
-  // 		// LoopStep
-  // 		_?_:_(
-  // 		  c^#7:*expr.Expr_IdentExpr#,
-  // 		  _+_(
-  // 			__result__^#10:*expr.Expr_IdentExpr#,
-  // 			[
-  // 			  c^#6:*expr.Expr_IdentExpr#
-  // 			]^#11:*expr.Expr_ListExpr#
-  // 		  )^#12:*expr.Expr_CallExpr#,
-  // 		  __result__^#13:*expr.Expr_IdentExpr#
-  // 		)^#14:*expr.Expr_CallExpr#,
-  // 		// Result
-  // 		__result__^#15:*expr.Expr_IdentExpr#)^#16:*expr.Expr_ComprehensionExpr#`,
-  // 	M: `^#4:has#.filter(
-  // 		c^#6:*expr.Expr_IdentExpr#,
-  // 		c^#7:*expr.Expr_IdentExpr#
-  // 		)^#16:filter#,
-  // 		has(
-  // 			a^#2:*expr.Expr_IdentExpr#.b^#3:*expr.Expr_SelectExpr#
-  // 		)^#4:has#`,
-  // },
-  // {
-  // 	I: `x.filter(y, y.exists(z, has(z.a)) && y.exists(z, has(z.b)))`,
-  // 	P: `__comprehension__(
-  // 		// Variable
-  // 		y,
-  // 		// Target
-  // 		x^#1:*expr.Expr_IdentExpr#,
-  // 		// Accumulator
-  // 		__result__,
-  // 		// Init
-  // 		[]^#35:*expr.Expr_ListExpr#,
-  // 		// LoopCondition
-  // 		true^#36:*expr.Constant_BoolValue#,
-  // 		// LoopStep
-  // 		_?_:_(
-  // 		  _&&_(
-  // 			__comprehension__(
-  // 			  // Variable
-  // 			  z,
-  // 			  // Target
-  // 			  y^#4:*expr.Expr_IdentExpr#,
-  // 			  // Accumulator
-  // 			  __result__,
-  // 			  // Init
-  // 			  false^#11:*expr.Constant_BoolValue#,
-  // 			  // LoopCondition
-  // 			  @not_strictly_false(
-  // 				!_(
-  // 				  __result__^#12:*expr.Expr_IdentExpr#
-  // 				)^#13:*expr.Expr_CallExpr#
-  // 			  )^#14:*expr.Expr_CallExpr#,
-  // 			  // LoopStep
-  // 			  _||_(
-  // 				__result__^#15:*expr.Expr_IdentExpr#,
-  // 				z^#8:*expr.Expr_IdentExpr#.a~test-only~^#10:*expr.Expr_SelectExpr#
-  // 			  )^#16:*expr.Expr_CallExpr#,
-  // 			  // Result
-  // 			  __result__^#17:*expr.Expr_IdentExpr#)^#18:*expr.Expr_ComprehensionExpr#,
-  // 			__comprehension__(
-  // 			  // Variable
-  // 			  z,
-  // 			  // Target
-  // 			  y^#19:*expr.Expr_IdentExpr#,
-  // 			  // Accumulator
-  // 			  __result__,
-  // 			  // Init
-  // 			  false^#26:*expr.Constant_BoolValue#,
-  // 			  // LoopCondition
-  // 			  @not_strictly_false(
-  // 				!_(
-  // 				  __result__^#27:*expr.Expr_IdentExpr#
-  // 				)^#28:*expr.Expr_CallExpr#
-  // 			  )^#29:*expr.Expr_CallExpr#,
-  // 			  // LoopStep
-  // 			  _||_(
-  // 				__result__^#30:*expr.Expr_IdentExpr#,
-  // 				z^#23:*expr.Expr_IdentExpr#.b~test-only~^#25:*expr.Expr_SelectExpr#
-  // 			  )^#31:*expr.Expr_CallExpr#,
-  // 			  // Result
-  // 			  __result__^#32:*expr.Expr_IdentExpr#)^#33:*expr.Expr_ComprehensionExpr#
-  // 		  )^#34:*expr.Expr_CallExpr#,
-  // 		  _+_(
-  // 			__result__^#37:*expr.Expr_IdentExpr#,
-  // 			[
-  // 			  y^#3:*expr.Expr_IdentExpr#
-  // 			]^#38:*expr.Expr_ListExpr#
-  // 		  )^#39:*expr.Expr_CallExpr#,
-  // 		  __result__^#40:*expr.Expr_IdentExpr#
-  // 		)^#41:*expr.Expr_CallExpr#,
-  // 		// Result
-  // 		__result__^#42:*expr.Expr_IdentExpr#)^#43:*expr.Expr_ComprehensionExpr#`,
-  // 	M: `x^#1:*expr.Expr_IdentExpr#.filter(
-  // 		y^#3:*expr.Expr_IdentExpr#,
-  // 		_&&_(
-  // 		  ^#18:exists#,
-  // 		  ^#33:exists#
-  // 		)^#34:*expr.Expr_CallExpr#
-  // 		)^#43:filter#,
-  // 		y^#19:*expr.Expr_IdentExpr#.exists(
-  // 			z^#21:*expr.Expr_IdentExpr#,
-  // 			^#25:has#
-  // 		)^#33:exists#,
-  // 		has(
-  // 			z^#23:*expr.Expr_IdentExpr#.b^#24:*expr.Expr_SelectExpr#
-  // 		)^#25:has#,
-  // 		y^#4:*expr.Expr_IdentExpr#.exists(
-  // 			z^#6:*expr.Expr_IdentExpr#,
-  // 			^#10:has#
-  // 		)^#18:exists#,
-  // 		has(
-  // 			z^#8:*expr.Expr_IdentExpr#.a^#9:*expr.Expr_SelectExpr#
-  // 		)^#10:has#`,
-  // },
-  // {
-  //   I: `(has(a.b) || has(c.d)).string()`,
-  //   P: `_||_(
-  // 		  a^#2:*expr.Expr_IdentExpr#.b~test-only~^#4:*expr.Expr_SelectExpr#,
-  // 		  c^#6:*expr.Expr_IdentExpr#.d~test-only~^#8:*expr.Expr_SelectExpr#
-  // 	    )^#9:*expr.Expr_CallExpr#.string()^#10:*expr.Expr_CallExpr#`,
-  //   M: `has(
-  // 		  c^#6:*expr.Expr_IdentExpr#.d^#7:*expr.Expr_SelectExpr#
-  // 		)^#8:has#,
-  // 		has(
-  // 		  a^#2:*expr.Expr_IdentExpr#.b^#3:*expr.Expr_SelectExpr#
-  // 		)^#4:has#`,
-  // },
-  // {
-  // 	I: `has(a.b).asList().exists(c, c)`,
-  // 	P: `__comprehension__(
-  // 		// Variable
-  // 		c,
-  // 		// Target
-  // 		a^#2:*expr.Expr_IdentExpr#.b~test-only~^#4:*expr.Expr_SelectExpr#.asList()^#5:*expr.Expr_CallExpr#,
-  // 		// Accumulator
-  // 		__result__,
-  // 		// Init
-  // 		false^#9:*expr.Constant_BoolValue#,
-  // 		// LoopCondition
-  // 		@not_strictly_false(
-  // 		  !_(
-  // 			__result__^#10:*expr.Expr_IdentExpr#
-  // 		  )^#11:*expr.Expr_CallExpr#
-  // 		)^#12:*expr.Expr_CallExpr#,
-  // 		// LoopStep
-  // 		_||_(
-  // 		  __result__^#13:*expr.Expr_IdentExpr#,
-  // 		  c^#8:*expr.Expr_IdentExpr#
-  // 		)^#14:*expr.Expr_CallExpr#,
-  // 		// Result
-  // 		__result__^#15:*expr.Expr_IdentExpr#)^#16:*expr.Expr_ComprehensionExpr#`,
-  // 	M: `^#4:has#.asList()^#5:*expr.Expr_CallExpr#.exists(
-  // 		c^#7:*expr.Expr_IdentExpr#,
-  // 		c^#8:*expr.Expr_IdentExpr#
-  // 	  )^#16:exists#,
-  // 	  has(
-  // 		a^#2:*expr.Expr_IdentExpr#.b^#3:*expr.Expr_SelectExpr#
-  // 	  )^#4:has#`,
-  // },
-  // {
-  // 	I: `[has(a.b), has(c.d)].exists(e, e)`,
-  // 	P: `__comprehension__(
-  // 		// Variable
-  // 		e,
-  // 		// Target
-  // 		[
-  // 		  a^#3:*expr.Expr_IdentExpr#.b~test-only~^#5:*expr.Expr_SelectExpr#,
-  // 		  c^#7:*expr.Expr_IdentExpr#.d~test-only~^#9:*expr.Expr_SelectExpr#
-  // 		]^#1:*expr.Expr_ListExpr#,
-  // 		// Accumulator
-  // 		__result__,
-  // 		// Init
-  // 		false^#13:*expr.Constant_BoolValue#,
-  // 		// LoopCondition
-  // 		@not_strictly_false(
-  // 		  !_(
-  // 			__result__^#14:*expr.Expr_IdentExpr#
-  // 		  )^#15:*expr.Expr_CallExpr#
-  // 		)^#16:*expr.Expr_CallExpr#,
-  // 		// LoopStep
-  // 		_||_(
-  // 		  __result__^#17:*expr.Expr_IdentExpr#,
-  // 		  e^#12:*expr.Expr_IdentExpr#
-  // 		)^#18:*expr.Expr_CallExpr#,
-  // 		// Result
-  // 		__result__^#19:*expr.Expr_IdentExpr#)^#20:*expr.Expr_ComprehensionExpr#`,
-  // 	M: `[
-  // 		^#5:has#,
-  // 		^#9:has#
-  // 	  ]^#1:*expr.Expr_ListExpr#.exists(
-  // 		e^#11:*expr.Expr_IdentExpr#,
-  // 		e^#12:*expr.Expr_IdentExpr#
-  // 	  )^#20:exists#,
-  // 	  has(
-  // 		c^#7:*expr.Expr_IdentExpr#.d^#8:*expr.Expr_SelectExpr#
-  // 	  )^#9:has#,
-  // 	  has(
-  // 		a^#3:*expr.Expr_IdentExpr#.b^#4:*expr.Expr_SelectExpr#
-  // 	  )^#5:has#`,
-  // },
+  {
+    I: `x.filter(y, y.filter(z, z > 0))`,
+    // P: `__comprehension__(
+    // 	// Variable
+    // 	y,
+    // 	// Target
+    // 	x^#1:*expr.Expr_IdentExpr#,
+    // 	// Accumulator
+    // 	__result__,
+    // 	// Init
+    // 	[]^#19:*expr.Expr_ListExpr#,
+    // 	// LoopCondition
+    // 	true^#20:*expr.Constant_BoolValue#,
+    // 	// LoopStep
+    // 	_?_:_(
+    // 	  __comprehension__(
+    // 		// Variable
+    // 		z,
+    // 		// Target
+    // 		y^#4:*expr.Expr_IdentExpr#,
+    // 		// Accumulator
+    // 		__result__,
+    // 		// Init
+    // 		[]^#10:*expr.Expr_ListExpr#,
+    // 		// LoopCondition
+    // 		true^#11:*expr.Constant_BoolValue#,
+    // 		// LoopStep
+    // 		_?_:_(
+    // 		  _>_(
+    // 			z^#7:*expr.Expr_IdentExpr#,
+    // 			0^#9:*expr.Constant_Int64Value#
+    // 		  )^#8:*expr.Expr_CallExpr#,
+    // 		  _+_(
+    // 			__result__^#12:*expr.Expr_IdentExpr#,
+    // 			[
+    // 			  z^#6:*expr.Expr_IdentExpr#
+    // 			]^#13:*expr.Expr_ListExpr#
+    // 		  )^#14:*expr.Expr_CallExpr#,
+    // 		  __result__^#15:*expr.Expr_IdentExpr#
+    // 		)^#16:*expr.Expr_CallExpr#,
+    // 		// Result
+    // 		__result__^#17:*expr.Expr_IdentExpr#)^#18:*expr.Expr_ComprehensionExpr#,
+    // 	  _+_(
+    // 		__result__^#21:*expr.Expr_IdentExpr#,
+    // 		[
+    // 		  y^#3:*expr.Expr_IdentExpr#
+    // 		]^#22:*expr.Expr_ListExpr#
+    // 	  )^#23:*expr.Expr_CallExpr#,
+    // 	  __result__^#24:*expr.Expr_IdentExpr#
+    // 	)^#25:*expr.Expr_CallExpr#,
+    // 	// Result
+    // 	__result__^#26:*expr.Expr_IdentExpr#)^#27:*expr.Expr_ComprehensionExpr#`,
+    // M: `x^#1:*expr.Expr_IdentExpr#.filter(
+    // 	y^#3:*expr.Expr_IdentExpr#,
+    // 	^#18:filter#
+    //   )^#27:filter#,
+    //   y^#4:*expr.Expr_IdentExpr#.filter(
+    // 	z^#6:*expr.Expr_IdentExpr#,
+    // 	_>_(
+    // 	  z^#7:*expr.Expr_IdentExpr#,
+    // 	  0^#9:*expr.Constant_Int64Value#
+    // 	)^#8:*expr.Expr_CallExpr#
+    //   )^#18:filter#`,
+    P: newComprehensionProtoExpr(BigInt(27), {
+      iterRange: newIdentProtoExpr(BigInt(1), 'x'),
+      iterVar: 'y',
+      accuVar: AccumulatorName,
+      accuInit: newListProtoExpr(BigInt(19), []),
+      loopCondition: newBoolProtoExpr(BigInt(20), true),
+      loopStep: newGlobalCallProtoExpr(BigInt(25), CONDITIONAL_OPERATOR, [
+        newComprehensionProtoExpr(BigInt(18), {
+          iterRange: newIdentProtoExpr(BigInt(4), 'y'),
+          iterVar: 'z',
+          accuVar: AccumulatorName,
+          accuInit: newListProtoExpr(BigInt(10), []),
+          loopCondition: newBoolProtoExpr(BigInt(11), true),
+          loopStep: newGlobalCallProtoExpr(BigInt(16), CONDITIONAL_OPERATOR, [
+            newGlobalCallProtoExpr(BigInt(8), GREATER_OPERATOR, [
+              newIdentProtoExpr(BigInt(7), 'z'),
+              newIntProtoExpr(BigInt(9), BigInt(0)),
+            ]),
+            newGlobalCallProtoExpr(BigInt(14), ADD_OPERATOR, [
+              newIdentProtoExpr(BigInt(12), AccumulatorName),
+              newListProtoExpr(BigInt(13), [newIdentProtoExpr(BigInt(6), 'z')]),
+            ]),
+            newIdentProtoExpr(BigInt(15), AccumulatorName),
+          ]),
+          result: newIdentProtoExpr(BigInt(17), AccumulatorName),
+        }),
+        newGlobalCallProtoExpr(BigInt(23), ADD_OPERATOR, [
+          newIdentProtoExpr(BigInt(21), AccumulatorName),
+          newListProtoExpr(BigInt(22), [newIdentProtoExpr(BigInt(3), 'y')]),
+        ]),
+        newIdentProtoExpr(BigInt(24), AccumulatorName),
+      ]),
+      result: newIdentProtoExpr(BigInt(26), AccumulatorName),
+    }),
+  },
+  {
+    I: `has(a.b).filter(c, c)`,
+    // P: `__comprehension__(
+    // 	// Variable
+    // 	c,
+    // 	// Target
+    // 	a^#2:*expr.Expr_IdentExpr#.b~test-only~^#4:*expr.Expr_SelectExpr#,
+    // 	// Accumulator
+    // 	__result__,
+    // 	// Init
+    // 	[]^#8:*expr.Expr_ListExpr#,
+    // 	// LoopCondition
+    // 	true^#9:*expr.Constant_BoolValue#,
+    // 	// LoopStep
+    // 	_?_:_(
+    // 	  c^#7:*expr.Expr_IdentExpr#,
+    // 	  _+_(
+    // 		__result__^#10:*expr.Expr_IdentExpr#,
+    // 		[
+    // 		  c^#6:*expr.Expr_IdentExpr#
+    // 		]^#11:*expr.Expr_ListExpr#
+    // 	  )^#12:*expr.Expr_CallExpr#,
+    // 	  __result__^#13:*expr.Expr_IdentExpr#
+    // 	)^#14:*expr.Expr_CallExpr#,
+    // 	// Result
+    // 	__result__^#15:*expr.Expr_IdentExpr#)^#16:*expr.Expr_ComprehensionExpr#`,
+    // M: `^#4:has#.filter(
+    // 	c^#6:*expr.Expr_IdentExpr#,
+    // 	c^#7:*expr.Expr_IdentExpr#
+    // 	)^#16:filter#,
+    // 	has(
+    // 		a^#2:*expr.Expr_IdentExpr#.b^#3:*expr.Expr_SelectExpr#
+    // 	)^#4:has#`,
+    P: newComprehensionProtoExpr(BigInt(16), {
+      iterRange: newTestOnlySelectProtoExpr(
+        BigInt(4),
+        newIdentProtoExpr(BigInt(2), 'a'),
+        'b'
+      ),
+      iterVar: 'c',
+      accuVar: AccumulatorName,
+      accuInit: newListProtoExpr(BigInt(8), []),
+      loopCondition: newBoolProtoExpr(BigInt(9), true),
+      loopStep: newGlobalCallProtoExpr(BigInt(14), CONDITIONAL_OPERATOR, [
+        newIdentProtoExpr(BigInt(7), 'c'),
+        newGlobalCallProtoExpr(BigInt(12), ADD_OPERATOR, [
+          newIdentProtoExpr(BigInt(10), AccumulatorName),
+          newListProtoExpr(BigInt(11), [newIdentProtoExpr(BigInt(6), 'c')]),
+        ]),
+        newIdentProtoExpr(BigInt(13), AccumulatorName),
+      ]),
+      result: newIdentProtoExpr(BigInt(15), AccumulatorName),
+    }),
+  },
+  {
+    I: `x.filter(y, y.exists(z, has(z.a)) && y.exists(z, has(z.b)))`,
+    // P: `__comprehension__(
+    // 	// Variable
+    // 	y,
+    // 	// Target
+    // 	x^#1:*expr.Expr_IdentExpr#,
+    // 	// Accumulator
+    // 	__result__,
+    // 	// Init
+    // 	[]^#35:*expr.Expr_ListExpr#,
+    // 	// LoopCondition
+    // 	true^#36:*expr.Constant_BoolValue#,
+    // 	// LoopStep
+    // 	_?_:_(
+    // 	  _&&_(
+    // 		__comprehension__(
+    // 		  // Variable
+    // 		  z,
+    // 		  // Target
+    // 		  y^#4:*expr.Expr_IdentExpr#,
+    // 		  // Accumulator
+    // 		  __result__,
+    // 		  // Init
+    // 		  false^#11:*expr.Constant_BoolValue#,
+    // 		  // LoopCondition
+    // 		  @not_strictly_false(
+    // 			!_(
+    // 			  __result__^#12:*expr.Expr_IdentExpr#
+    // 			)^#13:*expr.Expr_CallExpr#
+    // 		  )^#14:*expr.Expr_CallExpr#,
+    // 		  // LoopStep
+    // 		  _||_(
+    // 			__result__^#15:*expr.Expr_IdentExpr#,
+    // 			z^#8:*expr.Expr_IdentExpr#.a~test-only~^#10:*expr.Expr_SelectExpr#
+    // 		  )^#16:*expr.Expr_CallExpr#,
+    // 		  // Result
+    // 		  __result__^#17:*expr.Expr_IdentExpr#)^#18:*expr.Expr_ComprehensionExpr#,
+    // 		__comprehension__(
+    // 		  // Variable
+    // 		  z,
+    // 		  // Target
+    // 		  y^#19:*expr.Expr_IdentExpr#,
+    // 		  // Accumulator
+    // 		  __result__,
+    // 		  // Init
+    // 		  false^#26:*expr.Constant_BoolValue#,
+    // 		  // LoopCondition
+    // 		  @not_strictly_false(
+    // 			!_(
+    // 			  __result__^#27:*expr.Expr_IdentExpr#
+    // 			)^#28:*expr.Expr_CallExpr#
+    // 		  )^#29:*expr.Expr_CallExpr#,
+    // 		  // LoopStep
+    // 		  _||_(
+    // 			__result__^#30:*expr.Expr_IdentExpr#,
+    // 			z^#23:*expr.Expr_IdentExpr#.b~test-only~^#25:*expr.Expr_SelectExpr#
+    // 		  )^#31:*expr.Expr_CallExpr#,
+    // 		  // Result
+    // 		  __result__^#32:*expr.Expr_IdentExpr#)^#33:*expr.Expr_ComprehensionExpr#
+    // 	  )^#34:*expr.Expr_CallExpr#,
+    // 	  _+_(
+    // 		__result__^#37:*expr.Expr_IdentExpr#,
+    // 		[
+    // 		  y^#3:*expr.Expr_IdentExpr#
+    // 		]^#38:*expr.Expr_ListExpr#
+    // 	  )^#39:*expr.Expr_CallExpr#,
+    // 	  __result__^#40:*expr.Expr_IdentExpr#
+    // 	)^#41:*expr.Expr_CallExpr#,
+    // 	// Result
+    // 	__result__^#42:*expr.Expr_IdentExpr#)^#43:*expr.Expr_ComprehensionExpr#`,
+    // M: `x^#1:*expr.Expr_IdentExpr#.filter(
+    // 	y^#3:*expr.Expr_IdentExpr#,
+    // 	_&&_(
+    // 	  ^#18:exists#,
+    // 	  ^#33:exists#
+    // 	)^#34:*expr.Expr_CallExpr#
+    // 	)^#43:filter#,
+    // 	y^#19:*expr.Expr_IdentExpr#.exists(
+    // 		z^#21:*expr.Expr_IdentExpr#,
+    // 		^#25:has#
+    // 	)^#33:exists#,
+    // 	has(
+    // 		z^#23:*expr.Expr_IdentExpr#.b^#24:*expr.Expr_SelectExpr#
+    // 	)^#25:has#,
+    // 	y^#4:*expr.Expr_IdentExpr#.exists(
+    // 		z^#6:*expr.Expr_IdentExpr#,
+    // 		^#10:has#
+    // 	)^#18:exists#,
+    // 	has(
+    // 		z^#8:*expr.Expr_IdentExpr#.a^#9:*expr.Expr_SelectExpr#
+    // 	)^#10:has#`,
+    P: newComprehensionProtoExpr(BigInt(43), {
+      iterRange: newIdentProtoExpr(BigInt(1), 'x'),
+      iterVar: 'y',
+      accuVar: AccumulatorName,
+      accuInit: newListProtoExpr(BigInt(35), []),
+      loopCondition: newBoolProtoExpr(BigInt(36), true),
+      loopStep: newGlobalCallProtoExpr(BigInt(41), CONDITIONAL_OPERATOR, [
+        newGlobalCallProtoExpr(BigInt(34), LOGICAL_AND_OPERATOR, [
+          newComprehensionProtoExpr(BigInt(18), {
+            iterRange: newIdentProtoExpr(BigInt(4), 'y'),
+            iterVar: 'z',
+            accuVar: AccumulatorName,
+            accuInit: newBoolProtoExpr(BigInt(11), false),
+            loopCondition: newGlobalCallProtoExpr(
+              BigInt(14),
+              NOT_STRICTLY_FALSE_OPERATOR,
+              [
+                newGlobalCallProtoExpr(BigInt(13), LOGICAL_NOT_OPERATOR, [
+                  newIdentProtoExpr(BigInt(12), AccumulatorName),
+                ]),
+              ]
+            ),
+            loopStep: newGlobalCallProtoExpr(BigInt(16), LOGICAL_OR_OPERATOR, [
+              newIdentProtoExpr(BigInt(15), AccumulatorName),
+              newTestOnlySelectProtoExpr(
+                BigInt(10),
+                newIdentProtoExpr(BigInt(8), 'z'),
+                'a'
+              ),
+            ]),
+            result: newIdentProtoExpr(BigInt(17), AccumulatorName),
+          }),
+          newComprehensionProtoExpr(BigInt(33), {
+            iterRange: newIdentProtoExpr(BigInt(19), 'y'),
+            iterVar: 'z',
+            accuVar: AccumulatorName,
+            accuInit: newBoolProtoExpr(BigInt(26), false),
+            loopCondition: newGlobalCallProtoExpr(
+              BigInt(29),
+              NOT_STRICTLY_FALSE_OPERATOR,
+              [
+                newGlobalCallProtoExpr(BigInt(28), LOGICAL_NOT_OPERATOR, [
+                  newIdentProtoExpr(BigInt(27), AccumulatorName),
+                ]),
+              ]
+            ),
+            loopStep: newGlobalCallProtoExpr(BigInt(31), LOGICAL_OR_OPERATOR, [
+              newIdentProtoExpr(BigInt(30), AccumulatorName),
+              newTestOnlySelectProtoExpr(
+                BigInt(25),
+                newIdentProtoExpr(BigInt(23), 'z'),
+                'b'
+              ),
+            ]),
+            result: newIdentProtoExpr(BigInt(32), AccumulatorName),
+          }),
+        ]),
+        newGlobalCallProtoExpr(BigInt(39), ADD_OPERATOR, [
+          newIdentProtoExpr(BigInt(37), AccumulatorName),
+          newListProtoExpr(BigInt(38), [newIdentProtoExpr(BigInt(3), 'y')]),
+        ]),
+        newIdentProtoExpr(BigInt(40), AccumulatorName),
+      ]),
+      result: newIdentProtoExpr(BigInt(42), AccumulatorName),
+    }),
+  },
+  {
+    I: `(has(a.b) || has(c.d)).string()`,
+    // P: `_||_(
+    // 	  a^#2:*expr.Expr_IdentExpr#.b~test-only~^#4:*expr.Expr_SelectExpr#,
+    // 	  c^#6:*expr.Expr_IdentExpr#.d~test-only~^#8:*expr.Expr_SelectExpr#
+    //     )^#9:*expr.Expr_CallExpr#.string()^#10:*expr.Expr_CallExpr#`,
+    // M: `has(
+    // 	  c^#6:*expr.Expr_IdentExpr#.d^#7:*expr.Expr_SelectExpr#
+    // 	)^#8:has#,
+    // 	has(
+    // 	  a^#2:*expr.Expr_IdentExpr#.b^#3:*expr.Expr_SelectExpr#
+    // 	)^#4:has#`,
+    P: newReceiverCallProtoExpr(
+      BigInt(10),
+      'string',
+      newGlobalCallProtoExpr(BigInt(9), LOGICAL_OR_OPERATOR, [
+        newTestOnlySelectProtoExpr(
+          BigInt(4),
+          newIdentProtoExpr(BigInt(2), 'a'),
+          'b'
+        ),
+        newTestOnlySelectProtoExpr(
+          BigInt(8),
+          newIdentProtoExpr(BigInt(6), 'c'),
+          'd'
+        ),
+      ]),
+      []
+    ),
+  },
+  {
+    I: `has(a.b).asList().exists(c, c)`,
+    // P: `__comprehension__(
+    // 	// Variable
+    // 	c,
+    // 	// Target
+    // 	a^#2:*expr.Expr_IdentExpr#.b~test-only~^#4:*expr.Expr_SelectExpr#.asList()^#5:*expr.Expr_CallExpr#,
+    // 	// Accumulator
+    // 	__result__,
+    // 	// Init
+    // 	false^#9:*expr.Constant_BoolValue#,
+    // 	// LoopCondition
+    // 	@not_strictly_false(
+    // 	  !_(
+    // 		__result__^#10:*expr.Expr_IdentExpr#
+    // 	  )^#11:*expr.Expr_CallExpr#
+    // 	)^#12:*expr.Expr_CallExpr#,
+    // 	// LoopStep
+    // 	_||_(
+    // 	  __result__^#13:*expr.Expr_IdentExpr#,
+    // 	  c^#8:*expr.Expr_IdentExpr#
+    // 	)^#14:*expr.Expr_CallExpr#,
+    // 	// Result
+    // 	__result__^#15:*expr.Expr_IdentExpr#)^#16:*expr.Expr_ComprehensionExpr#`,
+    // M: `^#4:has#.asList()^#5:*expr.Expr_CallExpr#.exists(
+    // 	c^#7:*expr.Expr_IdentExpr#,
+    // 	c^#8:*expr.Expr_IdentExpr#
+    //   )^#16:exists#,
+    //   has(
+    // 	a^#2:*expr.Expr_IdentExpr#.b^#3:*expr.Expr_SelectExpr#
+    //   )^#4:has#`,
+    P: newComprehensionProtoExpr(BigInt(16), {
+      iterRange: newReceiverCallProtoExpr(
+        BigInt(5),
+        'asList',
+        newTestOnlySelectProtoExpr(
+          BigInt(4),
+          newIdentProtoExpr(BigInt(2), 'a'),
+          'b'
+        ),
+        []
+      ),
+      iterVar: 'c',
+      accuVar: AccumulatorName,
+      accuInit: newBoolProtoExpr(BigInt(9), false),
+      loopCondition: newGlobalCallProtoExpr(
+        BigInt(12),
+        NOT_STRICTLY_FALSE_OPERATOR,
+        [
+          newGlobalCallProtoExpr(BigInt(11), LOGICAL_NOT_OPERATOR, [
+            newIdentProtoExpr(BigInt(10), AccumulatorName),
+          ]),
+        ]
+      ),
+      loopStep: newGlobalCallProtoExpr(BigInt(14), LOGICAL_OR_OPERATOR, [
+        newIdentProtoExpr(BigInt(13), AccumulatorName),
+        newIdentProtoExpr(BigInt(8), 'c'),
+      ]),
+      result: newIdentProtoExpr(BigInt(15), AccumulatorName),
+    }),
+  },
+  {
+    I: `[has(a.b), has(c.d)].exists(e, e)`,
+    // P: `__comprehension__(
+    // 	// Variable
+    // 	e,
+    // 	// Target
+    // 	[
+    // 	  a^#3:*expr.Expr_IdentExpr#.b~test-only~^#5:*expr.Expr_SelectExpr#,
+    // 	  c^#7:*expr.Expr_IdentExpr#.d~test-only~^#9:*expr.Expr_SelectExpr#
+    // 	]^#1:*expr.Expr_ListExpr#,
+    // 	// Accumulator
+    // 	__result__,
+    // 	// Init
+    // 	false^#13:*expr.Constant_BoolValue#,
+    // 	// LoopCondition
+    // 	@not_strictly_false(
+    // 	  !_(
+    // 		__result__^#14:*expr.Expr_IdentExpr#
+    // 	  )^#15:*expr.Expr_CallExpr#
+    // 	)^#16:*expr.Expr_CallExpr#,
+    // 	// LoopStep
+    // 	_||_(
+    // 	  __result__^#17:*expr.Expr_IdentExpr#,
+    // 	  e^#12:*expr.Expr_IdentExpr#
+    // 	)^#18:*expr.Expr_CallExpr#,
+    // 	// Result
+    // 	__result__^#19:*expr.Expr_IdentExpr#)^#20:*expr.Expr_ComprehensionExpr#`,
+    // M: `[
+    // 	^#5:has#,
+    // 	^#9:has#
+    //   ]^#1:*expr.Expr_ListExpr#.exists(
+    // 	e^#11:*expr.Expr_IdentExpr#,
+    // 	e^#12:*expr.Expr_IdentExpr#
+    //   )^#20:exists#,
+    //   has(
+    // 	c^#7:*expr.Expr_IdentExpr#.d^#8:*expr.Expr_SelectExpr#
+    //   )^#9:has#,
+    //   has(
+    // 	a^#3:*expr.Expr_IdentExpr#.b^#4:*expr.Expr_SelectExpr#
+    //   )^#5:has#`,
+    P: newComprehensionProtoExpr(BigInt(20), {
+      iterRange: newListProtoExpr(BigInt(1), [
+        newTestOnlySelectProtoExpr(
+          BigInt(5),
+          newIdentProtoExpr(BigInt(3), 'a'),
+          'b'
+        ),
+        newTestOnlySelectProtoExpr(
+          BigInt(9),
+          newIdentProtoExpr(BigInt(7), 'c'),
+          'd'
+        ),
+      ]),
+      iterVar: 'e',
+      accuVar: AccumulatorName,
+      accuInit: newBoolProtoExpr(BigInt(13), false),
+      loopCondition: newGlobalCallProtoExpr(
+        BigInt(16),
+        NOT_STRICTLY_FALSE_OPERATOR,
+        [
+          newGlobalCallProtoExpr(BigInt(15), LOGICAL_NOT_OPERATOR, [
+            newIdentProtoExpr(BigInt(14), AccumulatorName),
+          ]),
+        ]
+      ),
+      loopStep: newGlobalCallProtoExpr(BigInt(18), LOGICAL_OR_OPERATOR, [
+        newIdentProtoExpr(BigInt(17), AccumulatorName),
+        newIdentProtoExpr(BigInt(12), 'e'),
+      ]),
+      result: newIdentProtoExpr(BigInt(19), AccumulatorName),
+    }),
+  },
   {
     I: `y!=y!=y!=y!=y!=y!=y!=y!=y!=-y!=-y!=-y!=-y-y!=-y!=-y!=-y-y!=-y!=-y!=-y-y!=-y
 		!=-y!=-y-y!=-y!=-y!=-y-y!=-y!=-y!=-y-y!=-y!=-y!=-y-y!=-y!=-y!=-y-y!=-y!=-y!=-y-y
@@ -2260,16 +2416,15 @@ const testCases: TestInfo[] = [
   // 	| self.true == 1
   // 	| .....^`,
   // },
-  // TODO
-  // {
-  //   I: `a.?b && a[?b]`,
-  //   E: `ERROR: <input>:1:2: unsupported syntax '.?'
-  //       | a.?b && a[?b]
-  //       | .^
-  //       ERROR: <input>:1:10: unsupported syntax '[?'
-  //       | a.?b && a[?b]
-  // 	    | .........^`,
-  // },
+  {
+    I: `a.?b && a[?b]`,
+    E: `ERROR: <input>:1:2: unsupported syntax '.?'
+        | a.?b && a[?b]
+        | .^
+        ERROR: <input>:1:10: unsupported syntax '[?'
+        | a.?b && a[?b]
+  	    | .........^`,
+  },
   {
     I: `a.?b[?0] && a[?c]`,
     Opts: { enableOptionalSyntax: true },
@@ -2357,16 +2512,15 @@ const testCases: TestInfo[] = [
       ),
     ]),
   },
-  // TODO
-  // {
-  //   I: `Msg{?field: value} && {?'key': value}`,
-  //   E: `ERROR: <input>:1:5: unsupported syntax '?'
-  //  	 | Msg{?field: value} && {?'key': value}
-  // 	 | ....^
-  //     ERROR: <input>:1:24: unsupported syntax '?'
-  // 	 | Msg{?field: value} && {?'key': value}
-  // 	 | .......................^`,
-  // },
+  {
+    I: `Msg{?field: value} && {?'key': value}`,
+    E: `ERROR: <input>:1:5: unsupported syntax '?'
+   	 | Msg{?field: value} && {?'key': value}
+  	 | ....^
+      ERROR: <input>:1:24: unsupported syntax '?'
+  	 | Msg{?field: value} && {?'key': value}
+  	 | .......................^`,
+  },
   // { // TODO
   // 	I: `noop_macro(123)`,
   // 	Opts: []Option{
@@ -2400,7 +2554,7 @@ const testCases: TestInfo[] = [
 		 | ..^`,
   },
   // {
-  //   // TODO
+  // TODO
   //   I: `'3# < 10" '& tru ^^`,
   //   Opts: { errorReportingLimit: 2 },
   //   E: `ERROR: <input>:1:12: Syntax error: token recognition error at: '& '
@@ -2448,19 +2602,29 @@ describe('Parser', () => {
         for (const key of Object.keys(positions)) {
           output[key] = parser.getLocationForId(BigInt(parseInt(key, 10)));
         }
-        expect(output).toEqual(testCase.L);
+        try {
+          expect(output).toEqual(testCase.L);
+        } catch (e) {
+          console.dir({ output, positions, expr }, { depth: null });
+          throw e;
+        }
       }
       if (testCase.M) {
         expect(expr.expr).toEqual(testCase.M);
       }
       if (testCase.E) {
-        expect(parser.errors.toDisplayString()).toEqual(
-          // Account for the difference in spacing between the test case and
-          // the error message
-          testCase.E.split('\n')
-            .map((line) => line.trim())
-            .join('\n ')
-        );
+        try {
+          expect(parser.errors.toDisplayString()).toEqual(
+            // Account for the difference in spacing between the test case and
+            // the error message
+            testCase.E.split('\n')
+              .map((line) => line.trim())
+              .join('\n ')
+          );
+        } catch (e) {
+          console.dir(expr, { depth: null });
+          throw e;
+        }
       }
     });
   }

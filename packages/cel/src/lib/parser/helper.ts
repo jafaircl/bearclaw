@@ -176,9 +176,10 @@ export class ParserHelper {
     });
   }
 
-  newUnspecifiedExpr(ctx: any) {
+  newExpr(ctx: any, exprKind?: Expr['exprKind']) {
     return create(ExprSchema, {
       id: this.newId(ctx),
+      exprKind,
     });
   }
 
@@ -192,23 +193,23 @@ export class ParserHelper {
   id(ctx: any) {
     let offset: OffsetRange = new OffsetRange(-1, -1);
     // This is outside the switch because there are many classes that extend
-    // ParserRuleContext which we want to handle the same way.
+    // ParserRuleContext and Token which we want to handle the same way.
     // `reflectNativeType` will only handle it if it is exactly a
-    // ParserRuleContext.
+    // ParserRuleContext or Token.
+    // TODO: this would be a great place for pattern matching
     if (ctx instanceof ParserRuleContext) {
       const prc = ctx as ParserRuleContext;
       const prcStart = this._sourceInfo.computeOffset(
         prc.start.line,
         prc.start.column
       );
-      offset = new OffsetRange(prcStart, prcStart + prc.start.text.length);
+      offset = new OffsetRange(prcStart, prcStart + prc.getText().length);
+    } else if (ctx instanceof Token) {
+      const tc = ctx as Token;
+      const tcStart = this._sourceInfo.computeOffset(tc.line, tc.column);
+      offset = new OffsetRange(tcStart, tcStart + tc.text.length);
     }
     switch (reflectNativeType(ctx)) {
-      case Token:
-        const tc = ctx as Token;
-        const tcStart = this._sourceInfo.computeOffset(tc.line, tc.column);
-        offset = new OffsetRange(tcStart, tcStart + tc.text.length);
-        break;
       case Location:
         const loc = ctx as Location;
         const locStart = this._sourceInfo.computeOffset(loc.line, loc.column);
@@ -549,7 +550,7 @@ export class ExprHelper {
     return newIdentProtoExpr(this.nextMacroID(), '__result__');
   }
 
-  newCall(functionName: string, target: Expr, ...args: Expr[]) {
+  newCall(functionName: string, ...args: Expr[]) {
     return newGlobalCallProtoExpr(this.nextMacroID(), functionName, args);
   }
 

@@ -10,6 +10,7 @@ import { RefType, RefVal } from '../ref/reference';
 import { BoolRefVal } from './bool';
 import { compareNumberRefVals } from './compare';
 import { DoubleRefVal } from './double';
+import { DurationRefVal, durationFromNanos } from './duration';
 import { ErrorRefVal } from './error';
 import { NativeType } from './native';
 import { StringRefVal } from './string';
@@ -31,6 +32,7 @@ import {
 import { Zeroer } from './traits/zeroer';
 import {
   DoubleType,
+  DurationType,
   ErrorType,
   IntType,
   StringType,
@@ -128,6 +130,12 @@ export class IntRefVal
         return new IntRefVal(this._value);
       case StringType:
         return new StringRefVal(this._value.toString());
+      case DurationType:
+        if (this._value > MAX_INT64 || this._value < MIN_INT64) {
+          return ErrorRefVal.errDurationOverflow;
+        }
+        // TODO: is this right? cel-go doesn't actually implement this even though there is a stdlib function for it
+        return new DurationRefVal(durationFromNanos(this._value));
       case TimestampType:
         if (this._value > MAX_UNIX_TIME || this._value < MIN_UNIX_TIME) {
           return ErrorRefVal.errTimestampOverflow;
@@ -140,7 +148,6 @@ export class IntRefVal
           return ErrorRefVal.errUintOverflow;
         }
         return new UintRefVal(this._value);
-      // TODO: Implement the rest of the types.
       default:
         return ErrorRefVal.typeConversionError(this, type);
     }

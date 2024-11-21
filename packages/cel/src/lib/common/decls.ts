@@ -1,10 +1,18 @@
 import { isNil } from '@bearclaw/is';
+import {
+  Decl,
+  Decl_FunctionDecl_Overload,
+  Decl_FunctionDecl_OverloadSchema,
+  Type as ProtoType,
+} from '@buf/google_cel-spec.bufbuild_es/cel/expr/checked_pb.js';
+import { create } from '@bufbuild/protobuf';
 import { dequal } from 'dequal';
 import { BinaryOp, FunctionOp, Overload, UnaryOp } from './functions';
+import { newFunctionProto, newVarIdentDeclProto } from './pb/decls';
 import { RefVal } from './ref/reference';
 import { ErrorRefVal, isErrorRefVal } from './types/error';
 import { Trait } from './types/traits/trait';
-import { Kind, Type } from './types/types';
+import { Kind, Type, typeToExprType } from './types/types';
 import { isUnknownRefVal, mergeUnknowns, UnknownRefVal } from './types/unknown';
 import { isUnknownOrError } from './types/utils';
 
@@ -20,7 +28,7 @@ interface FunctionDeclInput {
   /**
    * overloads associated with the function name.
    */
-  overloads: Map<string, OverloadDecl>;
+  overloads: OverloadDecl[];
 
   /**
    * singleton implementation of the function for all overloads.
@@ -56,7 +64,7 @@ interface FunctionDeclInput {
  */
 export class FunctionDecl {
   private readonly _name: string;
-  overloads: Map<string, OverloadDecl>;
+  overloads: Map<string, OverloadDecl> = new Map();
   singleton?: Overload;
   disableTypeGuards: boolean;
   state: DeclarationState;
@@ -65,7 +73,9 @@ export class FunctionDecl {
   constructor(input: FunctionDeclInput) {
     this._name = input.name;
     this.overloadOrdinals = input.overloadOrdinals ?? [];
-    this.overloads = input.overloads;
+    for (const overload of input.overloads) {
+      this.addOverload(overload);
+    }
     for (const oID of this.overloads.keys()) {
       if (this.overloadOrdinals.indexOf(oID) === -1) {
         this.overloadOrdinals.push(oID);
@@ -113,7 +123,7 @@ export class FunctionDecl {
     }
     const merged = new FunctionDecl({
       name: this.name(),
-      overloads: this.overloads,
+      overloads: [...this.overloads.values()],
       singleton: this.singleton,
       overloadOrdinals: this.overloadOrdinals,
       // if one function is expecting type-guards and the other is not, then
@@ -817,7 +827,7 @@ export function newConstant(name: string, type: Type, value: RefVal) {
 /**
  * NewVariable creates a new variable declaration.
  */
-export function newVairable(name: string, type: Type) {
+export function newVariable(name: string, type: Type) {
   return new VariableDecl(name, type);
 }
 
@@ -906,4 +916,51 @@ function maybeNoSuchOverload(funcName: string, ...args: RefVal[]) {
   }
   const signature = argTypes.join(', ');
   throw new ErrorRefVal(`no such overload: ${funcName}(${signature})`);
+}
+
+/**
+ * TypeVariable creates a new type identifier for use within a types.Provider
+ */
+export function newTypeVariable(type: Type) {
+  return newVariable(type.typeName(), type);
+}
+
+/**
+ * VariableDeclToExprDecl converts a cel-native variable declaration into a
+ * protobuf-type variable declaration.
+ */
+export function variableDeclToExprDecl(decl: VariableDecl): Decl | Error {
+  const varType = typeToExprType(decl.type());
+  if (varType instanceof Error) {
+    return varType;
+  }
+  return newVarIdentDeclProto(decl.name(), varType);
+}
+
+/**
+ * FunctionDeclToExprDecl converts a cel-native function declaration into a
+ * protobuf-typed function declaration.
+ */
+export function functionDeclToExprDecl(decl: FunctionDecl) {
+  const overloads: Decl_FunctionDecl_Overload[] = [];
+  for (const overload of decl.overloadDecls()) {
+    const argTypes = overload
+      .argTypes()
+      .map((t) => typeToExprType(t)) as ProtoType[];
+    const resultType = typeToExprType(overload.resultType());
+    if (argTypes.some((t) => t instanceof Error)) {
+      return argTypes.find((t) => t instanceof Error);
+    }
+    if (resultType instanceof Error) {
+      return resultType;
+    }
+    const overloadDecl = create(Decl_FunctionDecl_OverloadSchema, {
+      isInstanceFunction: overload.isMemberFunction(),
+      overloadId: overload.id(),
+      resultType,
+      params: argTypes,
+    });
+    overloads.push(overloadDecl);
+  }
+  return newFunctionProto(decl.name(), ...overloads);
 }

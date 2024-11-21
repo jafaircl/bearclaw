@@ -5,7 +5,7 @@ import { Container } from '../common/container';
 import {
   FunctionDecl,
   newConstant,
-  newVairable,
+  newVariable,
   VariableDecl,
 } from '../common/decls';
 import {
@@ -36,14 +36,18 @@ import {
 } from '../common/overloads';
 import { Provider } from '../common/ref/provider';
 import {
-  DynType,
   ErrorType,
   IntType,
   newTypeTypeWithParam,
   Type,
 } from '../common/types/types';
-import { AllProtoMacros } from '../parser/macros';
+import { AllMacros } from '../parser/macro';
 import { Scopes } from './scopes';
+
+export enum AggregateLiteralElementType {
+  DYN_ELEMENT_TYPE,
+  HOMOGENEOUS_ELEMENT_TYPE,
+}
 
 export interface CheckerEnvOptions {
   crossTypeNumericComparisons?: boolean;
@@ -87,11 +91,12 @@ export const CROSS_TYPE_NUMERIC_COMPARISON_OVERLOADS = new Set([
  * The Env is comprised of a container, type provider, declarations, and other
  * related objects which can be used to assist with type-checking.
  */
-export class CheckerEnv {
+export class Env {
   readonly #container: Container;
   readonly #provider: Provider;
   readonly #declarations: Scopes;
-  readonly #aggLitElemType = DynType;
+  readonly #aggLitElemType: AggregateLiteralElementType =
+    AggregateLiteralElementType.DYN_ELEMENT_TYPE;
   readonly #filteredOverloadIDs = new Set<string>();
 
   constructor(
@@ -105,8 +110,9 @@ export class CheckerEnv {
     this.#declarations = new Scopes();
     this.#declarations.push();
 
-    if (options?.homogeneousAggregateLiterals) {
-      // this.#aggLitElemType = DYN_CEL_TYPE; // TODO: what type should this be
+    if (options?.homogeneousAggregateLiterals === true) {
+      this.#aggLitElemType =
+        AggregateLiteralElementType.HOMOGENEOUS_ELEMENT_TYPE;
     }
     this.#filteredOverloadIDs = CROSS_TYPE_NUMERIC_COMPARISON_OVERLOADS;
     if (options?.crossTypeNumericComparisons) {
@@ -183,14 +189,14 @@ export class CheckerEnv {
       // environment, so next time we can access it faster.
       const t = this.#provider.findStructType(candidate);
       if (!isNil(t)) {
-        const decl = newVairable(candidate, t);
+        const decl = newVariable(candidate, t);
         this.#declarations.addIdent(decl);
         return decl;
       }
 
       const i = this.#provider.findIdent(candidate);
       if (!isNil(i)) {
-        const decl = newVairable(candidate, newTypeTypeWithParam(i as Type));
+        const decl = newVariable(candidate, newTypeTypeWithParam(i as Type));
         this.#declarations.addIdent(decl);
         return decl;
       }
@@ -241,17 +247,15 @@ export class CheckerEnv {
       current = fn;
     }
     for (const overload of current.overloadDecls()) {
-      for (const macroDecl of AllProtoMacros) {
-        const macro = macroDecl;
-        const macroOverload = macro.overloads[0];
+      for (const macro of AllMacros) {
         if (
-          macroDecl.name === current.name &&
-          macroOverload.isInstanceFunction === overload.isInstanceFunction &&
-          macroOverload.params.length === overload.params.length
+          macro.function() === current.name() &&
+          macro.isReceiverStyle() === overload.isMemberFunction() &&
+          macro.argCount() === overload.argTypes().length
         ) {
           errors.push(
             new Error(
-              `overlapping macro for name '${current.name}' with ${overload.params.length} args`
+              `overlapping macro for name '${current.name()}' with ${macro.argCount()} args`
             )
           );
         }
@@ -303,7 +307,7 @@ export class CheckerEnv {
    * scope.
    */
   enterScope() {
-    return new CheckerEnv(this.#container, this.#provider, {
+    return new Env(this.#container, this.#provider, {
       ...this.options,
       validatedDeclarations: this.#declarations.push(),
     });
@@ -314,7 +318,7 @@ export class CheckerEnv {
    * scope.
    */
   exitScope() {
-    return new CheckerEnv(this.#container, this.#provider, {
+    return new Env(this.#container, this.#provider, {
       ...this.options,
       validatedDeclarations: this.#declarations.pop(),
     });

@@ -415,7 +415,7 @@ function makeFilter(
   target: Expr | null,
   args: Expr[]
 ): Expr | CELError {
-  const v = extractIdent(target!);
+  const v = extractIdent(args[0]);
   if (v === '') {
     return eh.newError(args[0].id, 'argument is not an identifier');
   }
@@ -463,7 +463,7 @@ function makeQuantifier(
   target: Expr | null,
   args: Expr[]
 ) {
-  const v = extractIdent(target!);
+  const v = extractIdent(args[0]);
   if (v === '') {
     return eh.newError(args[0].id, 'argument must be a simple name');
   }
