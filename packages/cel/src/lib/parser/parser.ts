@@ -5,9 +5,7 @@ import {
   Expr_CreateList,
   Expr_CreateStruct,
   Expr_CreateStruct_Entry,
-  ParsedExprSchema,
 } from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb.js';
-import { create } from '@bufbuild/protobuf';
 import {
   CharStream,
   CommonTokenStream,
@@ -16,7 +14,7 @@ import {
   ParserRuleContext,
   Token,
 } from 'antlr4';
-import { OffsetRange } from '../common/ast';
+import { AST, OffsetRange } from '../common/ast';
 import { parseBytes, parseString } from '../common/constants';
 import { CELError } from '../common/error';
 import {
@@ -235,10 +233,7 @@ export class Parser extends GeneratedCelVisitor<Expr> {
     parser.addParseListener(new RecursionListener(this.#maxRecursionDepth));
 
     const expr = this.visit(parser.start());
-    return create(ParsedExprSchema, {
-      expr,
-      sourceInfo: this.#helper.getSourceInfo().toProto(),
-    });
+    return new AST(expr, this.#helper.getSourceInfo());
   }
 
   override visit = (ctx: ParseTree) => {

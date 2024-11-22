@@ -1,7 +1,6 @@
 import { TextSource } from './../common/source';
 /* eslint-disable no-useless-escape */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { isNil } from '@bearclaw/is';
 import { Expr } from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb.js';
 import { Location } from '../common/location';
 import {
@@ -61,7 +60,7 @@ interface TestInfo {
   E?: string;
 
   // L contains the expected source adorned debug output of the expression tree.
-  L?: { [key: string]: Location };
+  L?: Map<bigint, Location>;
 
   // M contains the expected adorned debug output of the macro calls map
   M?: Expr | any;
@@ -670,11 +669,11 @@ const testCases: TestInfo[] = [
       newIdentProtoExpr(BigInt(1), 'a'),
       [newIdentProtoExpr(BigInt(3), 'c')]
     ),
-    L: {
-      '1': { line: 1, column: 0 },
-      '2': { line: 1, column: 3 },
-      '3': { line: 1, column: 4 },
-    },
+    L: new Map([
+      [BigInt(1), new Location(1, 0)],
+      [BigInt(2), new Location(1, 3)],
+      [BigInt(3), new Location(1, 4)],
+    ]),
   },
   // TODO: Parse error tests
   // // Parse error tests
@@ -2585,7 +2584,7 @@ describe('Parser', () => {
       // Assert
       if (testCase.P) {
         try {
-          expect(expr?.expr).toEqual(testCase.P);
+          expect(expr?.expr()).toEqual(testCase.P);
         } catch (e) {
           if (parser.errors.toDisplayString() !== '') {
             console.log(parser.errors.toDisplayString());
@@ -2594,19 +2593,8 @@ describe('Parser', () => {
         }
       }
       if (testCase.L) {
-        const positions = expr.sourceInfo?.positions;
-        if (isNil(positions)) {
-          throw new Error(`Invalid test case: ${testCase.I}`);
-        }
-        const output: Record<string, Location> = {};
-        for (const key of Object.keys(positions)) {
-          output[key] = parser.getLocationForId(BigInt(parseInt(key, 10)));
-        }
-        try {
-          expect(output).toEqual(testCase.L);
-        } catch (e) {
-          console.dir({ output, positions, expr }, { depth: null });
-          throw e;
+        for (const [key, value] of testCase.L.entries()) {
+          expect(expr.sourceInfo().getStartLocation(key)).toEqual(value);
         }
       }
       if (testCase.M) {

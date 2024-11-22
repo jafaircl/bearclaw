@@ -8,57 +8,131 @@ import { create } from '@bufbuild/protobuf';
 import { Location, NoLocation } from './location';
 import { RefVal } from './ref/reference';
 import { Source } from './source';
+import { DynType, Type } from './types/types';
 import { mapToObject } from './utils';
 
-// /**
-//  * Returns the line and column information for a given character offset.
-//  *
-//  * @param offset the 0-based character offset
-//  * @returns the line and column information
-//  */
-// export function getLocationByOffset(
-//   sourceInfo: ProtoSourceInfo,
-//   offset: number
-// ): Location {
-//   let line = 1;
-//   let column = offset;
-//   for (let i = 0; i < sourceInfo.lineOffsets.length; i++) {
-//     const lineOffset = sourceInfo.lineOffsets[i];
-//     if (lineOffset > offset) {
-//       break;
-//     }
-//     line++;
-//     column = offset - lineOffset;
-//   }
-//   return { line, column };
-// }
+/**
+ * AST contains a protobuf expression and source info along with CEL-native
+ * type and reference information.
+ */
+export class AST {
+  protected _expr: Expr;
+  protected _sourceInfo: SourceInfo;
+  protected _typeMap = new Map<bigint, Type>();
+  protected _refMap = new Map<bigint, ReferenceInfo>();
 
-// /**
-//  * calculates the 0-based character offset from a 1-based line and 0-based
-//  * column.
-//  * @param line a 1-based line number
-//  * @param column a 0-based column number
-//  */
-// export function computeOffset(
-//   baseLine: number,
-//   baseColumn: number,
-//   sourceInfo: ProtoSourceInfo,
-//   line: number,
-//   column: number
-// ) {
-//   line = baseLine + line;
-//   column = baseColumn + column;
-//   if (line === 1) {
-//     return column;
-//   }
-//   if (line < 1 || line > sourceInfo.lineOffsets.length) {
-//     return -1;
-//   }
-//   const offset = sourceInfo.lineOffsets[line - 2];
-//   return offset + column;
-// }
+  constructor(e: Expr, s: SourceInfo) {
+    this._expr = e;
+    this._sourceInfo = s;
+  }
+
+  /**
+   * Expr returns the root ast.Expr value in the AST.
+   */
+  expr() {
+    return this._expr;
+  }
+
+  /**
+   * SourceInfo returns the source metadata associated with the parse /
+   * type-check passes.
+   */
+  sourceInfo() {
+    return this._sourceInfo;
+  }
+
+  /**
+   * GetType returns the type for the expression at the given id, if one
+   * exists, else types.DynType.
+   */
+  getType(id: bigint) {
+    if (this._typeMap.has(id)) {
+      return this._typeMap.get(id);
+    }
+    return DynType;
+  }
+
+  /**
+   * SetType sets the type of the expression node at the given id.
+   */
+  setType(id: bigint, t: Type) {
+    this._typeMap.set(id, t);
+  }
+
+  /**
+   * TypeMap returns the map of expression ids to type-checked types.
+   *
+   * If the AST is not type-checked, the map will be empty.
+   */
+  typeMap() {
+    return this._typeMap;
+  }
+
+  /**
+   * GetOverloadIDs returns the set of overload function names for a given
+   * expression id.
+   *
+   * If the expression id is not a function call, or the AST is not
+   * type-checked, the result will be empty.
+   */
+  getOverloadIDs(id: bigint) {
+    if (this._refMap.has(id)) {
+      return this._refMap.get(id)?.overloadIds ?? [];
+    }
+    return [];
+  }
+
+  /**
+   * GetReference returns the reference information for the given expression id.
+   */
+  getReference(id: bigint) {
+    return this._refMap.get(id);
+  }
+
+  /**
+   * SetReference adds a reference to the checked AST type map.
+   */
+  setReference(id: bigint, ref: ReferenceInfo) {
+    this._refMap.set(id, ref);
+  }
+
+  /**
+   * ReferenceMap returns the map of expression id to identifier, constant, and
+   * function references.
+   */
+  referenceMap() {
+    return this._refMap;
+  }
+
+  /**
+   * IsChecked returns whether the AST is type-checked.
+   */
+  isChecked() {
+    return this._typeMap.size > 0;
+  }
+}
+
+/**
+ * NewCheckedAST wraps an parsed AST and augments it with type and reference
+ * metadata.
+ */
+export class CheckedAST extends AST {
+  protected _parsed: AST;
+
+  constructor(
+    parsed: AST,
+    typeMap: Map<bigint, Type>,
+    refMap: Map<bigint, ReferenceInfo>
+  ) {
+    super(parsed.expr(), parsed.sourceInfo());
+    this._parsed = parsed;
+    this._typeMap = typeMap;
+    this._refMap = refMap;
+  }
+}
 
 export class SourceInfo {
+  private _source: Source;
   private _syntax: string | null;
   private _desc: string;
   private _lines: number[];
@@ -68,17 +142,26 @@ export class SourceInfo {
   private _macroCalls = new Map<bigint, Expr>();
 
   constructor(
+    source: Source,
     syntax: string | null,
     desc: string,
     lines: number[],
     baseLine: number,
     baseCol: number
   ) {
+    this._source = source;
     this._syntax = syntax;
     this._desc = desc;
     this._lines = lines;
     this._baseLine = baseLine;
     this._baseCol = baseCol;
+  }
+
+  /**
+   * Source returns the Source object associated with the SourceInfo.
+   */
+  source() {
+    return this._source;
   }
 
   /**
@@ -278,7 +361,14 @@ export function newSourceInfo(src: Source) {
       baseCol = loc.column;
     }
   }
-  return new SourceInfo(null, desc ?? '', lineOffsets ?? [], baseLine, baseCol);
+  return new SourceInfo(
+    src,
+    null,
+    desc ?? '',
+    lineOffsets ?? [],
+    baseLine,
+    baseCol
+  );
 }
 
 /**

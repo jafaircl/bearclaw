@@ -50,7 +50,7 @@ describe('Checker', () => {
       const checker = new Checker(parsed, env);
       const checked = checker.check();
       if (testCase.outType) {
-        expect(checker.getType(checked.expr!)).toEqual(testCase.outType);
+        expect(checker.getType(checked.expr())).toEqual(testCase.outType);
       }
       if (testCase.err) {
         expect(checker.errors.toDisplayString()).toContain(

@@ -1,39 +1,26 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { isNil } from '@bearclaw/is';
-import {
-  CheckedExpr,
-  CheckedExprSchema,
-  Type as ProtoType,
-} from '@buf/google_cel-spec.bufbuild_es/cel/expr/checked_pb.js';
-import {
-  Expr,
-  ParsedExpr,
-} from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb';
-import { create } from '@bufbuild/protobuf';
+import { Type as ProtoType } from '@buf/google_cel-spec.bufbuild_es/cel/expr/checked_pb.js';
+import { Expr } from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb';
 import { Errors } from '../common/errors';
-import { InfoSource, Source } from '../common/source';
-import { newSourceInfo, ReferenceInfo, SourceInfo } from './../common/ast';
+import { AST, CheckedAST, ReferenceInfo } from './../common/ast';
 import { Type, typeToExprType } from './../common/types/types';
 import { AggregateLiteralElementType, Env } from './env';
 import { Mapping } from './mapping';
 import { substitute } from './types';
 
 export class Checker {
-  #parsed: ParsedExpr;
-  #source: Source;
-  #sourceInfo: SourceInfo;
+  #ast: AST;
   #env: Env;
   #errors: Errors;
   #mapping: Mapping;
   #typeMap = new Map<bigint, Type>();
   #refMap = new Map<bigint, ReferenceInfo>();
 
-  constructor(expr: ParsedExpr, env: Env) {
-    this.#parsed = expr;
-    this.#source = new InfoSource(expr.sourceInfo);
-    this.#sourceInfo = newSourceInfo(this.#source);
+  constructor(ast: AST, env: Env) {
+    this.#ast = ast;
     this.#env = env;
-    this.#errors = new Errors(this.#source);
+    this.#errors = new Errors(ast.sourceInfo().source());
     this.#mapping = new Mapping();
   }
 
@@ -47,7 +34,7 @@ export class Checker {
     );
   }
 
-  check(): CheckedExpr {
+  check(): CheckedAST {
     // const expr = this.#parsed.expr!;
     // switch (expr.exprKind.case) {
     //   case 'constExpr':
@@ -60,12 +47,7 @@ export class Checker {
     for (const [id, type] of this.#typeMap) {
       this.#typeMap.set(id, substitute(this.#mapping, type, true));
     }
-    return create(CheckedExprSchema, {
-      expr: this.#parsed.expr,
-      sourceInfo: this.#sourceInfo.toProto(),
-      typeMap: typeMapToProto(this.#typeMap),
-      // TODO: other keys
-    });
+    return new CheckedAST(this.#ast, this.#typeMap, this.#refMap);
   }
 
   location(expr: Expr) {
@@ -73,7 +55,7 @@ export class Checker {
   }
 
   locationByID(id: bigint) {
-    return this.#sourceInfo.getStartLocation(id);
+    return this.#ast.sourceInfo().getStartLocation(id);
   }
 
   setType(expr: Expr, t: Type) {
