@@ -31,11 +31,96 @@ describe('Checker', () => {
     expect(true).toBeTruthy();
   });
   const testCases: TestCase[] = [
-    // {
-    //   in: `"A"`,
-    //   out: `"A"~string`,
-    //   outType: StringType,
-    // },
+    // Const types
+    {
+      in: `"A"`,
+      out: `"A"~string`,
+      outType: StringType,
+    },
+    {
+      in: `12`,
+      out: `12~int`,
+      outType: IntType,
+    },
+    {
+      in: `12u`,
+      out: `12u~uint`,
+      outType: UintType,
+    },
+    {
+      in: `true`,
+      out: `true~bool`,
+      outType: BoolType,
+    },
+    {
+      in: `false`,
+      out: `false~bool`,
+      outType: BoolType,
+    },
+    {
+      in: `12.23`,
+      out: `12.23~double`,
+      outType: DoubleType,
+    },
+    {
+      in: `null`,
+      out: `null~null`,
+      outType: NullType,
+    },
+    {
+      in: `b"ABC"`,
+      out: `b"ABC"~bytes`,
+      outType: BytesType,
+    },
+    // Ident types
+    {
+      in: `is`,
+      out: `is~string^is`,
+      outType: StringType,
+      env: getDefaultEnvironment,
+    },
+    {
+      in: `ii`,
+      out: `ii~int^ii`,
+      outType: IntType,
+      env: getDefaultEnvironment,
+    },
+    {
+      in: `iu`,
+      out: `iu~uint^iu`,
+      outType: UintType,
+      env: getDefaultEnvironment,
+    },
+    {
+      in: `iz`,
+      out: `iz~bool^iz`,
+      outType: BoolType,
+      env: getDefaultEnvironment,
+    },
+    {
+      in: `id`,
+      out: `id~double^id`,
+      outType: DoubleType,
+      env: getDefaultEnvironment,
+    },
+    {
+      in: `ix`,
+      out: `ix~null^ix`,
+      outType: NullType,
+      env: getDefaultEnvironment,
+    },
+    {
+      in: `ib`,
+      out: `ib~bytes^ib`,
+      outType: BytesType,
+      env: getDefaultEnvironment,
+    },
+    {
+      in: `id`,
+      out: `id~double^id`,
+      outType: DoubleType,
+      env: getDefaultEnvironment,
+    },
   ];
 
   for (const testCase of testCases) {
@@ -50,7 +135,7 @@ describe('Checker', () => {
       const checker = new Checker(parsed, env);
       const checked = checker.check();
       if (testCase.outType) {
-        expect(checker.getType(checked.expr())).toEqual(testCase.outType);
+        expect(checker.getType(checked.expr())).toStrictEqual(testCase.outType);
       }
       if (testCase.err) {
         expect(checker.errors.toDisplayString()).toContain(

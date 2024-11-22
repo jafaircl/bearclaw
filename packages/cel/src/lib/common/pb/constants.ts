@@ -5,15 +5,27 @@ import {
 import { create } from '@bufbuild/protobuf';
 import { NullValue } from '@bufbuild/protobuf/wkt';
 import { RefVal } from '../ref/reference';
+import { BoolRefVal } from '../types/bool';
+import { BytesRefVal } from '../types/bytes';
+import { DoubleRefVal } from '../types/double';
+import { DurationRefVal } from '../types/duration';
+import { IntRefVal } from '../types/int';
+import { NullRefVal } from '../types/null';
+import { StringRefVal } from '../types/string';
+import { TimestampRefVal } from '../types/timestamp';
 import {
   BoolType,
   BytesType,
   DoubleType,
+  DurationType,
   IntType,
   NullType,
   StringType,
+  TimestampType,
+  Type,
   UintType,
 } from '../types/types';
+import { UintRefVal } from '../types/uint';
 
 /**
  * NewBoolProtoConstant creates a new protobuf boolean constant.
@@ -179,5 +191,61 @@ export function refValToProtoConstant(value: RefVal): Constant {
       return newUintProtoConstant(value.value() as bigint);
     default:
       throw new Error(`unsupported ref.Val type: ${value.type()}`);
+  }
+}
+
+/**
+ * ProtoConstantToRefVal converts a protobuf constant to a ref.Val.
+ */
+export function protoConstantToRefVal(value: Constant): RefVal {
+  switch (value.constantKind.case) {
+    case 'boolValue':
+      return new BoolRefVal(value.constantKind.value);
+    case 'bytesValue':
+      return new BytesRefVal(value.constantKind.value);
+    case 'doubleValue':
+      return new DoubleRefVal(value.constantKind.value);
+    case 'durationValue':
+      return new DurationRefVal(value.constantKind.value);
+    case 'int64Value':
+      return new IntRefVal(value.constantKind.value);
+    case 'nullValue':
+      return new NullRefVal();
+    case 'stringValue':
+      return new StringRefVal(value.constantKind.value);
+    case 'timestampValue':
+      return new TimestampRefVal(value.constantKind.value);
+    case 'uint64Value':
+      return new UintRefVal(value.constantKind.value);
+    default:
+      throw new Error(`unsupported constant kind: ${value.constantKind.case}`);
+  }
+}
+
+/**
+ * ProtoConstantToType converts a protobuf constant to a type.
+ */
+export function protoConstantToType(value: Constant): Type {
+  switch (value.constantKind.case) {
+    case 'boolValue':
+      return BoolType;
+    case 'bytesValue':
+      return BytesType;
+    case 'doubleValue':
+      return DoubleType;
+    case 'durationValue':
+      return DurationType;
+    case 'int64Value':
+      return IntType;
+    case 'nullValue':
+      return NullType;
+    case 'stringValue':
+      return StringType;
+    case 'timestampValue':
+      return TimestampType;
+    case 'uint64Value':
+      return UintType;
+    default:
+      throw new Error(`unsupported constant kind: ${value.constantKind.case}`);
   }
 }

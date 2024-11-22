@@ -323,7 +323,7 @@ export function isIdentProtoExpr(val: Expr): val is Expr & {
  */
 export function unwrapIdentProtoExpr(val: Expr) {
   if (isIdentProtoExpr(val)) {
-    return val.exprKind.value.name;
+    return val.exprKind.value;
   }
   return null;
 }
@@ -785,4 +785,14 @@ export function newUnspecifiedExpr(id: bigint) {
   return create(ExprSchema, {
     id,
   });
+}
+
+/**
+ * UnwrapConstantExpr returns the value of the protobuf constant CEL expression.
+ */
+export function unwrapConstantExpr(expr: Expr) {
+  if (isConstantProtoExpr(expr)) {
+    return expr.exprKind.value;
+  }
+  return null;
 }

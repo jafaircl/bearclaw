@@ -2,6 +2,7 @@ import { Type } from './types/types';
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { Expr } from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb';
 import { ErrorListener, RecognitionException, Recognizer, Token } from 'antlr4';
+import { ReferenceInfo } from './ast';
 import { Container } from './container';
 import { CELError } from './error';
 import { Location } from './location';
@@ -175,6 +176,22 @@ export class Errors {
       id,
       location,
       `incompatible type already exists for expression: ${ex}(${
+        ex.id
+      }) old:${prev.toString()}, new:${next.toString()}`
+    );
+  }
+
+  public reportReferenceRedefinition(
+    id: bigint,
+    location: Location,
+    ex: Expr,
+    prev: ReferenceInfo,
+    next: ReferenceInfo
+  ) {
+    return this.reportErrorAtId(
+      id,
+      location,
+      `reference already exists for expression: ${ex}(${
         ex.id
       }) old:${prev.toString()}, new:${next.toString()}`
     );
