@@ -42,12 +42,7 @@ import {
 import { Source } from '../common/source';
 import { reflectNativeType } from '../common/types/native';
 import { NullRefVal } from '../common/types/null';
-import {
-  isHexString,
-  isScientificNotationString,
-  isValidHexString,
-  isValidScientificNotationString,
-} from '../common/utils';
+import { safeParseFloat, safeParseInt } from '../common/utils';
 import { ParseException } from '../exceptions';
 import CELLexer from '../gen/CELLexer';
 import {
@@ -614,24 +609,11 @@ export class Parser extends GeneratedCelVisitor<Expr> {
 
   override visitInt = (ctx: IntContext): Expr => {
     let text = ctx._tok.text;
-    let base = 10;
-    // TODO: don't love this
-    if (
-      (isHexString(text) && !isValidHexString(text, 64)) ||
-      (isScientificNotationString(text) &&
-        !isValidScientificNotationString(text))
-    ) {
-      return this._reportError(ctx, 'invalid int literal');
-    }
-    if (text.startsWith('0x')) {
-      base = 16;
-      text = text.substring(2);
-    }
     if (!isNil(ctx._sign)) {
       text = ctx._sign.text + text;
     }
     try {
-      const i = parseInt(text, base);
+      const i = safeParseInt(text, 64, true);
       return this.#helper.newLiteralInt(ctx, BigInt(i));
     } catch (e) {
       return this._reportError(ctx, 'invalid int literal');
@@ -642,21 +624,8 @@ export class Parser extends GeneratedCelVisitor<Expr> {
     let text = ctx._tok.text;
     // trim the 'u' designator included in the uint literal.
     text = text.substring(0, text.length - 1);
-    // TODO: don't love this
-    if (
-      (isHexString(text) && !isValidHexString(text, 64)) ||
-      (isScientificNotationString(text) &&
-        !isValidScientificNotationString(text))
-    ) {
-      return this._reportError(ctx, 'invalid uint literal');
-    }
-    let base = 10;
-    if (text.startsWith('0x')) {
-      base = 16;
-      text = text.substring(2);
-    }
     try {
-      const u = parseInt(text, base);
+      const u = safeParseInt(text, 64, false);
       return this.#helper.newLiteralUint(ctx, BigInt(u));
     } catch {
       return this._reportError(ctx, 'invalid uint literal');
@@ -668,15 +637,8 @@ export class Parser extends GeneratedCelVisitor<Expr> {
     if (!isNil(ctx._sign)) {
       text = ctx._sign.text + text;
     }
-    // TODO: don't love this
-    if (
-      isScientificNotationString(text) &&
-      !isValidScientificNotationString(text)
-    ) {
-      return this._reportError(ctx, 'invalid double literal');
-    }
     try {
-      const f = parseFloat(text);
+      const f = safeParseFloat(text, 64, true);
       return this.#helper.newLiteralDouble(ctx, f);
     } catch {
       return this._reportError(ctx, 'invalid double literal');
