@@ -33,7 +33,9 @@ import {
   IntType,
   newListType,
   newMapType,
+  newNullableType,
   newObjectType,
+  newTypeTypeWithParam,
   NullType,
   StringType,
   Type,
@@ -996,6 +998,313 @@ ERROR: <input>:1:16: found no matching overload for '_!=_' applied to '(int, nul
         return env;
       },
       outType: BoolType,
+    },
+
+    {
+      in: `x.repeated_int64.exists(y, y > 10) && y < 5`,
+      env: () => {
+        const env = getDefaultEnvironment();
+        env.addIdent(
+          newVariableDecl(
+            'x',
+            newObjectType('google.api.expr.test.v1.proto3.TestAllTypes')
+          )
+        );
+        return env;
+      },
+      err: `ERROR: <input>:1:39: undeclared reference to 'y' (in container '')
+		| x.repeated_int64.exists(y, y > 10) && y < 5
+		| ......................................^`,
+    },
+    {
+      in: `x.repeated_int64.all(e, e > 0) && x.repeated_int64.exists(e, e < 0) && x.repeated_int64.exists_one(e, e == 0)`,
+      env: () => {
+        const env = getDefaultEnvironment();
+        env.addIdent(
+          newVariableDecl(
+            'x',
+            newObjectType('google.api.expr.test.v1.proto3.TestAllTypes')
+          )
+        );
+        return env;
+      },
+      out: `_&&_(
+        _&&_(
+          __comprehension__(
+            // Variable
+            e,
+            // Target
+            x~google.api.expr.test.v1.proto3.TestAllTypes^x.repeated_int64~list(int),
+            // Accumulator
+            __result__,
+            // Init
+            true~bool,
+            // LoopCondition
+            @not_strictly_false(
+              __result__~bool^__result__
+            )~bool^not_strictly_false,
+            // LoopStep
+            _&&_(
+              __result__~bool^__result__,
+              _>_(
+                e~int^e,
+                0~int
+              )~bool^greater_int64
+            )~bool^logical_and,
+            // Result
+            __result__~bool^__result__)~bool,
+          __comprehension__(
+            // Variable
+            e,
+            // Target
+            x~google.api.expr.test.v1.proto3.TestAllTypes^x.repeated_int64~list(int),
+            // Accumulator
+            __result__,
+            // Init
+            false~bool,
+            // LoopCondition
+            @not_strictly_false(
+              !_(
+                __result__~bool^__result__
+              )~bool^logical_not
+            )~bool^not_strictly_false,
+            // LoopStep
+            _||_(
+              __result__~bool^__result__,
+              _<_(
+                e~int^e,
+                0~int
+              )~bool^less_int64
+            )~bool^logical_or,
+            // Result
+            __result__~bool^__result__)~bool
+        )~bool^logical_and,
+        __comprehension__(
+          // Variable
+          e,
+          // Target
+          x~google.api.expr.test.v1.proto3.TestAllTypes^x.repeated_int64~list(int),
+          // Accumulator
+          __result__,
+          // Init
+          0~int,
+          // LoopCondition
+          true~bool,
+          // LoopStep
+          _?_:_(
+            _==_(
+              e~int^e,
+              0~int
+            )~bool^equals,
+            _+_(
+              __result__~int^__result__,
+              1~int
+            )~int^add_int64,
+            __result__~int^__result__
+          )~int^conditional,
+          // Result
+          _==_(
+            __result__~int^__result__,
+            1~int
+          )~bool^equals)~bool
+      )~bool^logical_and`,
+      outType: BoolType,
+    },
+    {
+      in: `x.all(e, 0)`,
+      env: () => {
+        const env = getDefaultEnvironment();
+        env.addIdent(
+          newVariableDecl(
+            'x',
+            newObjectType('google.api.expr.test.v1.proto3.TestAllTypes')
+          )
+        );
+        return env;
+      },
+      err: `
+ERROR: <input>:1:1: expression of type 'google.api.expr.test.v1.proto3.TestAllTypes' cannot be range of a comprehension (must be list, map, or dynamic)
+| x.all(e, 0)
+| ^
+ERROR: <input>:1:10: expected type 'bool' but found 'int'
+| x.all(e, 0)
+| .........^
+    `,
+    },
+    {
+      in: `lists.filter(x, x > 1.5)`,
+      out: `__comprehension__(
+        // Variable
+        x,
+        // Target
+        lists~dyn^lists,
+        // Accumulator
+        __result__,
+        // Init
+        []~list(dyn),
+        // LoopCondition
+        true~bool,
+        // LoopStep
+        _?_:_(
+          _>_(
+            x~dyn^x,
+            1.5~double
+          )~bool^greater_double|greater_int64_double|greater_uint64_double,
+          _+_(
+            __result__~list(dyn)^__result__,
+            [
+              x~dyn^x
+            ]~list(dyn)
+          )~list(dyn)^add_list,
+          __result__~list(dyn)^__result__
+        )~list(dyn)^conditional,
+        // Result
+        __result__~list(dyn)^__result__)~list(dyn)`,
+      outType: newListType(DynType),
+      env: () => {
+        const env = getDefaultEnvironment();
+        env.addIdent(newVariableDecl('lists', newListType(DynType)));
+        return env;
+      },
+    },
+    // TODO: undeclared reference to '.google' in container
+    //     {
+    //       in: `.google.api.expr.test.v1.proto3.TestAllTypes`,
+    //       out: `google.api.expr.test.v1.proto3.TestAllTypes
+    // ~type(google.api.expr.test.v1.proto3.TestAllTypes)
+    // ^google.api.expr.test.v1.proto3.TestAllTypes`,
+    //       outType: newTypeTypeWithParam(
+    //         newObjectType('google.api.expr.test.v1.proto3.TestAllTypes')
+    //       ),
+    //     },
+    {
+      in: `proto3.TestAllTypes`,
+      container: 'google.api.expr.test.v1',
+      out: `
+google.api.expr.test.v1.proto3.TestAllTypes
+~type(google.api.expr.test.v1.proto3.TestAllTypes)
+^google.api.expr.test.v1.proto3.TestAllTypes
+    `,
+      outType: newTypeTypeWithParam(
+        newObjectType('google.api.expr.test.v1.proto3.TestAllTypes')
+      ),
+    },
+    {
+      in: `1 + x`,
+      err: `
+ERROR: <input>:1:5: undeclared reference to 'x' (in container '')
+| 1 + x
+| ....^`,
+    },
+    {
+      in: `x == google.protobuf.Any{
+            type_url:'types.googleapis.com/google.api.expr.test.v1.proto3.TestAllTypes'
+        } && x.single_nested_message.bb == 43
+        || x == google.api.expr.test.v1.proto3.TestAllTypes{}
+        || y < x
+        || x >= x`,
+      env: () => {
+        const env = getDefaultEnvironment();
+        env.addIdents(
+          newVariableDecl('x', newObjectType('google.protobuf.Any')),
+          newVariableDecl('y', newNullableType(IntType))
+        );
+        return env;
+      },
+      out: `
+    _||_(
+        _||_(
+            _&&_(
+                _==_(
+                    x~any^x,
+                    google.protobuf.Any{
+                        type_url:"types.googleapis.com/google.api.expr.test.v1.proto3.TestAllTypes"~string
+                    }~any^google.protobuf.Any
+                )~bool^equals,
+                _==_(
+                    x~any^x.single_nested_message~dyn.bb~dyn,
+                    43~int
+                )~bool^equals
+            )~bool^logical_and,
+            _==_(
+                x~any^x,
+                google.api.expr.test.v1.proto3.TestAllTypes{}~google.api.expr.test.v1.proto3.TestAllTypes^google.api.expr.test.v1.proto3.TestAllTypes
+            )~bool^equals
+        )~bool^logical_or,
+        _||_(
+            _<_(
+                y~wrapper(int)^y,
+                x~any^x
+            )~bool^less_int64|less_int64_double|less_int64_uint64,
+            _>=_(
+                x~any^x,
+                x~any^x
+            )~bool^greater_equals_bool|greater_equals_bytes|greater_equals_double|greater_equals_double_int64|greater_equals_double_uint64|greater_equals_duration|greater_equals_int64|greater_equals_int64_double|greater_equals_int64_uint64|greater_equals_string|greater_equals_timestamp|greater_equals_uint64|greater_equals_uint64_double|greater_equals_uint64_int64
+        )~bool^logical_or
+    )~bool^logical_or
+    `,
+      outType: BoolType,
+    },
+    {
+      in: `x == google.protobuf.Any{
+            type_url:'types.googleapis.com/google.api.expr.test.v1.proto3.TestAllTypes'
+        } && x.single_nested_message.bb == 43
+        || x == google.api.expr.test.v1.proto3.TestAllTypes{}
+        || y < x
+        || x >= x`,
+      env: () => {
+        const env = getDefaultEnvironment();
+        env.addIdents(
+          newVariableDecl('x', newObjectType('google.protobuf.Any')),
+          newVariableDecl('y', newNullableType(IntType))
+        );
+        return env;
+      },
+      out: `
+    _||_(
+        _&&_(
+          _==_(
+            x~any^x,
+            google.protobuf.Any{
+              type_url:"types.googleapis.com/google.api.expr.test.v1.proto3.TestAllTypes"~string
+            }~any^google.protobuf.Any
+          )~bool^equals,
+          _==_(
+            x~any^x.single_nested_message~dyn.bb~dyn,
+            43~int
+          )~bool^equals
+        )~bool^logical_and,
+        _==_(
+          x~any^x,
+          google.api.expr.test.v1.proto3.TestAllTypes{}~google.api.expr.test.v1.proto3.TestAllTypes^google.api.expr.test.v1.proto3.TestAllTypes
+        )~bool^equals,
+        _<_(
+          y~wrapper(int)^y,
+          x~any^x
+        )~bool^less_int64|less_int64_double|less_int64_uint64,
+        _>=_(
+          x~any^x,
+          x~any^x
+        )~bool^greater_equals_bool|greater_equals_bytes|greater_equals_double|greater_equals_double_int64|greater_equals_double_uint64|greater_equals_duration|greater_equals_int64|greater_equals_int64_double|greater_equals_int64_uint64|greater_equals_string|greater_equals_timestamp|greater_equals_uint64|greater_equals_uint64_double|greater_equals_uint64_int64
+      )~bool^logical_or
+    `,
+      outType: BoolType,
+    },
+    {
+      in: `x`,
+      container: 'container',
+      env: () => {
+        const env = getDefaultEnvironment('container');
+        env.addIdent(
+          newVariableDecl(
+            'x',
+            newObjectType('google.api.expr.test.v1.proto3.TestAllTypes')
+          )
+        );
+        return env;
+      },
+      out: `container.x~google.api.expr.test.v1.proto3.TestAllTypes^container.x`,
+      outType: newObjectType('google.api.expr.test.v1.proto3.TestAllTypes'),
     },
   ];
 

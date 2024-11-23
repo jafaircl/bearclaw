@@ -71,9 +71,9 @@ export class Errors {
     return this.reportErrorAtId(
       id,
       location,
-      `expected type ${expected?.typeName() ?? 'null'} but found ${
+      `expected type '${expected?.typeName() ?? 'null'}' but found '${
         actual?.typeName() ?? 'null'
-      }`
+      }'`
     );
   }
 
