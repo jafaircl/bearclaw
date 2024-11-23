@@ -42,6 +42,12 @@ import {
 import { Source } from '../common/source';
 import { reflectNativeType } from '../common/types/native';
 import { NullRefVal } from '../common/types/null';
+import {
+  isHexString,
+  isScientificNotationString,
+  isValidHexString,
+  isValidScientificNotationString,
+} from '../common/utils';
 import { ParseException } from '../exceptions';
 import CELLexer from '../gen/CELLexer';
 import {
@@ -609,6 +615,14 @@ export class Parser extends GeneratedCelVisitor<Expr> {
   override visitInt = (ctx: IntContext): Expr => {
     let text = ctx._tok.text;
     let base = 10;
+    // TODO: don't love this
+    if (
+      (isHexString(text) && !isValidHexString(text, 64)) ||
+      (isScientificNotationString(text) &&
+        !isValidScientificNotationString(text))
+    ) {
+      return this._reportError(ctx, 'invalid int literal');
+    }
     if (text.startsWith('0x')) {
       base = 16;
       text = text.substring(2);
@@ -628,6 +642,14 @@ export class Parser extends GeneratedCelVisitor<Expr> {
     let text = ctx._tok.text;
     // trim the 'u' designator included in the uint literal.
     text = text.substring(0, text.length - 1);
+    // TODO: don't love this
+    if (
+      (isHexString(text) && !isValidHexString(text, 64)) ||
+      (isScientificNotationString(text) &&
+        !isValidScientificNotationString(text))
+    ) {
+      return this._reportError(ctx, 'invalid uint literal');
+    }
     let base = 10;
     if (text.startsWith('0x')) {
       base = 16;
@@ -645,6 +667,13 @@ export class Parser extends GeneratedCelVisitor<Expr> {
     let text = ctx._tok.text;
     if (!isNil(ctx._sign)) {
       text = ctx._sign.text + text;
+    }
+    // TODO: don't love this
+    if (
+      isScientificNotationString(text) &&
+      !isValidScientificNotationString(text)
+    ) {
+      return this._reportError(ctx, 'invalid double literal');
     }
     try {
       const f = parseFloat(text);

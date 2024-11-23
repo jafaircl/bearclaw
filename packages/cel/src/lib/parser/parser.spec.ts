@@ -677,24 +677,24 @@ const testCases: TestInfo[] = [
   },
   // TODO: Parse error tests
   // // Parse error tests
-  // {
-  // 	I: `0xFFFFFFFFFFFFFFFFF`,
-  // 	E: `ERROR: <input>:1:1: invalid int literal
-  // 	| 0xFFFFFFFFFFFFFFFFF
-  // 	| ^`,
-  // },
-  // {
-  // 	I: `0xFFFFFFFFFFFFFFFFFu`,
-  // 	E: `ERROR: <input>:1:1: invalid uint literal
-  // 	| 0xFFFFFFFFFFFFFFFFFu
-  // 	| ^`,
-  // },
-  // {
-  // 	I: `1.99e90000009`,
-  // 	E: `ERROR: <input>:1:1: invalid double literal
-  // 	| 1.99e90000009
-  // 	| ^`,
-  // },
+  {
+    I: `0xFFFFFFFFFFFFFFFFF`,
+    E: `ERROR: <input>:1:1: invalid int literal
+  	| 0xFFFFFFFFFFFFFFFFF
+  	| ^`,
+  },
+  {
+    I: `0xFFFFFFFFFFFFFFFFFu`,
+    E: `ERROR: <input>:1:1: invalid uint literal
+  	| 0xFFFFFFFFFFFFFFFFFu
+  	| ^`,
+  },
+  {
+    I: `1.99e90000009`,
+    E: `ERROR: <input>:1:1: invalid double literal
+  	| 1.99e90000009
+  	| ^`,
+  },
   // {
   // 	I: `*@a | b`,
   // 	E: `ERROR: <input>:1:1: Syntax error: extraneous input '*' expecting {'[', '{', '(', '.', '-', '!', 'true', 'false', 'null', NUM_FLOAT, NUM_INT, NUM_UINT, STRING, BYTES, IDENTIFIER}
