@@ -1,4 +1,3 @@
-import { TextSource } from './../common/source';
 /* eslint-disable no-useless-escape */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Expr } from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb.js';
@@ -46,6 +45,7 @@ import {
   newTestOnlySelectProtoExpr,
   newUintProtoExpr,
 } from '../common/pb/expressions';
+import { TextSource } from './../common/source';
 import { AccumulatorName } from './macro';
 import { Parser, ParserOptions } from './parser';
 

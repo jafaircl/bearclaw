@@ -820,14 +820,14 @@ export function overloadOperandTrait(trait: Trait) {
 /**
  * NewConstant creates a new constant declaration.
  */
-export function newConstant(name: string, type: Type, value: RefVal) {
+export function newConstantDecl(name: string, type: Type, value: RefVal) {
   return new VariableDecl(name, type, value);
 }
 
 /**
  * NewVariable creates a new variable declaration.
  */
-export function newVariable(name: string, type: Type) {
+export function newVariableDecl(name: string, type: Type) {
   return new VariableDecl(name, type);
 }
 
@@ -922,7 +922,7 @@ function maybeNoSuchOverload(funcName: string, ...args: RefVal[]) {
  * TypeVariable creates a new type identifier for use within a types.Provider
  */
 export function newTypeVariable(type: Type) {
-  return newVariable(type.typeName(), type);
+  return newVariableDecl(type.typeName(), type);
 }
 
 /**

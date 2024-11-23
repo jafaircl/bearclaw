@@ -4,8 +4,8 @@ import { dequal } from 'dequal';
 import { Container } from '../common/container';
 import {
   FunctionDecl,
-  newConstant,
-  newVariable,
+  newConstantDecl,
+  newVariableDecl,
   VariableDecl,
 } from '../common/decls';
 import {
@@ -38,8 +38,8 @@ import { Provider } from '../common/ref/provider';
 import {
   ErrorType,
   IntType,
+  isType,
   newTypeTypeWithParam,
-  Type,
 } from '../common/types/types';
 import { AllMacros } from '../parser/macro';
 import { Scopes } from './scopes';
@@ -189,14 +189,14 @@ export class Env {
       // environment, so next time we can access it faster.
       const t = this.#provider.findStructType(candidate);
       if (!isNil(t)) {
-        const decl = newVariable(candidate, t);
+        const decl = newVariableDecl(candidate, t);
         this.#declarations.addIdent(decl);
         return decl;
       }
 
       const i = this.#provider.findIdent(candidate);
-      if (!isNil(i)) {
-        const decl = newVariable(candidate, newTypeTypeWithParam(i as Type));
+      if (!isNil(i) && isType(i)) {
+        const decl = newVariableDecl(candidate, newTypeTypeWithParam(i));
         this.#declarations.addIdent(decl);
         return decl;
       }
@@ -205,7 +205,7 @@ export class Env {
       // type prefix and the enum inside.
       const enumValue = this.#provider.enumValue(candidate);
       if (enumValue.type() !== ErrorType) {
-        const decl = newConstant(candidate, IntType, enumValue);
+        const decl = newConstantDecl(candidate, IntType, enumValue);
         this.#declarations.addIdent(decl);
         return decl;
       }

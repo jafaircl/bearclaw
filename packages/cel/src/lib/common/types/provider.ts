@@ -53,6 +53,7 @@ import {
   DoubleType,
   DurationType,
   DynType,
+  getCheckedWellKnown,
   IntType,
   ListType,
   MapType,
@@ -157,6 +158,17 @@ export class Registry implements IRegistry {
       TypeType,
       UintType
     );
+    // This block ensures that the well-known protobuf types are registered by
+    // default.
+    for (const descriptor of StandardProtoDescriptors) {
+      // skip well-known type names since they're automatically sanitized
+      // during NewObjectType() calls.
+      if (!isNil(getCheckedWellKnown(descriptor.typeName))) {
+        continue;
+      }
+      this.registerDescriptor(descriptor);
+      this.registerType(newObjectType(descriptor.typeName));
+    }
     for (const [k, v] of typeMap) {
       this.#refTypeMap.set(k, v);
     }
@@ -310,6 +322,8 @@ export class Registry implements IRegistry {
   }
 
   findStructType(typeName: string): Type | null {
+    // Sanitize the type name.
+    typeName = sanitizeProtoName(typeName);
     const msgType = this.findStructProtoType(typeName);
     if (isNil(msgType)) {
       return null;

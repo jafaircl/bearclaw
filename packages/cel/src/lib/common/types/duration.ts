@@ -59,7 +59,7 @@ export function parseISO8061DurationString(text: string) {
       const seconds = iso8601durationToSeconds(duration);
       return durationFromSeconds(seconds);
     } catch (e) {
-      console.log(e);
+      console.error(e);
       return new Error(`cannot parse duration: ${text}`);
     }
   }

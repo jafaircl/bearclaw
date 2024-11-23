@@ -319,10 +319,34 @@ export function isIdentProtoExpr(val: Expr): val is Expr & {
 }
 
 /**
- * UnwrapIdentProtoExpr returns the name of the protobuf identifier CEL expression.
+ * UnwrapIdentProtoExpr returns the name of the protobuf identifier CEL
+ * expression.
  */
 export function unwrapIdentProtoExpr(val: Expr) {
   if (isIdentProtoExpr(val)) {
+    return val.exprKind.value;
+  }
+  return null;
+}
+
+/**
+ * IsCallProtoExpr returns true if the expression is a protobuf call CEL
+ * expression.
+ */
+export function isCallProtoExpr(val: Expr): val is Expr & {
+  exprKind: {
+    case: 'callExpr';
+  };
+} {
+  return val.exprKind.case === 'callExpr';
+}
+
+/**
+ * UnwrapCallProtoExpr returns the unwrapped value of the protobuf call CEL
+ * expression with proper typing.
+ */
+export function unwrapCallProtoExpr(val: Expr) {
+  if (isCallProtoExpr(val)) {
     return val.exprKind.value;
   }
   return null;
@@ -369,6 +393,17 @@ export function isReceiverCallProtoExpr(val: Expr): val is Expr & {
 }
 
 /**
+ * UnwrapReceiverCallProtoExpr returns the unwrapped value of the protobuf call
+ * CEL expression with proper typing
+ */
+export function unwrapReceiverCallProtoExpr(val: Expr) {
+  if (isReceiverCallProtoExpr(val)) {
+    return val.exprKind.value;
+  }
+  return null;
+}
+
+/**
  * NewGlobalCallProtoExpr creates a new protobuf call CEL expression.
  */
 export function newGlobalCallProtoExpr(id: bigint, fn: string, args: Expr[]) {
@@ -402,9 +437,25 @@ export function isGlobalCallProtoExpr(val: Expr): val is Expr & {
 }
 
 /**
+ * UnwrapGlobalCallProtoExpr returns the unwrapped value of the protobuf call
+ * CEL expression with proper typing
+ */
+export function unwrapGlobalCallProtoExpr(val: Expr) {
+  if (isGlobalCallProtoExpr(val)) {
+    return val.exprKind.value;
+  }
+  return null;
+}
+
+/**
  * NewSelectProtoExpr creates a new protobuf select CEL expression.
  */
-export function newSelectProtoExpr(id: bigint, operand: Expr, field: string) {
+export function newSelectProtoExpr(
+  id: bigint,
+  operand: Expr,
+  field: string,
+  testOnly = false
+) {
   return create(ExprSchema, {
     id,
     exprKind: {
@@ -412,7 +463,7 @@ export function newSelectProtoExpr(id: bigint, operand: Expr, field: string) {
       value: {
         operand,
         field,
-        testOnly: false,
+        testOnly,
       },
     },
   });
@@ -424,14 +475,20 @@ export function newSelectProtoExpr(id: bigint, operand: Expr, field: string) {
 export function isSelectProtoExpr(val: Expr): val is Expr & {
   exprKind: {
     case: 'selectExpr';
-    value: {
-      operand: Expr;
-      field: string;
-      testOnly: false;
-    };
   };
 } {
-  return val.exprKind.case === 'selectExpr' && !val.exprKind.value.testOnly;
+  return val.exprKind.case === 'selectExpr';
+}
+
+/**
+ * UnwrapSelectProtoExpr returns the unwraped value of the protobuf select CEL
+ * expression with proper typing
+ */
+export function unwrapSelectProtoExpr(val: Expr) {
+  if (isSelectProtoExpr(val)) {
+    return val.exprKind.value;
+  }
+  return null;
 }
 
 /**
@@ -469,6 +526,17 @@ export function isTestOnlySelectProtoExpr(val: Expr): val is Expr & {
   };
 } {
   return val.exprKind.case === 'selectExpr' && val.exprKind.value.testOnly;
+}
+
+/**
+ * UnwrapTestOnlySelectProtoExpr returns the unwraped value of the protobuf
+ * select CEL expression with proper typing
+ */
+export function unwrapTestOnlySelectProtoExpr(val: Expr) {
+  if (isTestOnlySelectProtoExpr(val)) {
+    return val.exprKind.value;
+  }
+  return null;
 }
 
 /**
@@ -527,6 +595,17 @@ export function isComprehensionProtoExpr(val: Expr): val is Expr & {
 }
 
 /**
+ * UnwrapComprehensionProtoExpr returns the unwraped value of the protobuf
+ * comprehension CEL expression with proper typing
+ */
+export function unwrapComprehensionProtoExpr(val: Expr) {
+  if (isComprehensionProtoExpr(val)) {
+    return val.exprKind.value;
+  }
+  return null;
+}
+
+/**
  * NewListProtoExpr creates a new protobuf list CEL expression.
  */
 export function newListProtoExpr(
@@ -562,6 +641,40 @@ export function isListProtoExpr(val: Expr): val is Expr & {
 }
 
 /**
+ * UnwrapListProtoExpr returns the unwraped value of the protobuf list CEL
+ * expression with proper typing
+ */
+export function unwrapListProtoExpr(val: Expr) {
+  if (isListProtoExpr(val)) {
+    return val.exprKind.value;
+  }
+  return null;
+}
+
+/**
+ * IsStructProtoExpr returns true if the expression is a protobuf struct CEL
+ * expression.
+ */
+export function isStructProtoExpr(expr: Expr): expr is Expr & {
+  exprKind: {
+    case: 'structExpr';
+  };
+} {
+  return expr.exprKind.case === 'structExpr';
+}
+
+/**
+ * UnwrapStructProtoExpr returns the unwraped value of the protobuf struct CEL
+ * expression with proper typing.
+ */
+export function unwrapStructProtoExpr(expr: Expr) {
+  if (isStructProtoExpr(expr)) {
+    return expr.exprKind.value;
+  }
+  return null;
+}
+
+/**
  * NewMapEntryProtoExpr creates a new protobuf map entry CEL expression.
  */
 export function newMapEntryProtoExpr(
@@ -592,6 +705,17 @@ export function isMapEntryProtoExpr(
   };
 } {
   return val.keyKind.case === 'mapKey';
+}
+
+/**
+ * UnwrapMapEntryProtoExpr returns the value of the protobuf map entry CEL
+ * expression with proper typing.
+ */
+export function unwrapMapEntryProtoExpr(val: Expr_CreateStruct_Entry) {
+  if (isMapEntryProtoExpr(val)) {
+    return val;
+  }
+  return null;
 }
 
 /**
@@ -629,19 +753,27 @@ export function isMapProtoExpr(val: Expr): val is Expr & {
   exprKind: {
     case: 'structExpr';
     value: {
-      messageName: undefined;
-      entries: (Expr_CreateStruct_Entry & {
-        keyKind: {
-          case: 'mapKey';
-        };
-      })[];
+      messageName: '';
+      entries: ReturnType<typeof unwrapMapEntryProtoExpr>[];
     };
   };
 } {
   return (
     val.exprKind.case === 'structExpr' &&
-    val.exprKind.value.messageName === undefined
+    (val.exprKind.value.messageName === undefined ||
+      val.exprKind.value.messageName === '')
   );
+}
+
+/**
+ * UnwrapMapProtoExpr returns the unwraped value of the protobuf struct CEL
+ * expression with proper typing
+ */
+export function unwrapMapProtoExpr(val: Expr) {
+  if (isMapProtoExpr(val)) {
+    return val.exprKind.value;
+  }
+  return null;
 }
 
 /**
@@ -675,6 +807,17 @@ export function isMessageFieldProtoExpr(
   };
 } {
   return val.keyKind.case === 'fieldKey';
+}
+
+/**
+ * UnwrapFieldProtoExpr returns the value of the protobuf field CEL expression
+ * with proper typing.
+ */
+export function unwrapMessageFieldProtoExpr(val: Expr_CreateStruct_Entry) {
+  if (isMessageFieldProtoExpr(val)) {
+    return val;
+  }
+  return null;
 }
 
 /**
@@ -715,18 +858,26 @@ export function isMessageProtoExpr(val: Expr): val is Expr & {
     case: 'structExpr';
     value: {
       messageName: string;
-      entries: (Expr_CreateStruct_Entry & {
-        keyKind: {
-          case: 'fieldKey';
-        };
-      })[];
+      entries: ReturnType<typeof unwrapMessageFieldProtoExpr>[];
     };
   };
 } {
   return (
     val.exprKind.case === 'structExpr' &&
-    isString(val.exprKind.value.messageName)
+    isString(val.exprKind.value.messageName) &&
+    val.exprKind.value.messageName !== ''
   );
+}
+
+/**
+ * UnwrapMessageProtoExpr returns the unwraped value of the protobuf message CEL
+ * expression with proper typing.
+ */
+export function unwrapMessageProtoExpr(val: Expr) {
+  if (isMessageProtoExpr(val)) {
+    return val.exprKind.value;
+  }
+  return null;
 }
 
 /**
@@ -751,6 +902,17 @@ export function isConstantProtoExpr(val: Expr): val is Expr & {
   };
 } {
   return val.exprKind.case === 'constExpr';
+}
+
+/**
+ * UnwrapConstantProtoExpr returns the value of the protobuf constant CEL
+ * expression with proper typing.
+ */
+export function unwrapConstantProtoExpr(val: Expr) {
+  if (isConstantProtoExpr(val)) {
+    return val.exprKind.value;
+  }
+  return null;
 }
 
 /**
@@ -781,18 +943,23 @@ export function isNullProtoExpr(val: Expr): val is Expr & {
   );
 }
 
-export function newUnspecifiedExpr(id: bigint) {
-  return create(ExprSchema, {
-    id,
-  });
+/**
+ * UnwrapNullProtoExpr returns the value of the protobuf null CEL expression
+ * with proper typing.
+ */
+export function unwrapNullProtoExpr(val: Expr) {
+  if (isNullProtoExpr(val)) {
+    return val.exprKind.value;
+  }
+  return null;
 }
 
 /**
- * UnwrapConstantExpr returns the value of the protobuf constant CEL expression.
+ * NewProtoExpr creates a new protobuf CEL expression.
  */
-export function unwrapConstantExpr(expr: Expr) {
-  if (isConstantProtoExpr(expr)) {
-    return expr.exprKind.value;
-  }
-  return null;
+export function newUnspecifiedExpr(id: bigint, exprKind?: Expr['exprKind']) {
+  return create(ExprSchema, {
+    id,
+    exprKind,
+  });
 }

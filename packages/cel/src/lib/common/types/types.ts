@@ -30,6 +30,7 @@ import {
   UintProtoType,
 } from '../pb/types';
 import { RefType, RefVal } from '../ref/reference';
+import { reverseMap } from '../utils';
 import { BoolRefVal } from './bool';
 import { ErrorRefVal } from './error';
 import { IntRefVal } from './int';
@@ -38,6 +39,7 @@ import { StringRefVal } from './string';
 import { Lister } from './traits/lister';
 import { Mapper } from './traits/mapper';
 import { AllTraits, Trait } from './traits/trait';
+import { sanitizeProtoName } from './utils';
 
 export enum Kind {
   /**
@@ -571,6 +573,35 @@ export const UnknownType = new Type({
   runtimeTypeName: 'unknown',
 });
 
+/**
+ * Determine if a Type is a well-known type.
+ */
+export function isWellKnownType(type: Type) {
+  switch (type.kind()) {
+    case Kind.ANY:
+    case Kind.TIMESTAMP:
+    case Kind.DURATION:
+    case Kind.DYN:
+    case Kind.NULL:
+      return true;
+    case Kind.BOOL:
+    case Kind.BYTES:
+    case Kind.DOUBLE:
+    case Kind.INT:
+    case Kind.STRING:
+    case Kind.UINT:
+      return type.isAssignableType(NullType);
+    case Kind.LIST:
+      return type.parameters()[0] === DynType;
+    case Kind.MAP:
+      return (
+        type.parameters()[0] === StringType && type.parameters()[1] === DynType
+      );
+    default:
+      return false;
+  }
+}
+
 export const checkedWellKnowns = new Map<string, Type>([
   // Wrapper types
   ['google.protobuf.BoolValue', newNullableType(BoolType)],
@@ -594,6 +625,23 @@ export const checkedWellKnowns = new Map<string, Type>([
   ['google.protobuf.Struct', newMapType(StringType, DynType)],
   ['google.protobuf.Value', DynType],
 ]);
+
+/**
+ * GetCheckedWellKnown returns a well-known type by name.
+ */
+export function getCheckedWellKnown(typeName: string) {
+  typeName = sanitizeProtoName(typeName);
+  return checkedWellKnowns.get(typeName);
+}
+
+export const wellKnownTypeNameKindMap = reverseMap(checkedWellKnowns);
+
+/**
+ * GetWellKnownTypeName returns the well-known type name for a given type.
+ */
+export function getWellKnownTypeName(type: Type) {
+  return wellKnownTypeNameKindMap.get(type);
+}
 
 /**
  * NewListType creates an instances of a list type value with the provided
@@ -689,8 +737,9 @@ export function newOptionalType(param: Type) {
  */
 export function newObjectType(typeName: string, ...traits: Trait[]) {
   // Function sanitizes object types on the fly
+  typeName = sanitizeProtoName(typeName);
   if (checkedWellKnowns.has(typeName)) {
-    return checkedWellKnowns.get(typeName)!;
+    return getCheckedWellKnown(typeName)!;
   }
   const traitMask = new Set(traits);
   return new Type({
@@ -930,4 +979,22 @@ export function maybeForeignType(t: RefType) {
   // denote the type as such since it basically becomes an opaque type by
   // convention.
   return newObjectType(t.typeName(), ...traitMask);
+}
+
+/**
+ * TypeMapToProto converts a map of type IDs to types to protobuf
+ * representation.
+ */
+export function typeMapToProto(
+  typeMap: Map<bigint, Type>
+): Record<string, ProtoType> {
+  const result: Record<string, ProtoType> = {};
+  for (const [id, type] of typeMap) {
+    const t = typeToExprType(type);
+    if (t instanceof Error) {
+      throw t;
+    }
+    result[id.toString()] = t;
+  }
+  return result;
 }

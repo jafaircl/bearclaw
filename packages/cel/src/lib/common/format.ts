@@ -109,8 +109,10 @@ export function formatCELType(t: Type): string {
         );
       }
       break;
-    default:
+    case Kind.UNSPECIFIED:
       return '';
+    default:
+      break;
   }
   if (t.parameters().length === 0) {
     return t.typeName();
@@ -126,8 +128,8 @@ function formatExprType(t: any): string {
   return formatCheckedType(t);
 }
 
-function formatFunctionExprType(
-  resultType: ProtoType,
+export function formatFunctionExprType(
+  resultType: ProtoType | null,
   argTypes: ProtoType[],
   isInstance: boolean
 ): string {
@@ -139,8 +141,8 @@ function formatFunctionExprType(
   );
 }
 
-function formatFunctionDeclType(
-  resultType: Type,
+export function formatFunctionDeclType(
+  resultType: Type | null,
   argTypes: Type[],
   isInstance: boolean
 ) {
@@ -153,7 +155,7 @@ function formatFunctionDeclType(
 }
 
 function formatFunctionInternal<T = any>(
-  resultType: T,
+  resultType: T | null,
   argTypes: T[],
   isInstance: boolean,
   format: (t: T) => string
@@ -172,7 +174,7 @@ function formatFunctionInternal<T = any>(
     result += format(argTypes[i]);
   }
   result += ')';
-  const rt = format(resultType);
+  const rt = resultType ? format(resultType) : null;
   if (!isNil(rt)) {
     result += ' -> ' + rt;
   }

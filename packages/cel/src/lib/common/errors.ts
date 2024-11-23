@@ -5,6 +5,7 @@ import { ErrorListener, RecognitionException, Recognizer, Token } from 'antlr4';
 import { ReferenceInfo } from './ast';
 import { Container } from './container';
 import { CELError } from './error';
+import { formatFunctionDeclType } from './format';
 import { Location } from './location';
 import { Source, TextSource } from './source';
 
@@ -70,7 +71,9 @@ export class Errors {
     return this.reportErrorAtId(
       id,
       location,
-      `expected type ${expected.typeName()} but found ${actual.typeName()}`
+      `expected type ${expected?.typeName() ?? 'null'} but found ${
+        actual?.typeName() ?? 'null'
+      }`
     );
   }
 
@@ -93,7 +96,7 @@ export class Errors {
   public reportNotAnOptionalFieldSelection(
     id: bigint,
     location: Location,
-    field: string
+    field: Expr
   ) {
     return this.reportErrorAtId(
       id,
@@ -109,9 +112,7 @@ export class Errors {
     args: Type[],
     isInstance: boolean
   ) {
-    // TODO: Implement formatFunctionType.
-    // const signature = formatFunctionType(null, args, isInstance);
-    const signature = '';
+    const signature = formatFunctionDeclType(null, args, isInstance);
     return this.reportErrorAtId(
       id,
       location,

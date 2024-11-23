@@ -38,6 +38,14 @@ export function objectToMap<K extends string | number | symbol, V>(
   return map;
 }
 
+export function reverseMap<K, V>(m: Map<K, V>): Map<V, K> {
+  const result = new Map<V, K>();
+  for (const [k, v] of m) {
+    result.set(v, k);
+  }
+  return result;
+}
+
 /**
  * Converts an expression AST into a qualified name if possible, or an empty
  * string otherwise.

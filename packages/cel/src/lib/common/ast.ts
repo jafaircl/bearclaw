@@ -1,3 +1,4 @@
+/* eslint-disable no-case-declarations */
 import { isNil } from '@bearclaw/is';
 import {
   Expr,
@@ -6,6 +7,15 @@ import {
 } from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb.js';
 import { create } from '@bufbuild/protobuf';
 import { Location, NoLocation } from './location';
+import {
+  unwrapCallProtoExpr,
+  unwrapComprehensionProtoExpr,
+  unwrapConstantProtoExpr,
+  unwrapIdentProtoExpr,
+  unwrapListProtoExpr,
+  unwrapSelectProtoExpr,
+  unwrapStructProtoExpr,
+} from './pb/expressions';
 import { RefVal } from './ref/reference';
 import { Source } from './source';
 import { DynType, Type } from './types/types';
@@ -109,6 +119,67 @@ export class AST {
    */
   isChecked() {
     return this._typeMap.size > 0;
+  }
+}
+
+/**
+ * SetKindCase replaces the contents of the current expression with the
+ * contents of the other.
+ *
+ * The SetKindCase takes ownership of any expression instances references
+ * within the input Expr. A shallow copy is made of the Expr value itself,
+ * but not a deep one.
+ *
+ * This method should only be used during AST rewrites using temporary Expr
+ * values.
+ */
+export function setExprKindCase(e: Expr, other: Expr) {
+  if (isNil(e)) {
+    return;
+  }
+  if (isNil(other)) {
+    e.exprKind = { case: undefined, value: undefined };
+  }
+
+  switch (other.exprKind.case) {
+    case 'callExpr':
+      const c = unwrapCallProtoExpr(other);
+      if (isNil(c)) return;
+      e.exprKind = { case: 'callExpr', value: c };
+      break;
+    case 'comprehensionExpr':
+      const comp = unwrapComprehensionProtoExpr(other);
+      if (isNil(comp)) return;
+      e.exprKind = { case: 'comprehensionExpr', value: comp };
+      break;
+    case 'constExpr':
+      const constant = unwrapConstantProtoExpr(other);
+      if (isNil(constant)) return;
+      e.exprKind = { case: 'constExpr', value: constant };
+      break;
+    case 'identExpr':
+      const ident = unwrapIdentProtoExpr(other);
+      if (isNil(ident)) return;
+      e.exprKind = { case: 'identExpr', value: ident };
+      break;
+    case 'listExpr':
+      const list = unwrapListProtoExpr(other);
+      if (isNil(list)) return;
+      e.exprKind = { case: 'listExpr', value: list };
+      break;
+    case 'selectExpr':
+      const select = unwrapSelectProtoExpr(other);
+      if (isNil(select)) return;
+      e.exprKind = { case: 'selectExpr', value: select };
+      break;
+    case 'structExpr':
+      const struct = unwrapStructProtoExpr(other);
+      if (isNil(struct)) return;
+      e.exprKind = { case: 'structExpr', value: struct };
+      break;
+    default:
+      e.exprKind = { case: undefined, value: undefined };
+      break;
   }
 }
 

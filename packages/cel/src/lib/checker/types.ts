@@ -16,7 +16,7 @@ import { Mapping } from './mapping';
  * isDyn returns true if the input t is either type DYN or a well-known ANY
  * message.
  */
-function isDyn(t: Type): boolean {
+export function isDyn(t: Type): boolean {
   switch (t.kind()) {
     case Kind.ANY:
     case Kind.DYN:
@@ -29,7 +29,7 @@ function isDyn(t: Type): boolean {
 /**
  * isError returns true if the input is an Error type.
  */
-function isError(t: Type): boolean {
+export function isError(t: Type): boolean {
   switch (t.kind()) {
     case Kind.ERROR:
       return true;
@@ -42,14 +42,14 @@ function isError(t: Type): boolean {
  * isDynOrError returns true if the input is either an Error, DYN, or
  * well-known ANY message.
  */
-function isDynOrError(t: Type): boolean {
+export function isDynOrError(t: Type): boolean {
   return isDyn(t) || isError(t);
 }
 
 /**
  * isOptional returns true if the input is an optional type.
  */
-function isOptional(t: Type): boolean {
+export function isOptional(t: Type): boolean {
   if (t.kind() === Kind.OPAQUE) {
     return t.typeName() === 'optional_type';
   }
@@ -72,7 +72,7 @@ export function maybeUnwrapOptional(t: Type): Type {
  * the other one. A type is less specific if it matches the other type using
  * the DYN type.
  */
-function isEqualOrLessSpecific(t1: Type, t2: Type): boolean {
+export function isEqualOrLessSpecific(t1: Type, t2: Type): boolean {
   const kind1 = t1.kind();
   const kind2 = t2.kind();
   // The first type is less specific.
@@ -120,7 +120,7 @@ function isEqualOrLessSpecific(t1: Type, t2: Type): boolean {
 /**
  * internalIsAssignable returns true if t1 is assignable to t2.
  */
-function internalIsAssignable(m: Mapping, t1: Type, t2: Type): boolean {
+export function internalIsAssignable(m: Mapping, t1: Type, t2: Type): boolean {
   const kind1 = t1.kind();
   const kind2 = t2.kind();
   // Process type parameters.
@@ -204,7 +204,7 @@ function internalIsAssignable(m: Mapping, t1: Type, t2: Type): boolean {
  * - t2 has a type substitution (t2sub) assignable to t1
  * - t2 does not occur within t1.
  */
-function isValidTypeSubstitution(
+export function isValidTypeSubstitution(
   m: Mapping,
   t1: Type,
   t2: Type
@@ -248,7 +248,11 @@ function isValidTypeSubstitution(
  * the list are assignable from l1[i] to l2[i]. The list lengths must also
  * agree for the lists to be assignable.
  */
-function internalIsAssignableList(m: Mapping, l1: Type[], l2: Type[]): boolean {
+export function internalIsAssignableList(
+  m: Mapping,
+  l1: Type[],
+  l2: Type[]
+): boolean {
   if (l1.length !== l2.length) {
     return false;
   }
@@ -257,13 +261,13 @@ function internalIsAssignableList(m: Mapping, l1: Type[], l2: Type[]): boolean {
       return false;
     }
   }
-  return false;
+  return true;
 }
 
 /**
  * internalIsAssignableNull returns true if the type is nullable.
  */
-function internalIsAssignableNull(t: Type): boolean {
+export function internalIsAssignableNull(t: Type): boolean {
   return isLegacyNullable(t) || t.isAssignableType(NullType);
 }
 
@@ -271,7 +275,7 @@ function internalIsAssignableNull(t: Type): boolean {
  * isLegacyNullable preserves the null-ness compatibility of the original
  * type-checker implementation.
  */
-function isLegacyNullable(t: Type): boolean {
+export function isLegacyNullable(t: Type): boolean {
   switch (t.kind()) {
     case Kind.OPAQUE:
     case Kind.STRUCT:
@@ -315,7 +319,7 @@ export function isAssignableList(
 /**
  * mostGeneral returns the more general of two types which are known to unify.
  */
-function mostGeneral(t1: Type, t2: Type) {
+export function mostGeneral(t1: Type, t2: Type) {
   if (isEqualOrLessSpecific(t1, t2)) {
     return t1;
   }
@@ -327,7 +331,11 @@ function mostGeneral(t1: Type, t2: Type) {
  * transitively within the other type. This is a standard requirement for type
  * unification, commonly referred to as the "occurs check".
  */
-function notReferencedIn(m: Mapping, t: Type, withinType: Type): boolean {
+export function notReferencedIn(
+  m: Mapping,
+  t: Type,
+  withinType: Type
+): boolean {
   if (t.isExactType(withinType)) {
     return false;
   }
@@ -390,7 +398,7 @@ export function substitute(m: Mapping, t: Type, typeParamToDyn: boolean): Type {
   }
 }
 
-function substituteParams(
+export function substituteParams(
   m: Mapping,
   typeParams: Type[],
   typeParamToDyn: boolean
