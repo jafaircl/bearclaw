@@ -35,6 +35,7 @@ import {
   newMapType,
   newNullableType,
   newObjectType,
+  newTypeParamType,
   newTypeTypeWithParam,
   NullType,
   StringType,
@@ -1305,6 +1306,311 @@ ERROR: <input>:1:5: undeclared reference to 'x' (in container '')
       },
       out: `container.x~google.api.expr.test.v1.proto3.TestAllTypes^container.x`,
       outType: newObjectType('google.api.expr.test.v1.proto3.TestAllTypes'),
+    },
+    // TODO: no matching overload
+    //     {
+    //       in: `list == type([1]) && map == type({1:2u})`,
+    //       out: `
+    //   _&&_(_==_(list~type(list(dyn))^list,
+    //          type([1~int]~list(int))~type(list(int))^type)
+    //      ~bool^equals,
+    //     _==_(map~type(map(dyn, dyn))^map,
+    //           type({1~int : 2u~uint}~map(int, uint))~type(map(int, uint))^type)
+    //       ~bool^equals)
+    //   ~bool^logical_and
+    //   `,
+    //       outType: BoolType,
+    //     },
+    {
+      in: `myfun(1, true, 3u) + 1.myfun(false, 3u).myfun(true, 42u)`,
+      env: () => {
+        const env = getDefaultEnvironment();
+        env.addFunctions(
+          new FunctionDecl({
+            name: 'myfun',
+            overloads: [
+              new OverloadDecl({
+                id: 'myfun_instance',
+                argTypes: [IntType, BoolType, UintType],
+                resultType: IntType,
+                isMemberFunction: true,
+              }),
+              new OverloadDecl({
+                id: 'myfun_static',
+                argTypes: [IntType, BoolType, UintType],
+                resultType: IntType,
+              }),
+            ],
+          })
+        );
+        return env;
+      },
+      out: `_+_(
+          myfun(
+            1~int,
+            true~bool,
+            3u~uint
+          )~int^myfun_static,
+          1~int.myfun(
+            false~bool,
+            3u~uint
+          )~int^myfun_instance.myfun(
+            true~bool,
+            42u~uint
+          )~int^myfun_instance
+        )~int^add_int64`,
+      outType: IntType,
+    },
+    {
+      in: `size(x) > 4`,
+      env: () => {
+        const env = getDefaultEnvironment();
+        env.addIdent(newVariableDecl('x', newListType(IntType)));
+        env.addFunctions(
+          new FunctionDecl({
+            name: 'size',
+            overloads: [
+              new OverloadDecl({
+                id: 'size_message',
+                argTypes: [
+                  newObjectType('google.api.expr.test.v1.proto3.TestAllTypes'),
+                ],
+                resultType: IntType,
+              }),
+            ],
+          })
+        );
+        return env;
+      },
+      outType: BoolType,
+    },
+    {
+      in: `x.single_int64_wrapper + 1 != 23`,
+      env: () => {
+        const env = getDefaultEnvironment();
+        env.addIdent(
+          newVariableDecl(
+            'x',
+            newObjectType('google.api.expr.test.v1.proto3.TestAllTypes')
+          )
+        );
+        return env;
+      },
+      out: `
+    _!=_(_+_(x~google.api.expr.test.v1.proto3.TestAllTypes^x.single_int64_wrapper
+    ~wrapper(int),
+    1~int)
+    ~int^add_int64,
+    23~int)
+    ~bool^not_equals
+    `,
+      outType: BoolType,
+    },
+    {
+      in: `x.single_int64_wrapper + y != 23`,
+      env: () => {
+        const env = getDefaultEnvironment();
+        env.addIdents(
+          newVariableDecl(
+            'x',
+            newObjectType('google.api.expr.test.v1.proto3.TestAllTypes')
+          ),
+          newVariableDecl('y', newObjectType('google.protobuf.Int32Value'))
+        );
+        return env;
+      },
+      out: `
+    _!=_(
+        _+_(
+          x~google.api.expr.test.v1.proto3.TestAllTypes^x.single_int64_wrapper~wrapper(int),
+          y~wrapper(int)^y
+        )~int^add_int64,
+        23~int
+      )~bool^not_equals
+    `,
+      outType: BoolType,
+    },
+    {
+      in: `1 in [1, 2, 3]`,
+      out: `@in(
+          1~int,
+          [
+            1~int,
+            2~int,
+            3~int
+          ]~list(int)
+        )~bool^in_list`,
+      outType: BoolType,
+    },
+    {
+      in: `1 in dyn([1, 2, 3])`,
+      out: `@in(
+        1~int,
+        dyn(
+          [
+            1~int,
+            2~int,
+            3~int
+          ]~list(int)
+        )~dyn^to_dyn
+      )~bool^in_list|in_map`,
+      outType: BoolType,
+    },
+    // TODO: no such overload
+    // {
+    //   in: `type(null) == null_type`,
+    //   out: `_==_(
+    //       type(
+    //         null~null
+    //       )~type(null)^type,
+    //       null_type~type(null)^null_type
+    //     )~bool^equals`,
+    //   outType: BoolType,
+    // },
+    // TODO no such overload
+    // {
+    //   in: `type(type) == type`,
+    //   out: `_==_(
+    //   type(
+    //     type~type(type)^type
+    //   )~type(type(type))^type,
+    //   type~type(type)^type
+    // )~bool^equals`,
+    //   outType: BoolType,
+    // },
+    {
+      in: `([[[1]], [[2]], [[3]]][0][0] + [2, 3, {'four': {'five': 'six'}}])[3]`,
+      out: `_[_](
+        _+_(
+            _[_](
+                _[_](
+                    [
+                        [
+                            [
+                                1~int
+                            ]~list(int)
+                        ]~list(list(int)),
+                        [
+                            [
+                                2~int
+                            ]~list(int)
+                        ]~list(list(int)),
+                        [
+                            [
+                                3~int
+                            ]~list(int)
+                        ]~list(list(int))
+                    ]~list(list(list(int))),
+                    0~int
+                )~list(list(int))^index_list,
+                0~int
+            )~list(int)^index_list,
+            [
+                2~int,
+                3~int,
+                {
+                    "four"~string:{
+                        "five"~string:"six"~string
+                    }~map(string, string)
+                }~map(string, map(string, string))
+            ]~list(dyn)
+        )~list(dyn)^add_list,
+        3~int
+    )~dyn^index_list`,
+      outType: DynType,
+    },
+    {
+      in: `[1] + [dyn('string')]`,
+      out: `_+_(
+        [
+            1~int
+        ]~list(int),
+        [
+            dyn(
+                "string"~string
+            )~dyn^to_dyn
+        ]~list(dyn)
+    )~list(dyn)^add_list`,
+      outType: newListType(DynType),
+    },
+    {
+      in: `[dyn('string')] + [1]`,
+      out: `_+_(
+        [
+            dyn(
+                "string"~string
+            )~dyn^to_dyn
+        ]~list(dyn),
+        [
+            1~int
+        ]~list(int)
+    )~list(dyn)^add_list`,
+      outType: newListType(DynType),
+    },
+    {
+      in: `[].map(x, [].map(y, x in y && y in x))`,
+      err: `
+    ERROR: <input>:1:33: found no matching overload for '@in' applied to '(list(dyn), dyn)'
+    | [].map(x, [].map(y, x in y && y in x))
+    | ................................^`,
+    },
+    {
+      in: `args.user["myextension"].customAttributes.filter(x, x.name == "hobbies")`,
+      out: `__comprehension__(
+        // Variable
+        x,
+        // Target
+        _[_](
+        args~map(string, dyn)^args.user~dyn,
+        "myextension"~string
+        )~dyn^index_map.customAttributes~dyn,
+        // Accumulator
+        __result__,
+        // Init
+        []~list(dyn),
+        // LoopCondition
+        true~bool,
+        // LoopStep
+        _?_:_(
+        _==_(
+            x~dyn^x.name~dyn,
+            "hobbies"~string
+        )~bool^equals,
+        _+_(
+            __result__~list(dyn)^__result__,
+            [
+            x~dyn^x
+            ]~list(dyn)
+        )~list(dyn)^add_list,
+        __result__~list(dyn)^__result__
+        )~list(dyn)^conditional,
+        // Result
+        __result__~list(dyn)^__result__)~list(dyn)`,
+      env: () => {
+        const env = getDefaultEnvironment();
+        env.addIdent(newVariableDecl('args', newMapType(StringType, DynType)));
+        return env;
+      },
+      outType: newListType(DynType),
+    },
+    {
+      in: `a.b + 1 == a[0]`,
+      out: `_==_(
+        _+_(
+          a~dyn^a.b~dyn,
+          1~int
+        )~int^add_int64,
+        _[_](
+          a~dyn^a,
+          0~int
+        )~dyn^index_list|index_map
+      )~bool^equals`,
+      env: () => {
+        const env = getDefaultEnvironment();
+        env.addIdent(newVariableDecl('a', newTypeParamType('T')));
+        return env;
+      },
+      outType: BoolType,
     },
   ];
 
