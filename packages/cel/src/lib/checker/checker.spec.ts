@@ -35,6 +35,8 @@ import {
   newMapType,
   newNullableType,
   newObjectType,
+  newOpaqueType,
+  newOptionalType,
   newTypeParamType,
   newTypeTypeWithParam,
   NullType,
@@ -44,7 +46,7 @@ import {
 } from '../common/types/types';
 import { Parser, ParserOptions } from '../parser/parser';
 import { Checker } from './checker';
-import { Env } from './env';
+import { CheckerEnvOptions, Env } from './env';
 
 interface TestCase {
   in: string;
@@ -54,12 +56,10 @@ interface TestCase {
   err?: string;
   parserOpts?: ParserOptions;
   container?: string;
+  checkerOptions?: CheckerEnvOptions;
 }
 
 describe('Checker', () => {
-  it('TODO', () => {
-    expect(true).toBeTruthy();
-  });
   const testCases: TestCase[] = [
     // Const types
     {
@@ -1307,20 +1307,19 @@ ERROR: <input>:1:5: undeclared reference to 'x' (in container '')
       out: `container.x~google.api.expr.test.v1.proto3.TestAllTypes^container.x`,
       outType: newObjectType('google.api.expr.test.v1.proto3.TestAllTypes'),
     },
-    // TODO: no matching overload
-    //     {
-    //       in: `list == type([1]) && map == type({1:2u})`,
-    //       out: `
-    //   _&&_(_==_(list~type(list(dyn))^list,
-    //          type([1~int]~list(int))~type(list(int))^type)
-    //      ~bool^equals,
-    //     _==_(map~type(map(dyn, dyn))^map,
-    //           type({1~int : 2u~uint}~map(int, uint))~type(map(int, uint))^type)
-    //       ~bool^equals)
-    //   ~bool^logical_and
-    //   `,
-    //       outType: BoolType,
-    //     },
+    {
+      in: `list == type([1]) && map == type({1:2u})`,
+      out: `
+      _&&_(_==_(list~type(list(dyn))^list,
+             type([1~int]~list(int))~type(list(int))^type)
+         ~bool^equals,
+        _==_(map~type(map(dyn, dyn))^map,
+              type({1~int : 2u~uint}~map(int, uint))~type(map(int, uint))^type)
+          ~bool^equals)
+      ~bool^logical_and
+      `,
+      outType: BoolType,
+    },
     {
       in: `myfun(1, true, 3u) + 1.myfun(false, 3u).myfun(true, 42u)`,
       env: () => {
@@ -1456,28 +1455,26 @@ ERROR: <input>:1:5: undeclared reference to 'x' (in container '')
       )~bool^in_list|in_map`,
       outType: BoolType,
     },
-    // TODO: no such overload
-    // {
-    //   in: `type(null) == null_type`,
-    //   out: `_==_(
-    //       type(
-    //         null~null
-    //       )~type(null)^type,
-    //       null_type~type(null)^null_type
-    //     )~bool^equals`,
-    //   outType: BoolType,
-    // },
-    // TODO no such overload
-    // {
-    //   in: `type(type) == type`,
-    //   out: `_==_(
-    //   type(
-    //     type~type(type)^type
-    //   )~type(type(type))^type,
-    //   type~type(type)^type
-    // )~bool^equals`,
-    //   outType: BoolType,
-    // },
+    {
+      in: `type(null) == null_type`,
+      out: `_==_(
+          type(
+            null~null
+          )~type(null)^type,
+          null_type~type(null)^null_type
+        )~bool^equals`,
+      outType: BoolType,
+    },
+    {
+      in: `type(type) == type`,
+      out: `_==_(
+      type(
+        type~type(type)^type
+      )~type(type(type))^type,
+      type~type(type)^type
+    )~bool^equals`,
+      outType: BoolType,
+    },
     {
       in: `([[[1]], [[2]], [[3]]][0][0] + [2, 3, {'four': {'five': 'six'}}])[3]`,
       out: `_[_](
@@ -1612,6 +1609,701 @@ ERROR: <input>:1:5: undeclared reference to 'x' (in container '')
       },
       outType: BoolType,
     },
+    {
+      in: `!has(pb2.single_int64)
+    && !has(pb2.repeated_int32)
+    && !has(pb2.map_string_string)
+    && !has(pb3.single_int64)
+    && !has(pb3.repeated_int32)
+    && !has(pb3.map_string_string)`,
+      env: () => {
+        const env = getDefaultEnvironment();
+        env.addIdents(
+          newVariableDecl(
+            'pb2',
+            newObjectType('google.api.expr.test.v1.proto2.TestAllTypes')
+          ),
+          newVariableDecl(
+            'pb3',
+            newObjectType('google.api.expr.test.v1.proto3.TestAllTypes')
+          )
+        );
+        return env;
+      },
+      out: `
+    _&&_(
+        _&&_(
+          _&&_(
+            !_(
+              pb2~google.api.expr.test.v1.proto2.TestAllTypes^pb2.single_int64~test-only~~bool
+            )~bool^logical_not,
+            !_(
+              pb2~google.api.expr.test.v1.proto2.TestAllTypes^pb2.repeated_int32~test-only~~bool
+            )~bool^logical_not
+          )~bool^logical_and,
+          !_(
+            pb2~google.api.expr.test.v1.proto2.TestAllTypes^pb2.map_string_string~test-only~~bool
+          )~bool^logical_not
+        )~bool^logical_and,
+        _&&_(
+          _&&_(
+            !_(
+              pb3~google.api.expr.test.v1.proto3.TestAllTypes^pb3.single_int64~test-only~~bool
+            )~bool^logical_not,
+            !_(
+              pb3~google.api.expr.test.v1.proto3.TestAllTypes^pb3.repeated_int32~test-only~~bool
+            )~bool^logical_not
+          )~bool^logical_and,
+          !_(
+            pb3~google.api.expr.test.v1.proto3.TestAllTypes^pb3.map_string_string~test-only~~bool
+          )~bool^logical_not
+        )~bool^logical_and
+      )~bool^logical_and`,
+      outType: BoolType,
+    },
+    {
+      in: `TestAllTypes{}.repeated_nested_message`,
+      container: 'google.api.expr.test.v1.proto2',
+      out: `
+    google.api.expr.test.v1.proto2.TestAllTypes{}~google.api.expr.test.v1.proto2.TestAllTypes^
+    google.api.expr.test.v1.proto2.TestAllTypes.repeated_nested_message
+    ~list(google.api.expr.test.v1.proto2.TestAllTypes.NestedMessage)`,
+      outType: newListType(
+        newObjectType(
+          'google.api.expr.test.v1.proto2.TestAllTypes.NestedMessage'
+        )
+      ),
+    },
+    {
+      in: `TestAllTypes{}.repeated_nested_message`,
+      container: 'google.api.expr.test.v1.proto3',
+      out: `
+    google.api.expr.test.v1.proto3.TestAllTypes{}~google.api.expr.test.v1.proto3.TestAllTypes^
+    google.api.expr.test.v1.proto3.TestAllTypes.repeated_nested_message
+    ~list(google.api.expr.test.v1.proto3.TestAllTypes.NestedMessage)`,
+      outType: newListType(
+        newObjectType(
+          'google.api.expr.test.v1.proto3.TestAllTypes.NestedMessage'
+        )
+      ),
+    },
+    {
+      in: `base64.encode('hello')`,
+      env: () => {
+        const env = getDefaultEnvironment();
+        env.addFunctions(
+          new FunctionDecl({
+            name: 'base64.encode',
+            overloads: [
+              new OverloadDecl({
+                id: 'base64_encode_string',
+                argTypes: [StringType],
+                resultType: StringType,
+              }),
+            ],
+          })
+        );
+        return env;
+      },
+      out: `
+    base64.encode(
+        "hello"~string
+    )~string^base64_encode_string`,
+      outType: StringType,
+    },
+    {
+      in: `encode('hello')`,
+      container: `base64`,
+      env: () => {
+        const env = getDefaultEnvironment();
+        env.addFunctions(
+          new FunctionDecl({
+            name: 'encode',
+            overloads: [
+              new OverloadDecl({
+                id: 'encode_string',
+                argTypes: [StringType],
+                resultType: StringType,
+              }),
+            ],
+          })
+        );
+        return env;
+      },
+      out: `
+    base64.encode(
+        "hello"~string
+    )~string^base64_encode_string`,
+      outType: StringType,
+    },
+    {
+      in: `{}`,
+      out: `{}~map(dyn, dyn)`,
+      outType: newMapType(DynType, DynType),
+    },
+    {
+      in: `set([1, 2, 3])`,
+      out: `
+    set(
+      [
+        1~int,
+        2~int,
+        3~int
+      ]~list(int)
+    )~set(int)^set_list`,
+      env: () => {
+        const env = getDefaultEnvironment();
+        env.addFunctions(
+          new FunctionDecl({
+            name: 'set',
+            overloads: [
+              new OverloadDecl({
+                id: 'set_list',
+                argTypes: [newListType(newTypeParamType('T'))],
+                resultType: newOpaqueType('set', newTypeParamType('T')),
+              }),
+            ],
+          })
+        );
+        return env;
+      },
+      outType: newOpaqueType('set', IntType),
+    },
+    {
+      in: `set([1, 2]) == set([2, 1])`,
+      out: `
+		_==_(
+		  set([1~int, 2~int]~list(int))~set(int)^set_list,
+		  set([2~int, 1~int]~list(int))~set(int)^set_list
+		)~bool^equals`,
+      env: () => {
+        const env = getDefaultEnvironment();
+        env.addFunctions(
+          new FunctionDecl({
+            name: 'set',
+            overloads: [
+              new OverloadDecl({
+                id: 'set_list',
+                argTypes: [newListType(newTypeParamType('T'))],
+                resultType: newOpaqueType('set', newTypeParamType('T')),
+              }),
+            ],
+          })
+        );
+        return env;
+      },
+      outType: BoolType,
+    },
+    {
+      in: `set([1, 2]) == x`,
+      out: `
+    _==_(
+      set([1~int, 2~int]~list(int))~set(int)^set_list,
+      x~set(int)^x
+    )~bool^equals`,
+      env: () => {
+        const env = getDefaultEnvironment();
+        env.addIdent(
+          newVariableDecl('x', newOpaqueType('set', newTypeParamType('T')))
+        );
+        env.addFunctions(
+          new FunctionDecl({
+            name: 'set',
+            overloads: [
+              new OverloadDecl({
+                id: 'set_list',
+                argTypes: [newListType(newTypeParamType('T'))],
+                resultType: newOpaqueType('set', newTypeParamType('T')),
+              }),
+            ],
+          })
+        );
+        return env;
+      },
+      outType: BoolType,
+    },
+    {
+      in: `int{}`,
+      err: `
+    ERROR: <input>:1:4: 'int' is not a message type
+     | int{}
+     | ...^
+    `,
+    },
+    {
+      in: `Msg{}`,
+      err: `
+    ERROR: <input>:1:4: undeclared reference to 'Msg' (in container '')
+     | Msg{}
+     | ...^
+    `,
+    },
+    {
+      in: `fun()`,
+      err: `
+    ERROR: <input>:1:4: undeclared reference to 'fun' (in container '')
+     | fun()
+     | ...^
+    `,
+    },
+    {
+      in: `'string'.fun()`,
+      err: `
+    ERROR: <input>:1:13: undeclared reference to 'fun' (in container '')
+     | 'string'.fun()
+     | ............^
+    `,
+    },
+    {
+      in: `[].length`,
+      err: `
+    ERROR: <input>:1:3: type 'list(_var0)' does not support field selection
+     | [].length
+     | ..^
+    `,
+    },
+    {
+      in: `1 <= 1.0 && 1u <= 1.0 && 1.0 <= 1 && 1.0 <= 1u && 1 <= 1u && 1u <= 1`,
+      checkerOptions: { crossTypeNumericComparisons: false },
+      err: `
+    ERROR: <input>:1:3: found no matching overload for '_<=_' applied to '(int, double)'
+     | 1 <= 1.0 && 1u <= 1.0 && 1.0 <= 1 && 1.0 <= 1u && 1 <= 1u && 1u <= 1
+     | ..^
+    ERROR: <input>:1:16: found no matching overload for '_<=_' applied to '(uint, double)'
+     | 1 <= 1.0 && 1u <= 1.0 && 1.0 <= 1 && 1.0 <= 1u && 1 <= 1u && 1u <= 1
+     | ...............^
+    ERROR: <input>:1:30: found no matching overload for '_<=_' applied to '(double, int)'
+     | 1 <= 1.0 && 1u <= 1.0 && 1.0 <= 1 && 1.0 <= 1u && 1 <= 1u && 1u <= 1
+     | .............................^
+    ERROR: <input>:1:42: found no matching overload for '_<=_' applied to '(double, uint)'
+     | 1 <= 1.0 && 1u <= 1.0 && 1.0 <= 1 && 1.0 <= 1u && 1 <= 1u && 1u <= 1
+     | .........................................^
+    ERROR: <input>:1:53: found no matching overload for '_<=_' applied to '(int, uint)'
+     | 1 <= 1.0 && 1u <= 1.0 && 1.0 <= 1 && 1.0 <= 1u && 1 <= 1u && 1u <= 1
+     | ....................................................^
+    ERROR: <input>:1:65: found no matching overload for '_<=_' applied to '(uint, int)'
+     | 1 <= 1.0 && 1u <= 1.0 && 1.0 <= 1 && 1.0 <= 1u && 1 <= 1u && 1u <= 1
+     | ................................................................^
+    `,
+    },
+    {
+      in: `1 <= 1.0 && 1u <= 1.0 && 1.0 <= 1 && 1.0 <= 1u && 1 <= 1u && 1u <= 1`,
+      checkerOptions: { crossTypeNumericComparisons: true },
+      outType: BoolType,
+      out: `
+    _&&_(
+        _&&_(
+          _&&_(
+            _<=_(
+              1~int,
+              1~double
+            )~bool^less_equals_int64_double,
+            _<=_(
+              1u~uint,
+              1~double
+            )~bool^less_equals_uint64_double
+          )~bool^logical_and,
+          _<=_(
+            1~double,
+            1~int
+          )~bool^less_equals_double_int64
+        )~bool^logical_and,
+        _&&_(
+          _&&_(
+            _<=_(
+              1~double,
+              1u~uint
+            )~bool^less_equals_double_uint64,
+            _<=_(
+              1~int,
+              1u~uint
+            )~bool^less_equals_int64_uint64
+          )~bool^logical_and,
+          _<=_(
+            1u~uint,
+            1~int
+          )~bool^less_equals_uint64_int64
+        )~bool^logical_and
+      )~bool^logical_and`,
+    },
+    {
+      in: `1 < 1.0 && 1u < 1.0 && 1.0 < 1 && 1.0 < 1u && 1 < 1u && 1u < 1`,
+      checkerOptions: { crossTypeNumericComparisons: true },
+      outType: BoolType,
+      out: `
+    _&&_(
+        _&&_(
+          _&&_(
+            _<_(
+              1~int,
+              1~double
+            )~bool^less_int64_double,
+            _<_(
+              1u~uint,
+              1~double
+            )~bool^less_uint64_double
+          )~bool^logical_and,
+          _<_(
+            1~double,
+            1~int
+          )~bool^less_double_int64
+        )~bool^logical_and,
+        _&&_(
+          _&&_(
+            _<_(
+              1~double,
+              1u~uint
+            )~bool^less_double_uint64,
+            _<_(
+              1~int,
+              1u~uint
+            )~bool^less_int64_uint64
+          )~bool^logical_and,
+          _<_(
+            1u~uint,
+            1~int
+          )~bool^less_uint64_int64
+        )~bool^logical_and
+      )~bool^logical_and`,
+    },
+    {
+      in: `1 > 1.0 && 1u > 1.0 && 1.0 > 1 && 1.0 > 1u && 1 > 1u && 1u > 1`,
+      checkerOptions: { crossTypeNumericComparisons: true },
+      outType: BoolType,
+      out: `
+    _&&_(
+        _&&_(
+          _&&_(
+            _>_(
+              1~int,
+              1~double
+            )~bool^greater_int64_double,
+            _>_(
+              1u~uint,
+              1~double
+            )~bool^greater_uint64_double
+          )~bool^logical_and,
+          _>_(
+            1~double,
+            1~int
+          )~bool^greater_double_int64
+        )~bool^logical_and,
+        _&&_(
+          _&&_(
+            _>_(
+              1~double,
+              1u~uint
+            )~bool^greater_double_uint64,
+            _>_(
+              1~int,
+              1u~uint
+            )~bool^greater_int64_uint64
+          )~bool^logical_and,
+          _>_(
+            1u~uint,
+            1~int
+          )~bool^greater_uint64_int64
+        )~bool^logical_and
+      )~bool^logical_and`,
+    },
+    {
+      in: `1 >= 1.0 && 1u >= 1.0 && 1.0 >= 1 && 1.0 >= 1u && 1 >= 1u && 1u >= 1`,
+      checkerOptions: { crossTypeNumericComparisons: true },
+      outType: BoolType,
+      out: `
+    _&&_(
+        _&&_(
+          _&&_(
+            _>=_(
+              1~int,
+              1~double
+            )~bool^greater_equals_int64_double,
+            _>=_(
+              1u~uint,
+              1~double
+            )~bool^greater_equals_uint64_double
+          )~bool^logical_and,
+          _>=_(
+            1~double,
+            1~int
+          )~bool^greater_equals_double_int64
+        )~bool^logical_and,
+        _&&_(
+          _&&_(
+            _>=_(
+              1~double,
+              1u~uint
+            )~bool^greater_equals_double_uint64,
+            _>=_(
+              1~int,
+              1u~uint
+            )~bool^greater_equals_int64_uint64
+          )~bool^logical_and,
+          _>=_(
+            1u~uint,
+            1~int
+          )~bool^greater_equals_uint64_int64
+        )~bool^logical_and
+      )~bool^logical_and`,
+    },
+    {
+      in: `1 >= 1.0 && 1u >= 1.0 && 1.0 >= 1 && 1.0 >= 1u && 1 >= 1u && 1u >= 1`,
+      checkerOptions: { crossTypeNumericComparisons: true },
+      // env:     testEnv{variadicASTs: true}, // TODO: enable variadic ASTs
+      outType: BoolType,
+      out: `
+    _&&_(
+        _>=_(
+          1~int,
+          1~double
+        )~bool^greater_equals_int64_double,
+        _>=_(
+          1u~uint,
+          1~double
+        )~bool^greater_equals_uint64_double,
+        _>=_(
+          1~double,
+          1~int
+        )~bool^greater_equals_double_int64,
+        _>=_(
+          1~double,
+          1u~uint
+        )~bool^greater_equals_double_uint64,
+        _>=_(
+          1~int,
+          1u~uint
+        )~bool^greater_equals_int64_uint64,
+        _>=_(
+          1u~uint,
+          1~int
+        )~bool^greater_equals_uint64_int64
+      )~bool^logical_and`,
+    },
+    {
+      in: `[1].map(x, [x, x]).map(x, [x, x])`,
+      outType: newListType(newListType(newListType(IntType))),
+      out: `__comprehension__(
+        // Variable
+        x,
+        // Target
+        __comprehension__(
+          // Variable
+          x,
+          // Target
+          [
+            1~int
+          ]~list(int),
+          // Accumulator
+          __result__,
+          // Init
+          []~list(list(int)),
+          // LoopCondition
+          true~bool,
+          // LoopStep
+          _+_(
+            __result__~list(list(int))^__result__,
+            [
+              [
+                x~int^x,
+                x~int^x
+              ]~list(int)
+            ]~list(list(int))
+          )~list(list(int))^add_list,
+          // Result
+          __result__~list(list(int))^__result__)~list(list(int)),
+        // Accumulator
+        __result__,
+        // Init
+        []~list(list(list(int))),
+        // LoopCondition
+        true~bool,
+        // LoopStep
+        _+_(
+          __result__~list(list(list(int)))^__result__,
+          [
+            [
+              x~list(int)^x,
+              x~list(int)^x
+            ]~list(list(int))
+          ]~list(list(list(int)))
+        )~list(list(list(int)))^add_list,
+        // Result
+        __result__~list(list(list(int)))^__result__)~list(list(list(int)))
+      `,
+    },
+    {
+      in: `values.filter(i, i.content != "").map(i, i.content)`,
+      outType: newListType(StringType),
+      env: () => {
+        const env = getDefaultEnvironment();
+        env.addIdent(
+          newVariableDecl(
+            'values',
+            newListType(newMapType(StringType, StringType))
+          )
+        );
+        return env;
+      },
+      out: `__comprehension__(
+        // Variable
+        i,
+        // Target
+        __comprehension__(
+          // Variable
+          i,
+          // Target
+          values~list(map(string, string))^values,
+          // Accumulator
+          __result__,
+          // Init
+          []~list(map(string, string)),
+          // LoopCondition
+          true~bool,
+          // LoopStep
+          _?_:_(
+            _!=_(
+              i~map(string, string)^i.content~string,
+              ""~string
+            )~bool^not_equals,
+            _+_(
+              __result__~list(map(string, string))^__result__,
+              [
+                i~map(string, string)^i
+              ]~list(map(string, string))
+            )~list(map(string, string))^add_list,
+            __result__~list(map(string, string))^__result__
+          )~list(map(string, string))^conditional,
+          // Result
+          __result__~list(map(string, string))^__result__)~list(map(string, string)),
+        // Accumulator
+        __result__,
+        // Init
+        []~list(string),
+        // LoopCondition
+        true~bool,
+        // LoopStep
+        _+_(
+          __result__~list(string)^__result__,
+          [
+            i~map(string, string)^i.content~string
+          ]~list(string)
+        )~list(string)^add_list,
+        // Result
+        __result__~list(string)^__result__)~list(string)`,
+    },
+    {
+      in: `[{}.map(c,c,c)]+[{}.map(c,c,c)]`,
+      outType: newListType(newListType(BoolType)),
+      out: `_+_(
+        [
+          __comprehension__(
+            // Variable
+            c,
+            // Target
+            {}~map(bool, dyn),
+            // Accumulator
+            __result__,
+            // Init
+            []~list(bool),
+            // LoopCondition
+            true~bool,
+            // LoopStep
+            _?_:_(
+              c~bool^c,
+              _+_(
+                __result__~list(bool)^__result__,
+                [
+                  c~bool^c
+                ]~list(bool)
+              )~list(bool)^add_list,
+              __result__~list(bool)^__result__
+            )~list(bool)^conditional,
+            // Result
+            __result__~list(bool)^__result__)~list(bool)
+        ]~list(list(bool)),
+        [
+          __comprehension__(
+            // Variable
+            c,
+            // Target
+            {}~map(bool, dyn),
+            // Accumulator
+            __result__,
+            // Init
+            []~list(bool),
+            // LoopCondition
+            true~bool,
+            // LoopStep
+            _?_:_(
+              c~bool^c,
+              _+_(
+                __result__~list(bool)^__result__,
+                [
+                  c~bool^c
+                ]~list(bool)
+              )~list(bool)^add_list,
+              __result__~list(bool)^__result__
+            )~list(bool)^conditional,
+            // Result
+            __result__~list(bool)^__result__)~list(bool)
+        ]~list(list(bool))
+      )~list(list(bool))^add_list`,
+    },
+    // TODO: TestAllTypes proto2 doesn't have a nestedgroup field
+    // {
+    //   in: 'type(testAllTypes.nestedgroup.nested_id) == int',
+    //   env: () => {
+    //     const env = getDefaultEnvironment();
+    //     env.addIdent(
+    //       newVariableDecl(
+    //         'testAllTypes',
+    //         newObjectType('google.api.expr.test.v1.proto2.TestAllTypes')
+    //       )
+    //     );
+    //     return env;
+    //   },
+    //   outType: BoolType,
+    //   out: `_==_(
+    //     type(
+    //       testAllTypes~google.api.expr.test.v1.proto2.TestAllTypes^testAllTypes.nestedgroup~google.api.expr.test.v1.proto2.TestAllTypes.NestedGroup.nested_id~int
+    //     )~type(int)^type,
+    //     int~type(int)^int
+    //   )~bool^equals`,
+    // },
+    {
+      in: `a.?b`,
+      parserOpts: { enableOptionalSyntax: true },
+      env: () => {
+        const env = getDefaultEnvironment();
+        env.addIdent(newVariableDecl('a', newMapType(StringType, StringType)));
+        return env;
+      },
+      outType: newOptionalType(StringType),
+      out: `_?._(
+        a~map(string, string)^a,
+        "b"
+      )~optional_type(string)^select_optional_field`,
+    },
+    // TODO: optional types
+    // {
+    //   in: `type(a.?b) == optional_type`,
+    //   parserOpts: { enableOptionalSyntax: true },
+    //   env: () => {
+    //     const env = getDefaultEnvironment();
+    //     env.addIdent(newVariableDecl('a', newMapType(StringType, StringType)));
+    //     return env;
+    //   },
+    //   outType: BoolType,
+    //   out: `_==_(
+    //         type(
+    //           _?._(
+    //             a~map(string, string)^a,
+    //             "b"
+    //           )~optional_type(string)^select_optional_field
+    //         )~type(optional_type(string))^type,
+    //         optional_type~type(optional_type)^optional_type
+    //       )~bool^equals`,
+    // },
   ];
 
   for (const testCase of testCases) {
@@ -1624,7 +2316,11 @@ ERROR: <input>:1:5: undeclared reference to 'x' (in container '')
       const parsed = parser.parse();
       const env = testCase.env
         ? testCase.env()
-        : getDefaultEnvironment(testCase.container);
+        : getDefaultEnvironment(
+            testCase.container,
+            testCase.parserOpts,
+            testCase.checkerOptions
+          );
       const checker = new Checker(parsed, env);
       checker.check();
       if (!testCase.err && checker.errors.errors.length > 0) {
@@ -1661,7 +2357,11 @@ ERROR: <input>:1:5: undeclared reference to 'x' (in container '')
   }
 });
 
-function getDefaultEnvironment(containerName?: string) {
+function getDefaultEnvironment(
+  containerName?: string,
+  parserOptions?: ParserOptions,
+  checkerOptions?: CheckerEnvOptions
+) {
   const container = new Container(containerName);
   const registry = new Registry(
     undefined,
@@ -1675,7 +2375,11 @@ function getDefaultEnvironment(containerName?: string) {
       TestAllTypes_NestedMessageSchemaProto2
     )
   );
-  const env = new Env(container, registry);
+  if (parserOptions?.enableOptionalSyntax === true) {
+    // TODO: optional type
+    registry.registerType(newOpaqueType('optional_type'));
+  }
+  const env = new Env(container, registry, checkerOptions);
   env.addFunctions(
     ...stdFunctions,
     new FunctionDecl({

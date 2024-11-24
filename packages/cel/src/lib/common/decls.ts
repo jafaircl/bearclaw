@@ -12,7 +12,12 @@ import { newFunctionProto, newVarIdentDeclProto } from './pb/decls';
 import { RefVal } from './ref/reference';
 import { ErrorRefVal, isErrorRefVal } from './types/error';
 import { Trait } from './types/traits/trait';
-import { Kind, Type, typeToExprType } from './types/types';
+import {
+  Kind,
+  newTypeTypeWithParam,
+  Type,
+  typeToExprType,
+} from './types/types';
 import { isUnknownRefVal, mergeUnknowns, UnknownRefVal } from './types/unknown';
 import { isUnknownOrError } from './types/utils';
 
@@ -922,7 +927,7 @@ function maybeNoSuchOverload(funcName: string, ...args: RefVal[]) {
  * TypeVariable creates a new type identifier for use within a types.Provider
  */
 export function newTypeVariable(type: Type) {
-  return newVariableDecl(type.typeName(), type);
+  return newVariableDecl(type.typeName(), newTypeTypeWithParam(type));
 }
 
 /**
