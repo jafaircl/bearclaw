@@ -227,6 +227,22 @@ export class Type implements RefType, RefVal {
     return this._runtimeTypeName;
   }
 
+  /**
+   * DeclaredTypeName indicates the fully qualified and parameterized
+   * type-check type name.
+   */
+  declaredTypeName(): string {
+    // if the type itself is neither null, nor dyn, but is assignable to null, then it's a wrapper type.
+    if (
+      this.kind() != Kind.NULL &&
+      !this.isDyn() &&
+      this.isAssignableType(NullType)
+    ) {
+      return `wrapper(${this.typeName()})`;
+    }
+    return this.typeName();
+  }
+
   equal(other: RefVal): RefVal {
     return new BoolRefVal(this.typeName() === other.type().typeName());
   }

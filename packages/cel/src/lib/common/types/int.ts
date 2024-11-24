@@ -154,7 +154,7 @@ export class IntRefVal
   }
 
   equal(other: RefVal): RefVal {
-    if (Number.isNaN(this._value) || Number.isNaN(other.value())) {
+    if (Number.isNaN(this._value) || Number.isNaN(other?.value())) {
       return BoolRefVal.False;
     }
     switch (other.type()) {

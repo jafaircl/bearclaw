@@ -447,7 +447,7 @@ export class Checker {
           if (!this.isAssignable(argTypes[i], BoolType)) {
             this.#errors.reportTypeMismatch(
               args[i].id,
-              this.location(args[i]),
+              this.locationByID(args[i].id),
               BoolType,
               argTypes[i]
             );
@@ -535,8 +535,8 @@ export class Checker {
         elemType = maybeUnwrapOptional(elemType);
         if (!isOpt && !isDyn(elemType)) {
           this.#errors.reportTypeMismatch(
-            e.id,
-            this.location(e),
+            elem.id,
+            this.location(elem),
             newOptionalType(elemType),
             elemType
           );
@@ -574,8 +574,8 @@ export class Checker {
         valType = maybeUnwrapOptional(valType);
         if (!isOpt && !isDyn(valType)) {
           this.#errors.reportTypeMismatch(
-            e.id,
-            this.location(e),
+            val.id,
+            this.location(val),
             newOptionalType(valType),
             valType
           );
@@ -626,7 +626,7 @@ export class Checker {
         this.#errors.reportNotAType(
           e.id,
           this.location(e),
-          ident.type().typeName()
+          ident.type().declaredTypeName()
         );
       } else {
         resultType = ident.type().parameters()[0];
@@ -637,9 +637,13 @@ export class Checker {
         if (isWellKnownType(resultType)) {
           typeName = getWellKnownTypeName(resultType)!;
         } else if (resultType.kind() === Kind.STRUCT) {
-          typeName = resultType.typeName();
+          typeName = resultType.declaredTypeName();
         } else {
-          this.#errors.reportNotAMessageType(e.id, this.location(e), typeName);
+          this.#errors.reportNotAMessageType(
+            e.id,
+            this.location(e),
+            resultType.declaredTypeName()
+          );
           resultType = ErrorType;
         }
       }
@@ -664,8 +668,8 @@ export class Checker {
         valType = maybeUnwrapOptional(valType);
         if (!isOpt && !isDyn(valType)) {
           this.#errors.reportTypeMismatch(
-            e.id,
-            this.location(e),
+            value.id,
+            this.location(value),
             newOptionalType(valType),
             valType
           );

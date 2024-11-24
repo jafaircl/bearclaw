@@ -5,7 +5,7 @@ import { ErrorListener, RecognitionException, Recognizer, Token } from 'antlr4';
 import { ReferenceInfo } from './ast';
 import { Container } from './container';
 import { CELError } from './error';
-import { formatFunctionDeclType } from './format';
+import { formatCELType, formatFunctionDeclType } from './format';
 import { Location } from './location';
 import { Source, TextSource } from './source';
 
@@ -71,9 +71,9 @@ export class Errors {
     return this.reportErrorAtId(
       id,
       location,
-      `expected type '${expected?.typeName() ?? 'null'}' but found '${
-        actual?.typeName() ?? 'null'
-      }'`
+      `expected type '${formatCELType(expected)}' but found '${formatCELType(
+        actual
+      )}'`
     );
   }
 

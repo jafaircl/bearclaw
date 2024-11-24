@@ -23,6 +23,7 @@ import {
   stdFunctions,
   stdTypes,
 } from '../common/stdlib';
+import { OptionalType } from '../common/types/optional';
 import { Registry } from '../common/types/provider';
 import {
   BoolType,
@@ -52,11 +53,13 @@ interface TestCase {
   in: string;
   out?: string;
   outType?: Type;
-  env?: () => Env;
+  env?: (
+    container?: string,
+    options?: ParserOptions & CheckerEnvOptions
+  ) => Env;
   err?: string;
-  parserOpts?: ParserOptions;
+  options?: ParserOptions & CheckerEnvOptions;
   container?: string;
-  checkerOptions?: CheckerEnvOptions;
 }
 
 describe('Checker', () => {
@@ -275,8 +278,8 @@ ERROR: <input>:1:40: undefined field 'undefined'
       out: `
 _==_(size(x~list(int)^x)~int^size_list, x~list(int)^x.size()~int^list_size)
 ~bool^equals`,
-      env: () => {
-        const env = getDefaultEnvironment();
+      env: (cont, opts) => {
+        const env = getDefaultEnvironment(cont, opts);
         env.addIdent(new VariableDecl('x', newListType(IntType)));
         return env;
       },
@@ -448,8 +451,8 @@ ERROR: <input>:1:2: unexpected failed resolution of 'google.api.expr.test.v1.pro
       in: `size([] + [1])`,
       out: `size(_+_([]~list(int), [1~int]~list(int))~list(int)^add_list)~int^size_list`,
       outType: IntType,
-      env: () => {
-        const env = getDefaultEnvironment();
+      env: (cont, opts) => {
+        const env = getDefaultEnvironment(cont, opts);
         env.addIdents(
           newVariableDecl(
             'x',
@@ -503,8 +506,8 @@ ERROR: <input>:1:2: unexpected failed resolution of 'google.api.expr.test.v1.pro
             )~bool^equals
         )~bool^logical_and
     )~bool^logical_and`,
-      env: () => {
-        const env = getDefaultEnvironment();
+      env: (cont, opts) => {
+        const env = getDefaultEnvironment(cont, opts);
         env.addIdents(
           newVariableDecl('x', newObjectType('google.protobuf.Struct')),
           newVariableDecl('y', newObjectType('google.protobuf.ListValue')),
@@ -517,8 +520,8 @@ ERROR: <input>:1:2: unexpected failed resolution of 'google.api.expr.test.v1.pro
     {
       in: `x + y`,
       out: ``,
-      env: () => {
-        const env = getDefaultEnvironment();
+      env: (cont, opts) => {
+        const env = getDefaultEnvironment(cont, opts);
         env.addIdents(
           newVariableDecl(
             'x',
@@ -538,8 +541,8 @@ ERROR: <input>:1:3: found no matching overload for '_+_' applied to '(list(googl
     },
     {
       in: `x[1u]`,
-      env: () => {
-        const env = getDefaultEnvironment();
+      env: (cont, opts) => {
+        const env = getDefaultEnvironment(cont, opts);
         env.addIdents(
           newVariableDecl(
             'x',
@@ -558,8 +561,8 @@ ERROR: <input>:1:2: found no matching overload for '_[_]' applied to '(list(goog
     },
     {
       in: `(x + x)[1].single_int32 == size(x)`,
-      env: () => {
-        const env = getDefaultEnvironment();
+      env: (cont, opts) => {
+        const env = getDefaultEnvironment(cont, opts);
         env.addIdent(
           newVariableDecl(
             'x',
@@ -586,8 +589,8 @@ _==_(_[_](_+_(x~list(google.api.expr.test.v1.proto3.TestAllTypes)^x,
     },
     {
       in: `x.repeated_int64[x.single_int32] == 23`,
-      env: () => {
-        const env = getDefaultEnvironment();
+      env: (cont, opts) => {
+        const env = getDefaultEnvironment(cont, opts);
         env.addIdent(
           newVariableDecl(
             'x',
@@ -606,8 +609,8 @@ _==_(_[_](x~google.api.expr.test.v1.proto3.TestAllTypes^x.repeated_int64~list(in
     },
     {
       in: `size(x.map_int64_nested_type) == 0`,
-      env: () => {
-        const env = getDefaultEnvironment();
+      env: (cont, opts) => {
+        const env = getDefaultEnvironment(cont, opts);
         env.addIdent(
           newVariableDecl(
             'x',
@@ -627,8 +630,8 @@ _==_(size(x~google.api.expr.test.v1.proto3.TestAllTypes^x.map_int64_nested_type
     },
     {
       in: `x.all(y, y == true)`,
-      env: () => {
-        const env = getDefaultEnvironment();
+      env: (cont, opts) => {
+        const env = getDefaultEnvironment(cont, opts);
         env.addIdent(newVariableDecl('x', BoolType));
         return env;
       },
@@ -663,8 +666,8 @@ _==_(size(x~google.api.expr.test.v1.proto3.TestAllTypes^x.map_int64_nested_type
     },
     {
       in: `x.repeated_int64.map(x, double(x))`,
-      env: () => {
-        const env = getDefaultEnvironment();
+      env: (cont, opts) => {
+        const env = getDefaultEnvironment(cont, opts);
         env.addIdent(
           newVariableDecl(
             'x',
@@ -701,8 +704,8 @@ _==_(size(x~google.api.expr.test.v1.proto3.TestAllTypes^x.map_int64_nested_type
     },
     {
       in: `x.repeated_int64.map(x, x > 0, double(x))`,
-      env: () => {
-        const env = getDefaultEnvironment();
+      env: (cont, opts) => {
+        const env = getDefaultEnvironment(cont, opts);
         env.addIdent(
           newVariableDecl(
             'x',
@@ -746,8 +749,8 @@ __comprehension__(
     },
     {
       in: `x[2].single_int32 == 23`,
-      env: () => {
-        const env = getDefaultEnvironment();
+      env: (cont, opts) => {
+        const env = getDefaultEnvironment(cont, opts);
         env.addIdent(
           newVariableDecl(
             'x',
@@ -767,8 +770,8 @@ ERROR: <input>:1:2: found no matching overload for '_[_]' applied to '(map(strin
     },
     {
       in: `x["a"].single_int32 == 23`,
-      env: () => {
-        const env = getDefaultEnvironment();
+      env: (cont, opts) => {
+        const env = getDefaultEnvironment(cont, opts);
         env.addIdent(
           newVariableDecl(
             'x',
@@ -792,8 +795,8 @@ ERROR: <input>:1:2: found no matching overload for '_[_]' applied to '(map(strin
     },
     {
       in: `x.single_nested_message.bb == 43 && has(x.single_nested_message)`,
-      env: () => {
-        const env = getDefaultEnvironment();
+      env: (cont, opts) => {
+        const env = getDefaultEnvironment(cont, opts);
         env.addIdent(
           newVariableDecl(
             'x',
@@ -814,8 +817,8 @@ ERROR: <input>:1:2: found no matching overload for '_[_]' applied to '(map(strin
     },
     {
       in: `x.single_nested_message.undefined == x.undefined && has(x.single_int32) && has(x.repeated_int32)`,
-      env: () => {
-        const env = getDefaultEnvironment();
+      env: (cont, opts) => {
+        const env = getDefaultEnvironment(cont, opts);
         env.addIdent(
           newVariableDecl(
             'x',
@@ -834,8 +837,8 @@ ERROR: <input>:1:39: undefined field 'undefined'
     },
     {
       in: `x.single_nested_message != null`,
-      env: () => {
-        const env = getDefaultEnvironment();
+      env: (cont, opts) => {
+        const env = getDefaultEnvironment(cont, opts);
         env.addIdent(
           newVariableDecl(
             'x',
@@ -854,8 +857,8 @@ ERROR: <input>:1:39: undefined field 'undefined'
     },
     {
       in: `x.single_int64 != null`,
-      env: () => {
-        const env = getDefaultEnvironment();
+      env: (cont, opts) => {
+        const env = getDefaultEnvironment(cont, opts);
         env.addIdent(
           newVariableDecl(
             'x',
@@ -872,8 +875,8 @@ ERROR: <input>:1:16: found no matching overload for '_!=_' applied to '(int, nul
     },
     {
       in: `x.single_int64_wrapper == null`,
-      env: () => {
-        const env = getDefaultEnvironment();
+      env: (cont, opts) => {
+        const env = getDefaultEnvironment(cont, opts);
         env.addIdent(
           newVariableDecl(
             'x',
@@ -900,8 +903,8 @@ ERROR: <input>:1:16: found no matching overload for '_!=_' applied to '(int, nul
     && x.single_string_wrapper == 'hi'
     && x.single_uint32_wrapper == 1u
     && x.single_uint64_wrapper != 42u`,
-      env: () => {
-        const env = getDefaultEnvironment();
+      env: (cont, opts) => {
+        const env = getDefaultEnvironment(cont, opts);
         env.addIdent(
           newVariableDecl(
             'x',
@@ -965,8 +968,8 @@ ERROR: <input>:1:16: found no matching overload for '_!=_' applied to '(int, nul
     {
       in: `x.single_timestamp == google.protobuf.Timestamp{seconds: 20} &&
          x.single_duration < google.protobuf.Duration{seconds: 10}`,
-      env: () => {
-        const env = getDefaultEnvironment();
+      env: (cont, opts) => {
+        const env = getDefaultEnvironment(cont, opts);
         env.addIdent(
           newVariableDecl(
             'x',
@@ -988,8 +991,8 @@ ERROR: <input>:1:16: found no matching overload for '_!=_' applied to '(int, nul
         && x.single_string_wrapper == google.protobuf.Value{string_value: 'hi'}
         && x.single_uint32_wrapper == google.protobuf.UInt32Value{value: 1u}
         && x.single_uint64_wrapper != google.protobuf.UInt64Value{value: 42u}`,
-      env: () => {
-        const env = getDefaultEnvironment();
+      env: (cont, opts) => {
+        const env = getDefaultEnvironment(cont, opts);
         env.addIdent(
           newVariableDecl(
             'x',
@@ -1003,8 +1006,8 @@ ERROR: <input>:1:16: found no matching overload for '_!=_' applied to '(int, nul
 
     {
       in: `x.repeated_int64.exists(y, y > 10) && y < 5`,
-      env: () => {
-        const env = getDefaultEnvironment();
+      env: (cont, opts) => {
+        const env = getDefaultEnvironment(cont, opts);
         env.addIdent(
           newVariableDecl(
             'x',
@@ -1019,8 +1022,8 @@ ERROR: <input>:1:16: found no matching overload for '_!=_' applied to '(int, nul
     },
     {
       in: `x.repeated_int64.all(e, e > 0) && x.repeated_int64.exists(e, e < 0) && x.repeated_int64.exists_one(e, e == 0)`,
-      env: () => {
-        const env = getDefaultEnvironment();
+      env: (cont, opts) => {
+        const env = getDefaultEnvironment(cont, opts);
         env.addIdent(
           newVariableDecl(
             'x',
@@ -1113,8 +1116,8 @@ ERROR: <input>:1:16: found no matching overload for '_!=_' applied to '(int, nul
     },
     {
       in: `x.all(e, 0)`,
-      env: () => {
-        const env = getDefaultEnvironment();
+      env: (cont, opts) => {
+        const env = getDefaultEnvironment(cont, opts);
         env.addIdent(
           newVariableDecl(
             'x',
@@ -1162,8 +1165,8 @@ ERROR: <input>:1:10: expected type 'bool' but found 'int'
         // Result
         __result__~list(dyn)^__result__)~list(dyn)`,
       outType: newListType(DynType),
-      env: () => {
-        const env = getDefaultEnvironment();
+      env: (cont, opts) => {
+        const env = getDefaultEnvironment(cont, opts);
         env.addIdent(newVariableDecl('lists', newListType(DynType)));
         return env;
       },
@@ -1204,8 +1207,8 @@ ERROR: <input>:1:5: undeclared reference to 'x' (in container '')
         || x == google.api.expr.test.v1.proto3.TestAllTypes{}
         || y < x
         || x >= x`,
-      env: () => {
-        const env = getDefaultEnvironment();
+      env: (cont, opts) => {
+        const env = getDefaultEnvironment(cont, opts);
         env.addIdents(
           newVariableDecl('x', newObjectType('google.protobuf.Any')),
           newVariableDecl('y', newNullableType(IntType))
@@ -1253,8 +1256,8 @@ ERROR: <input>:1:5: undeclared reference to 'x' (in container '')
         || x == google.api.expr.test.v1.proto3.TestAllTypes{}
         || y < x
         || x >= x`,
-      env: () => {
-        const env = getDefaultEnvironment();
+      env: (cont, opts) => {
+        const env = getDefaultEnvironment(cont, opts);
         env.addIdents(
           newVariableDecl('x', newObjectType('google.protobuf.Any')),
           newVariableDecl('y', newNullableType(IntType))
@@ -1322,8 +1325,8 @@ ERROR: <input>:1:5: undeclared reference to 'x' (in container '')
     },
     {
       in: `myfun(1, true, 3u) + 1.myfun(false, 3u).myfun(true, 42u)`,
-      env: () => {
-        const env = getDefaultEnvironment();
+      env: (cont, opts) => {
+        const env = getDefaultEnvironment(cont, opts);
         env.addFunctions(
           new FunctionDecl({
             name: 'myfun',
@@ -1362,8 +1365,8 @@ ERROR: <input>:1:5: undeclared reference to 'x' (in container '')
     },
     {
       in: `size(x) > 4`,
-      env: () => {
-        const env = getDefaultEnvironment();
+      env: (cont, opts) => {
+        const env = getDefaultEnvironment(cont, opts);
         env.addIdent(newVariableDecl('x', newListType(IntType)));
         env.addFunctions(
           new FunctionDecl({
@@ -1385,8 +1388,8 @@ ERROR: <input>:1:5: undeclared reference to 'x' (in container '')
     },
     {
       in: `x.single_int64_wrapper + 1 != 23`,
-      env: () => {
-        const env = getDefaultEnvironment();
+      env: (cont, opts) => {
+        const env = getDefaultEnvironment(cont, opts);
         env.addIdent(
           newVariableDecl(
             'x',
@@ -1407,8 +1410,8 @@ ERROR: <input>:1:5: undeclared reference to 'x' (in container '')
     },
     {
       in: `x.single_int64_wrapper + y != 23`,
-      env: () => {
-        const env = getDefaultEnvironment();
+      env: (cont, opts) => {
+        const env = getDefaultEnvironment(cont, opts);
         env.addIdents(
           newVariableDecl(
             'x',
@@ -1583,8 +1586,8 @@ ERROR: <input>:1:5: undeclared reference to 'x' (in container '')
         )~list(dyn)^conditional,
         // Result
         __result__~list(dyn)^__result__)~list(dyn)`,
-      env: () => {
-        const env = getDefaultEnvironment();
+      env: (cont, opts) => {
+        const env = getDefaultEnvironment(cont, opts);
         env.addIdent(newVariableDecl('args', newMapType(StringType, DynType)));
         return env;
       },
@@ -1602,8 +1605,8 @@ ERROR: <input>:1:5: undeclared reference to 'x' (in container '')
           0~int
         )~dyn^index_list|index_map
       )~bool^equals`,
-      env: () => {
-        const env = getDefaultEnvironment();
+      env: (cont, opts) => {
+        const env = getDefaultEnvironment(cont, opts);
         env.addIdent(newVariableDecl('a', newTypeParamType('T')));
         return env;
       },
@@ -1616,8 +1619,8 @@ ERROR: <input>:1:5: undeclared reference to 'x' (in container '')
     && !has(pb3.single_int64)
     && !has(pb3.repeated_int32)
     && !has(pb3.map_string_string)`,
-      env: () => {
-        const env = getDefaultEnvironment();
+      env: (cont, opts) => {
+        const env = getDefaultEnvironment(cont, opts);
         env.addIdents(
           newVariableDecl(
             'pb2',
@@ -1689,8 +1692,8 @@ ERROR: <input>:1:5: undeclared reference to 'x' (in container '')
     },
     {
       in: `base64.encode('hello')`,
-      env: () => {
-        const env = getDefaultEnvironment();
+      env: (cont, opts) => {
+        const env = getDefaultEnvironment(cont, opts);
         env.addFunctions(
           new FunctionDecl({
             name: 'base64.encode',
@@ -1714,8 +1717,8 @@ ERROR: <input>:1:5: undeclared reference to 'x' (in container '')
     {
       in: `encode('hello')`,
       container: `base64`,
-      env: () => {
-        const env = getDefaultEnvironment();
+      env: (cont, opts) => {
+        const env = getDefaultEnvironment(cont, opts);
         env.addFunctions(
           new FunctionDecl({
             name: 'encode',
@@ -1751,8 +1754,8 @@ ERROR: <input>:1:5: undeclared reference to 'x' (in container '')
         3~int
       ]~list(int)
     )~set(int)^set_list`,
-      env: () => {
-        const env = getDefaultEnvironment();
+      env: (cont, opts) => {
+        const env = getDefaultEnvironment(cont, opts);
         env.addFunctions(
           new FunctionDecl({
             name: 'set',
@@ -1776,8 +1779,8 @@ ERROR: <input>:1:5: undeclared reference to 'x' (in container '')
 		  set([1~int, 2~int]~list(int))~set(int)^set_list,
 		  set([2~int, 1~int]~list(int))~set(int)^set_list
 		)~bool^equals`,
-      env: () => {
-        const env = getDefaultEnvironment();
+      env: (cont, opts) => {
+        const env = getDefaultEnvironment(cont, opts);
         env.addFunctions(
           new FunctionDecl({
             name: 'set',
@@ -1801,8 +1804,8 @@ ERROR: <input>:1:5: undeclared reference to 'x' (in container '')
       set([1~int, 2~int]~list(int))~set(int)^set_list,
       x~set(int)^x
     )~bool^equals`,
-      env: () => {
-        const env = getDefaultEnvironment();
+      env: (cont, opts) => {
+        const env = getDefaultEnvironment(cont, opts);
         env.addIdent(
           newVariableDecl('x', newOpaqueType('set', newTypeParamType('T')))
         );
@@ -1864,7 +1867,7 @@ ERROR: <input>:1:5: undeclared reference to 'x' (in container '')
     },
     {
       in: `1 <= 1.0 && 1u <= 1.0 && 1.0 <= 1 && 1.0 <= 1u && 1 <= 1u && 1u <= 1`,
-      checkerOptions: { crossTypeNumericComparisons: false },
+      options: { crossTypeNumericComparisons: false },
       err: `
     ERROR: <input>:1:3: found no matching overload for '_<=_' applied to '(int, double)'
      | 1 <= 1.0 && 1u <= 1.0 && 1.0 <= 1 && 1.0 <= 1u && 1 <= 1u && 1u <= 1
@@ -1888,7 +1891,7 @@ ERROR: <input>:1:5: undeclared reference to 'x' (in container '')
     },
     {
       in: `1 <= 1.0 && 1u <= 1.0 && 1.0 <= 1 && 1.0 <= 1u && 1 <= 1u && 1u <= 1`,
-      checkerOptions: { crossTypeNumericComparisons: true },
+      options: { crossTypeNumericComparisons: true },
       outType: BoolType,
       out: `
     _&&_(
@@ -1928,7 +1931,7 @@ ERROR: <input>:1:5: undeclared reference to 'x' (in container '')
     },
     {
       in: `1 < 1.0 && 1u < 1.0 && 1.0 < 1 && 1.0 < 1u && 1 < 1u && 1u < 1`,
-      checkerOptions: { crossTypeNumericComparisons: true },
+      options: { crossTypeNumericComparisons: true },
       outType: BoolType,
       out: `
     _&&_(
@@ -1968,7 +1971,7 @@ ERROR: <input>:1:5: undeclared reference to 'x' (in container '')
     },
     {
       in: `1 > 1.0 && 1u > 1.0 && 1.0 > 1 && 1.0 > 1u && 1 > 1u && 1u > 1`,
-      checkerOptions: { crossTypeNumericComparisons: true },
+      options: { crossTypeNumericComparisons: true },
       outType: BoolType,
       out: `
     _&&_(
@@ -2008,7 +2011,7 @@ ERROR: <input>:1:5: undeclared reference to 'x' (in container '')
     },
     {
       in: `1 >= 1.0 && 1u >= 1.0 && 1.0 >= 1 && 1.0 >= 1u && 1 >= 1u && 1u >= 1`,
-      checkerOptions: { crossTypeNumericComparisons: true },
+      options: { crossTypeNumericComparisons: true },
       outType: BoolType,
       out: `
     _&&_(
@@ -2048,7 +2051,7 @@ ERROR: <input>:1:5: undeclared reference to 'x' (in container '')
     },
     {
       in: `1 >= 1.0 && 1u >= 1.0 && 1.0 >= 1 && 1.0 >= 1u && 1 >= 1u && 1u >= 1`,
-      checkerOptions: { crossTypeNumericComparisons: true },
+      options: { crossTypeNumericComparisons: true },
       // env:     testEnv{variadicASTs: true}, // TODO: enable variadic ASTs
       outType: BoolType,
       out: `
@@ -2134,8 +2137,8 @@ ERROR: <input>:1:5: undeclared reference to 'x' (in container '')
     {
       in: `values.filter(i, i.content != "").map(i, i.content)`,
       outType: newListType(StringType),
-      env: () => {
-        const env = getDefaultEnvironment();
+      env: (cont, opts) => {
+        const env = getDefaultEnvironment(cont, opts);
         env.addIdent(
           newVariableDecl(
             'values',
@@ -2272,9 +2275,9 @@ ERROR: <input>:1:5: undeclared reference to 'x' (in container '')
     // },
     {
       in: `a.?b`,
-      parserOpts: { enableOptionalSyntax: true },
-      env: () => {
-        const env = getDefaultEnvironment();
+      options: { enableOptionalSyntax: true },
+      env: (cont, opts) => {
+        const env = getDefaultEnvironment(cont, opts);
         env.addIdent(newVariableDecl('a', newMapType(StringType, StringType)));
         return env;
       },
@@ -2285,25 +2288,229 @@ ERROR: <input>:1:5: undeclared reference to 'x' (in container '')
       )~optional_type(string)^select_optional_field`,
     },
     // TODO: optional types
-    // {
-    //   in: `type(a.?b) == optional_type`,
-    //   parserOpts: { enableOptionalSyntax: true },
-    //   env: () => {
-    //     const env = getDefaultEnvironment();
-    //     env.addIdent(newVariableDecl('a', newMapType(StringType, StringType)));
-    //     return env;
-    //   },
-    //   outType: BoolType,
-    //   out: `_==_(
-    //         type(
-    //           _?._(
-    //             a~map(string, string)^a,
-    //             "b"
-    //           )~optional_type(string)^select_optional_field
-    //         )~type(optional_type(string))^type,
-    //         optional_type~type(optional_type)^optional_type
-    //       )~bool^equals`,
-    // },
+    {
+      in: `type(a.?b) == optional_type`,
+      options: { enableOptionalSyntax: true },
+      env: (cont, opts) => {
+        const env = getDefaultEnvironment(cont, opts);
+        env.addIdent(newVariableDecl('a', newMapType(StringType, StringType)));
+        return env;
+      },
+      outType: BoolType,
+      out: `_==_(
+            type(
+              _?._(
+                a~map(string, string)^a,
+                "b"
+              )~optional_type(string)^select_optional_field
+            )~type(optional_type(string))^type,
+            optional_type~type(optional_type)^optional_type
+          )~bool^equals`,
+    },
+    {
+      in: `a.b`,
+      env: (cont, opts) => {
+        const env = getDefaultEnvironment(cont, opts);
+        env.addIdent(
+          newVariableDecl(
+            'a',
+            newOptionalType(newMapType(StringType, StringType))
+          )
+        );
+        return env;
+      },
+      outType: newOptionalType(StringType),
+      out: `a~optional_type(map(string, string))^a.b~optional_type(string)`,
+    },
+    {
+      in: `a.dynamic`,
+      env: (cont, opts) => {
+        const env = getDefaultEnvironment(cont, opts);
+        env.addIdent(newVariableDecl('a', newOptionalType(DynType)));
+        return env;
+      },
+      outType: newOptionalType(DynType),
+      out: `a~optional_type(dyn)^a.dynamic~optional_type(dyn)`,
+    },
+    {
+      in: `has(a.dynamic)`,
+      env: (cont, opts) => {
+        const env = getDefaultEnvironment(cont, opts);
+        env.addIdent(newVariableDecl('a', newOptionalType(DynType)));
+        return env;
+      },
+      outType: BoolType,
+      out: `a~optional_type(dyn)^a.dynamic~test-only~~bool`,
+    },
+    {
+      in: `has(a.?b.c)`,
+      env: (cont, opts) => {
+        const env = getDefaultEnvironment(cont, opts);
+        env.addIdent(
+          newVariableDecl('a', newOptionalType(newMapType(StringType, DynType)))
+        );
+        return env;
+      },
+      options: { enableOptionalSyntax: true },
+      outType: BoolType,
+      out: `_?._(
+			a~optional_type(map(string, dyn))^a,
+			"b"
+		  )~optional_type(dyn)^select_optional_field.c~test-only~~bool`,
+    },
+    {
+      in: `{?'key': {'a': 'b'}.?value}`,
+      options: { enableOptionalSyntax: true },
+      outType: newMapType(StringType, StringType),
+      out: `{
+			?"key"~string:_?._(
+			  {
+				"a"~string:"b"~string
+			  }~map(string, string),
+			  "value"
+			)~optional_type(string)^select_optional_field
+		  }~map(string, string)`,
+    },
+
+    {
+      in: `{?'nested': a.b}`,
+      options: { enableOptionalSyntax: true },
+      env: (cont, opts) => {
+        const env = getDefaultEnvironment(cont, opts);
+        env.addIdent(
+          newVariableDecl(
+            'a',
+            newOptionalType(newMapType(StringType, StringType))
+          )
+        );
+        return env;
+      },
+      outType: newMapType(StringType, StringType),
+      out: `{
+			?"nested"~string:a~optional_type(map(string, string))^a.b~optional_type(string)
+		  }~map(string, string)`,
+    },
+    {
+      in: `{?'key': 'hi'}`,
+      options: { enableOptionalSyntax: true },
+      err: `ERROR: <input>:1:10: expected type 'optional_type(string)' but found 'string'
+		| {?'key': 'hi'}
+		| .........^`,
+    },
+    {
+      in: `[?a, ?b, 'world']`,
+      options: { enableOptionalSyntax: true },
+      env: (cont, opts) => {
+        const env = getDefaultEnvironment(cont, opts);
+        env.addIdents(
+          newVariableDecl('a', newOptionalType(StringType)),
+          newVariableDecl('b', newOptionalType(StringType))
+        );
+        return env;
+      },
+      outType: newListType(StringType),
+      out: `[
+			a~optional_type(string)^a,
+			b~optional_type(string)^b,
+			"world"~string
+		  ]~list(string)`,
+    },
+    {
+      in: `[?'value']`,
+      options: { enableOptionalSyntax: true },
+      err: `ERROR: <input>:1:3: expected type 'optional_type(string)' but found 'string'
+		| [?'value']
+		| ..^`,
+    },
+    {
+      in: `TestAllTypes{?single_int32: {}.?i}`,
+      container: 'google.api.expr.test.v1.proto2',
+      options: { enableOptionalSyntax: true },
+      out: `google.api.expr.test.v1.proto2.TestAllTypes{
+			?single_int32:_?._(
+			  {}~map(dyn, int),
+			  "i"
+			)~optional_type(int)^select_optional_field
+		  }~google.api.expr.test.v1.proto2.TestAllTypes^google.api.expr.test.v1.proto2.TestAllTypes`,
+      outType: newObjectType('google.api.expr.test.v1.proto2.TestAllTypes'),
+    },
+    {
+      in: `TestAllTypes{?single_int32: 1}`,
+      container: 'google.api.expr.test.v1.proto2',
+      options: { enableOptionalSyntax: true },
+      err: `ERROR: <input>:1:29: expected type 'optional_type(int)' but found 'int'
+		| TestAllTypes{?single_int32: 1}
+		| ............................^`,
+    },
+    {
+      in: `undef`,
+      err: `ERROR: <input>:1:1: undeclared reference to 'undef' (in container '')
+			| undef
+			| ^`,
+    },
+    {
+      in: `undef()`,
+      err: `ERROR: <input>:1:6: undeclared reference to 'undef' (in container '')
+			| undef()
+			| .....^`,
+    },
+    {
+      in: `null_int == null || null == null_int || null_msg == null || null == null_msg`,
+      env: (cont, opts) => {
+        const env = getDefaultEnvironment(cont, opts);
+        env.addIdents(
+          newVariableDecl('null_int', newNullableType(IntType)),
+          newVariableDecl(
+            'null_msg',
+            newNullableType(
+              newObjectType('google.api.expr.test.v1.proto2.TestAllTypes')
+            )
+          )
+        );
+        return env;
+      },
+      outType: BoolType,
+    },
+    {
+      in: `NotAMessage{}`,
+      env: (cont, opts) => {
+        const env = getDefaultEnvironment(cont, opts);
+        env.addIdents(newVariableDecl('NotAMessage', newNullableType(IntType)));
+        return env;
+      },
+      err: `ERROR: <input>:1:12: 'wrapper(int)' is not a type
+			| NotAMessage{}
+			| ...........^`,
+    },
+    {
+      in: `{}.map(c,[c,type(c)])`,
+      out: `__comprehension__(
+				// Variable
+				c,
+				// Target
+				{}~map(dyn, dyn),
+				// Accumulator
+				__result__,
+				// Init
+				[]~list(list(dyn)),
+				// LoopCondition
+				true~bool,
+				// LoopStep
+				_+_(
+				  __result__~list(list(dyn))^__result__,
+				  [
+					[
+					  c~dyn^c,
+					  type(
+						c~dyn^c
+					  )~type(dyn)^type
+					]~list(dyn)
+				  ]~list(list(dyn))
+				)~list(list(dyn))^add_list,
+				// Result
+				__result__~list(list(dyn))^__result__)~list(list(dyn))`,
+      outType: newListType(newListType(DynType)),
+    },
   ];
 
   for (const testCase of testCases) {
@@ -2311,16 +2518,13 @@ ERROR: <input>:1:5: undeclared reference to 'x' (in container '')
       const source = new TextSource(testCase.in);
       const parser = new Parser(
         source,
-        testCase.parserOpts ?? { maxRecursionDepth: 32 }
+        testCase.options ?? { maxRecursionDepth: 32 }
       );
       const parsed = parser.parse();
       const env = testCase.env
-        ? testCase.env()
-        : getDefaultEnvironment(
-            testCase.container,
-            testCase.parserOpts,
-            testCase.checkerOptions
-          );
+        ? testCase.env(testCase.container, testCase.options)
+        : getDefaultEnvironment(testCase.container, testCase.options);
+
       const checker = new Checker(parsed, env);
       checker.check();
       if (!testCase.err && checker.errors.errors.length > 0) {
@@ -2359,8 +2563,7 @@ ERROR: <input>:1:5: undeclared reference to 'x' (in container '')
 
 function getDefaultEnvironment(
   containerName?: string,
-  parserOptions?: ParserOptions,
-  checkerOptions?: CheckerEnvOptions
+  options?: ParserOptions & CheckerEnvOptions
 ) {
   const container = new Container(containerName);
   const registry = new Registry(
@@ -2375,11 +2578,10 @@ function getDefaultEnvironment(
       TestAllTypes_NestedMessageSchemaProto2
     )
   );
-  if (parserOptions?.enableOptionalSyntax === true) {
-    // TODO: optional type
-    registry.registerType(newOpaqueType('optional_type'));
+  if (options?.enableOptionalSyntax === true) {
+    registry.registerType(OptionalType);
   }
-  const env = new Env(container, registry, checkerOptions);
+  const env = new Env(container, registry, options);
   env.addFunctions(
     ...stdFunctions,
     new FunctionDecl({

@@ -160,7 +160,7 @@ export class UintRefVal
   compare(other: RefVal): RefVal {
     if (
       Number.isNaN(Number(this._value)) ||
-      Number.isNaN(Number(other.value()))
+      Number.isNaN(Number(other?.value()))
     ) {
       return new ErrorRefVal('NaN values cannot be ordered');
     }

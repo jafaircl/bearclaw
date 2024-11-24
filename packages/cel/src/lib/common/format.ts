@@ -115,7 +115,7 @@ export function formatCELType(t: Type): string {
       break;
   }
   if (t.parameters().length === 0) {
-    return t.typeName();
+    return t.declaredTypeName();
   }
   const paramTypeNames = t.parameters().map((p) => formatCELType(p));
   return `${t.typeName()}(${paramTypeNames.join(', ')})`;
