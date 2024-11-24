@@ -1,11 +1,26 @@
-# cel
+# Common Expression Library
 
-This library was generated with [Nx](https://nx.dev).
+Note: This library intends to be a one to one port of [`cel-go`](https://github.com/google/cel-go). But, there may be differences caused by the limitations TypeScript/JavaScript compared to other CEL implementations. For instance, non-decimal doubles may lose precision after `2^53-1` as that is a limitation of the JavaScript lanaguage.
 
-## Building
+The Common Expression Language (CEL) is a non-Turing complete language designed
+for simplicity, speed, safety, and portability. CEL's C-like [syntax][1] looks
+nearly identical to equivalent expressions in C++, Go, Java, and TypeScript.
 
-Run `nx build cel` to build the library.
+```java
+// Check whether a resource name starts with a group name.
+resource.name.startsWith("/groups/" + auth.claims.group)
+```
 
-## Running unit tests
+```go
+// Determine whether the request is in the permitted time window.
+request.time - resource.age < duration("24h")
+```
 
-Run `nx test cel` to execute the unit tests via [Vitest](https://vitest.dev/).
+```typescript
+// Check whether all resource names in a list match a given filter.
+auth.claims.email_verified && resources.all(r, r.startsWith(auth.claims.email))
+```
+
+A CEL "program" is a single expression. The examples have been tagged as
+`java`, `go`, and `typescript` within the markdown to showcase the commonality
+of the syntax.
