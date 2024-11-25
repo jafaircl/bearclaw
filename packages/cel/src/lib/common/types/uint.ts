@@ -26,11 +26,13 @@ import {
   UintType,
 } from './types';
 
+export const MAX_UINT64 = BigInt(2) ** BigInt(64) - BigInt(1);
+
 export function isValidUint32(value: number) {
   return (
     !Number.isNaN(value) &&
     value >= 0 &&
-    value <= Number.MAX_SAFE_INTEGER &&
+    value <= MAX_UINT64 &&
     value <= Infinity
   );
 }
@@ -39,7 +41,7 @@ export function isValidUint64(value: bigint) {
   return (
     !Number.isNaN(value) &&
     value >= BigInt(0) &&
-    value <= MAX_INT64 &&
+    value <= MAX_UINT64 &&
     value <= Infinity
   );
 }

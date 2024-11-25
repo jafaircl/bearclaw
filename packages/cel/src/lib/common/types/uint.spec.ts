@@ -11,7 +11,7 @@ import { ErrorRefVal } from './error';
 import { IntRefVal, MAX_INT64 } from './int';
 import { StringRefVal } from './string';
 import { DoubleType, IntType, StringType, TypeType, UintType } from './types';
-import { UintRefVal } from './uint';
+import { MAX_UINT64, UintRefVal } from './uint';
 
 describe('uint', () => {
   it('convertUint64ValueToNative', () => {
@@ -86,12 +86,12 @@ describe('uint', () => {
         out: new StringRefVal('5848'),
       },
       {
-        in: new UintRefVal(MAX_INT64 + BigInt(1)),
+        in: new UintRefVal(MAX_UINT64 + BigInt(1)),
         type: IntType,
         out: ErrorRefVal.errIntOverflow,
       },
       {
-        in: new UintRefVal(MAX_INT64 + BigInt(1)),
+        in: new UintRefVal(MAX_UINT64 + BigInt(1)),
         type: UintType,
         out: ErrorRefVal.errUintOverflow,
       },

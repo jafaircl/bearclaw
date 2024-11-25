@@ -675,8 +675,7 @@ const testCases: TestInfo[] = [
       [BigInt(3), new Location(1, 4)],
     ]),
   },
-  // TODO: Parse error tests
-  // // Parse error tests
+  // Parse error tests
   {
     I: `0xFFFFFFFFFFFFFFFFF`,
     E: `ERROR: <input>:1:1: invalid int literal
