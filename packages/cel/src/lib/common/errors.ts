@@ -17,6 +17,10 @@ export class Errors {
     public readonly maxErrorsToReport = 100
   ) {}
 
+  public length() {
+    return this.errors.length;
+  }
+
   public reportError(location: Location, message: string) {
     this.reportErrorAtId(BigInt(0), location, message);
   }

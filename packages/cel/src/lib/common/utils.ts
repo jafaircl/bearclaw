@@ -136,6 +136,8 @@ export function safeParseInt(
 /**
  * SafeParseFloat parses a string into a float, ensuring that the value fits
  * within the specified number of bits.
+ *
+ * TODO: this probably cannot actually parse a 64 bit float since JS loses precision past 2^53
  */
 export function safeParseFloat(
   input: string,
