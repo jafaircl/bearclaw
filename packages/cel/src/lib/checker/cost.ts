@@ -286,10 +286,10 @@ export class CostEstimate {
    *
    * If multiply would result in an uint64 overflow, the result is math.MaxUint64.
    */
-  multiply(factor: number): CostEstimate {
+  multiply(cost: CostEstimate): CostEstimate {
     return new CostEstimate(
-      multiplyByCostFactor(this.min, factor),
-      multiplyByCostFactor(this.max, factor)
+      multiplyUint64NoOverflow(this.min, cost.min),
+      multiplyUint64NoOverflow(this.max, cost.max)
     );
   }
 
@@ -343,13 +343,17 @@ function multiplyUint64NoOverflow(x: bigint, y: bigint): bigint {
  * the nearest integer value, rounded up.
  */
 function multiplyByCostFactor(x: bigint, y: number): bigint {
+  // Handle edge cases with very large numbers using BigInt
+  if (x === BigInt(0) || y === 0) {
+    return BigInt(0);
+  }
   // TODO: don't love this. Will probably lose precision.
   const xFloat = Number(x);
   if (xFloat > 0 && y > 0 && xFloat > Number(MAX_UINT64) / y) {
     return MAX_UINT64;
   }
   const ceil = Math.ceil(xFloat * y);
-  if (ceil >= MAX_UINT64) {
+  if (ceil >= BigInt(2) ** BigInt(64)) {
     return MAX_UINT64;
   }
   return BigInt(ceil);
@@ -837,7 +841,6 @@ export class Coster {
       case STARTS_WITH_STRING_OVERLOAD:
       case ENDS_WITH_STRING_OVERLOAD:
         if (args.length === 1) {
-          // ResultSize max is when each char is escaped. 2 quote chars always added.
           return new CallEstimate(
             this.#sizeEstimate(args[0])
               .multiplyByCostFactor(StringTraversalCostFactor)

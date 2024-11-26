@@ -6,7 +6,10 @@ import {
 } from '@buf/cel_spec.bufbuild_es/proto/test/v1/proto3/test_all_types_pb.js';
 import { Container } from '../common/container';
 import { newVariableDecl, VariableDecl } from '../common/decls';
-import { TIMESTAMP_TO_YEAR_OVERLOAD } from '../common/overloads';
+import {
+  CONTAINS_STRING_OVERLOAD,
+  TIMESTAMP_TO_YEAR_OVERLOAD,
+} from '../common/overloads';
 import { TextSource } from '../common/source';
 import { stdFunctions, stdTypes } from '../common/stdlib';
 import { Registry } from '../common/types/provider';
@@ -332,7 +335,6 @@ describe('cost', () => {
     //   hints: new Map([['input', BigInt(500)]]),
     //   wanted: new CostEstimate(BigInt(3), BigInt(103)),
     // },
-
     {
       name: 'startsWith',
       expr: `input.startsWith(arg1)`,
@@ -455,27 +457,40 @@ describe('cost', () => {
       ]),
       wanted: new CostEstimate(BigInt(2), BigInt(6)),
     },
-    // {
-    //     name: "str concat custom cost estimate",
-    //     expr: `"abcdefg".contains(str1 + str2)`,
-    //     vars: []*decls.VariableDecl{
-    //         decls.NewVariable("str1", types.StringType),
-    //         decls.NewVariable("str2", types.StringType),
-    //     },
-    //     hints: map[string]uint64{"str1": 10, "str2": 10},
-    //     options: []CostOption{
-    //         OverloadCostEstimate(overloads.ContainsString,
-    //             func(estimator CostEstimator, target *AstNode, args []AstNode) *CallEstimate {
-    //                 if target != nil && len(args) == 1 {
-    //                     strSize := estimateSize(estimator, *target).MultiplyByCostFactor(0.2)
-    //                     subSize := estimateSize(estimator, args[0]).MultiplyByCostFactor(0.2)
-    //                     return &CallEstimate{CostEstimate: strSize.Multiply(subSize)}
-    //                 }
-    //                 return nil
-    //             }),
-    //     },
-    //     wanted: CostEstimate{Min: 2, Max: 12},
-    // },
+    {
+      name: 'str concat custom cost estimate',
+      expr: `"abcdefg".contains(str1 + str2)`,
+      vars: [
+        newVariableDecl('str1', StringType),
+        newVariableDecl('str2', StringType),
+      ],
+      hints: new Map([
+        ['str1', BigInt(10)],
+        ['str2', BigInt(10)],
+      ]),
+      options: {
+        overloadCostEstimates: new Map([
+          [
+            CONTAINS_STRING_OVERLOAD,
+            (estimator, target, args) => {
+              if (!isNil(target) && args.length === 1) {
+                const strSize = estimateSize(
+                  estimator,
+                  target
+                ).multiplyByCostFactor(0.2);
+                const subSize = estimateSize(
+                  estimator,
+                  args[0]
+                ).multiplyByCostFactor(0.2);
+                return new CallEstimate(strSize.multiply(subSize));
+              }
+              return new CallEstimate(zeroCost);
+            },
+          ],
+        ]),
+      },
+      wanted: new CostEstimate(BigInt(2), BigInt(12)),
+    },
     // {
     //   name: 'list size comparison',
     //   expr: `list1.size() == list2.size()`,
@@ -658,4 +673,16 @@ class TestEstimator implements CostEstimator {
         return null;
     }
   }
+}
+
+function estimateSize(estimator: CostEstimator, node: AstNode): SizeEstimate {
+  const computed = node.computedSize();
+  if (!isNil(computed)) {
+    return computed;
+  }
+  const estimated = estimator.estimateSize(node);
+  if (!isNil(estimated)) {
+    return estimated;
+  }
+  return new SizeEstimate(BigInt(0), MAX_UINT64);
 }
