@@ -1,5 +1,5 @@
 import { isBigInt, isNil, isNumber } from '@bearclaw/is';
-import { RefType, RefVal } from '../ref/reference';
+import { isRefVal, RefType, RefVal } from '../ref/reference';
 import { NativeType, reflectNativeType } from './native';
 import { UnknownType } from './types';
 
@@ -244,6 +244,9 @@ export class UnknownRefVal implements RefVal {
  * *types.Unknown
  */
 export function isUnknownRefVal(val: RefVal): val is UnknownRefVal {
+  if (!isRefVal(val)) {
+    return false;
+  }
   return val.type() === UnknownType;
 }
 

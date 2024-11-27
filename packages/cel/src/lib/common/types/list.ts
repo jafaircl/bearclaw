@@ -279,7 +279,7 @@ class ListIterator extends BaseIterator implements Iterator {
  * IndexOrError converts an input index value into either a lossless integer
  * index or an error.
  */
-function indexOrError(index: RefVal): IntRefVal | ErrorRefVal {
+export function indexOrError(index: RefVal): IntRefVal | ErrorRefVal {
   let retval: IntRefVal | null = null;
   switch (index.type()) {
     case IntType:

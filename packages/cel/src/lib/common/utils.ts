@@ -28,6 +28,13 @@ export function mapToObject<K extends string | number | symbol, V>(
   return obj;
 }
 
+/**
+ * ObjectToMap is a helper function to convert a record to a map. For use in
+ * cases where a map's structure is complicated and would be easier to define
+ * as a record. The limitation is that only string, number, and symbol keys are
+ * supported. But, a Map can be a value in the record. So, nested maps with
+ * arbitrary keys are still supported.
+ */
 export function objectToMap<K extends string | number | symbol, V>(
   obj: Record<K, V>
 ) {

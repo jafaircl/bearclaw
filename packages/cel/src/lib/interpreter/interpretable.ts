@@ -1,33 +1,31 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
-/* eslint-disable no-case-declarations */
-import { isFunction, isNil, isObject } from '@bearclaw/is';
-import { Value } from '@buf/google_cel-spec.bufbuild_es/cel/expr/value_pb.js';
-import { LOGICAL_OR_OPERATOR } from '../common/operators';
-import { TypeAdapter } from '../common/ref/adapter';
-import { FieldType } from '../common/ref/field-type';
-import { boolValue } from '../common/types/bool';
-import { equalValue } from '../common/types/traits/equaler';
-import { receiver } from '../common/types/traits/receiver';
-import { Trait } from '../common/types/traits/trait';
-import { isZeroValue } from '../common/types/traits/zeroer';
-import { isUnknownValue } from '../common/types/unknown';
-import { valueHasTrait } from '../common/types/value';
+import { isNil } from '@bearclaw/is';
+import { Adapter } from '../common/ref/provider';
+import { RefVal } from '../common/ref/reference';
+import { BoolRefVal } from '../common/types/bool';
+import { labelErrorNode, wrapError } from '../common/types/error';
+import { isOptionalRefVal } from '../common/types/optional';
+import { Type } from '../common/types/types';
+import { isUnknownRefVal, UnknownRefVal } from '../common/types/unknown';
 import { Activation } from './activation';
-import { Attribute, Qualifier } from './attribute-factory';
-import { Cost, Coster } from './coster';
-import { FunctionOp, UnaryOp } from './overload';
+import { Attribute, isConstantQualifier, Qualifier } from './attributes';
 
+/**
+ * Interpretable can accept a given Activation and produce a value along with
+ * an accompanying EvalState which can be used to inspect whether additional
+ * data might be necessary to complete the evaluation.
+ */
 export interface Interpretable {
-  // ID value corresponding to the expression node.
+  /**
+   * ID value corresponding to the expression node.
+   */
   id(): bigint;
 
-  // Eval an Activation to produce an output.
-  eval: (ctx: Activation) => Value | Error;
-}
-
-function isInterpretable(val: any): val is Interpretable {
-  return isObject(val) && isFunction(val['id']) && isFunction(val['eval']);
+  /**
+   * Eval an Activation to produce an output.
+   */
+  eval(activation: Activation): RefVal;
 }
 
 /**
@@ -38,21 +36,14 @@ export interface InterpretableConst extends Interpretable {
   /**
    * Value returns the constant value of the instruction.
    */
-  value(): Value;
-}
-
-function isInterpretableConst(val: any): val is InterpretableConst {
-  return isFunction(val['value']) && isInterpretable(val);
+  value(): RefVal;
 }
 
 /**
  * InterpretableAttribute interface for tracking whether the Interpretable is
  * an attribute.
  */
-export interface InterpretableAttribute
-  extends Interpretable,
-    Qualifier,
-    Attribute {
+export interface InterpretableAttribute extends Interpretable {
   /**
    * Attr returns the Attribute value.
    */
@@ -62,15 +53,46 @@ export interface InterpretableAttribute
    * Adapter returns the type adapter to be used for adapting resolved
    * Attribute values.
    */
-  adapter(): TypeAdapter;
-}
+  adapter(): Adapter;
 
-function isInterpretableAttribute(val: any): val is InterpretableAttribute {
-  return (
-    isFunction(val['attr']) &&
-    isFunction(val['adapter']) &&
-    isInterpretable(val)
-  );
+  /**
+   * AddQualifier proxies the Attribute.AddQualifier method.
+   *
+   * Note, this method may mutate the current attribute state. If the desire is
+   * to clone the Attribute, the Attribute should first be copied before adding
+   * the qualifier. Attributes are not copyable by default, so this is a
+   * capability that would need to be added to the AttributeFactory or
+   * specifically to the underlying Attribute implementation.
+   */
+  addQualifier(qual: Qualifier): Attribute | Error;
+
+  /**
+   * Qualify replicates the Attribute.Qualify method to permit extension and
+   * interception of object qualification.
+   */
+  qualify(vars: Activation, obj: any): any | Error;
+
+  /**
+   * QualifyIfPresent qualifies the object if the qualifier is declared or
+   * defined on the object. The 'presenceOnly' flag indicates that the value is
+   * not necessary, just a boolean status as to whether the qualifier is
+   * present.
+   */
+  qualifyIfPresent(
+    vars: Activation,
+    obj: any,
+    presenceOnly: boolean
+  ): [any | null, boolean, Error | null];
+
+  /**
+   * IsOptional indicates whether the resulting value is an optional type.
+   */
+  isOptional(): boolean;
+
+  /**
+   * Resolve returns the value of the Attribute given the current Activation.
+   */
+  resolve(vars: Activation): any | Error;
 }
 
 /**
@@ -98,386 +120,155 @@ export interface InterpretableCall extends Interpretable {
   args(): Interpretable[];
 }
 
-function isInterpretableCall(val: any) {
-  return (
-    isFunction(val['function']) &&
-    isFunction(val['overloadID']) &&
-    isFunction(val['args']) &&
-    isInterpretable(val)
-  );
+/**
+ * InterpretableConstructor interface for inspecting Interpretable instructions
+ * that initialize a list, map or struct.
+ */
+export interface InterpretableConstructor extends Interpretable {
+  /**
+   * InitVals returns all the list elements, map key and values or struct field
+   * values.
+   */
+  initVals(): Interpretable[];
+
+  /**
+   * Type returns the type constructed.
+   */
+  type(): Type;
 }
 
 // Core Interpretable implementations used during the program planning phase.
 
-export class EvalTestOnly implements Interpretable, Coster {
-  readonly #id: bigint;
-  readonly #op: Interpretable;
-  readonly #field: Value; // string
-  readonly #fieldType: FieldType;
+export class EvalTestOnly implements InterpretableAttribute {
+  #id: bigint;
+  #attr: InterpretableAttribute;
 
-  constructor(
-    id: bigint,
-    op: Interpretable,
-    field: Value,
-    fieldType: FieldType
-  ) {
+  constructor(id: bigint, attr: InterpretableAttribute) {
     this.#id = id;
-    this.#op = op;
-    this.#field = field;
-    this.#fieldType = fieldType;
+    this.#attr = attr;
   }
 
-  id() {
+  attr(): Attribute {
+    return this.#attr.attr();
+  }
+
+  adapter(): Adapter {
+    return this.#attr.adapter();
+  }
+
+  addQualifier(qual: Qualifier): Attribute | Error {
+    if (!isConstantQualifier(qual)) {
+      return new Error(
+        `test only expressions must have constant qualifiers: ${qual}`
+      );
+    }
+    return this.#attr.addQualifier(new TestOnlyQualifier(qual));
+  }
+
+  qualify(vars: Activation, obj: any): any | Error {
+    return this.#attr.qualify(vars, obj);
+  }
+
+  qualifyIfPresent(
+    vars: Activation,
+    obj: any,
+    presenceOnly: boolean
+  ): [any | null, boolean, Error | null] {
+    return this.#attr.qualifyIfPresent(vars, obj, presenceOnly);
+  }
+
+  isOptional(): boolean {
+    return this.#attr.isOptional();
+  }
+
+  resolve(vars: Activation): any | Error {
+    return this.#attr.resolve(vars);
+  }
+
+  id(): bigint {
     return this.#id;
   }
 
-  cost() {
-    const c = Cost.estimateCost(this.#op);
-    return c.add(Cost.OneOne);
-  }
-
-  eval(ctx: Activation) {
-    // Handle field selection on a proto in the most efficient way possible.
-    if (!isNil(this.#fieldType)) {
-      if (isInterpretableAttribute(this.#op)) {
-        const opVal = this.#op.resolve(ctx);
-        if (opVal instanceof Error) {
-          return opVal;
-        }
-        if (this.#fieldType.isSet(opVal)) {
-          return boolValue(true);
-        }
-        return boolValue(false);
-      }
+  eval(activation: Activation): RefVal {
+    const val = this.resolve(activation);
+    if (val instanceof Error) {
+      return labelErrorNode(this.#id, wrapError(val));
     }
-    const obj = this.#op.eval(ctx);
-    if (obj instanceof Error) {
-      return obj;
+    if (isOptionalRefVal(val)) {
+      return new BoolRefVal(val.hasValue());
     }
-    switch (obj.kind.case) {
-      case 'listValue':
-        return boolValue(
-          obj.kind.value.values.some((v) => equalValue(v, this.#field))
-        );
-      case 'mapValue':
-        return boolValue(
-          obj.kind.value.entries.some(
-            (f) => equalValue(f.key!, this.#field) && !isZeroValue(f.value)
-          )
-        );
-      default:
-        return new Error('invalid type for field selection');
-    }
+    return this.adapter().nativeToValue(val);
   }
 }
 
-export class EvalConst implements InterpretableConst, Coster {
-  readonly #id: bigint;
-  readonly #val: Value;
+class TestOnlyQualifier implements Qualifier {
+  #qual: Qualifier;
 
-  constructor(id: bigint, val: Value) {
+  constructor(qual: Qualifier) {
+    this.#qual = qual;
+  }
+
+  id(): bigint {
+    return this.#qual.id();
+  }
+
+  isOptional(): boolean {
+    return this.#qual.isOptional();
+  }
+
+  /**
+   * Qualify determines whether the test-only qualifier is present on the input
+   * object.
+   */
+  qualify(vars: Activation, obj: any): boolean | UnknownRefVal | Error {
+    const [out, present, err] = this.#qual.qualifyIfPresent(vars, obj, false);
+    if (!isNil(err)) {
+      return err;
+    }
+    if (isUnknownRefVal(out)) {
+      return out;
+    }
+    if (isOptionalRefVal(out)) {
+      return out.hasValue();
+    }
+    return present;
+  }
+
+  /**
+   * QualifyIfPresent returns whether the target field in the test-only
+   * expression is present.
+   */
+  qualifyIfPresent(
+    vars: Activation,
+    obj: any,
+    presenceOnly: boolean
+  ): [any | null, boolean, Error | null] {
+    // Only ever test for presence
+    return this.#qual.qualifyIfPresent(vars, obj, true);
+  }
+}
+
+/**
+ * ConstValue creates a new constant valued Interpretable.
+ */
+export class ConstValue implements InterpretableConst {
+  #id: bigint;
+  #val: RefVal;
+
+  constructor(id: bigint, val: RefVal) {
     this.#id = id;
     this.#val = val;
   }
 
-  id() {
+  id(): bigint {
     return this.#id;
   }
 
-  cost() {
-    return Cost.None;
-  }
-
-  eval() {
+  value(): RefVal {
     return this.#val;
   }
 
-  value() {
+  eval(vars: Activation): RefVal {
     return this.#val;
-  }
-}
-
-export class EvalOr implements Interpretable, Coster {
-  readonly #id: bigint;
-  readonly #left: Interpretable;
-  readonly #right: Interpretable;
-
-  constructor(id: bigint, left: Interpretable, right: Interpretable) {
-    this.#id = id;
-    this.#left = left;
-    this.#right = right;
-  }
-
-  id() {
-    return this.#id;
-  }
-
-  cost() {
-    const l = Cost.estimateCost(this.#left);
-    const r = Cost.estimateCost(this.#right);
-    return new Cost(l.min, l.max + r.max + 1);
-  }
-
-  eval(ctx: Activation) {
-    // Short-circuit lhs.
-    const l = this.#left.eval(ctx);
-    if (l instanceof Error) {
-      return l;
-    }
-    if (l.kind.value === true) {
-      return l;
-    }
-    // Short-circuit rhs.
-    const r = this.#right.eval(ctx);
-    if (r instanceof Error) {
-      return r;
-    }
-    if (r.kind.value === true) {
-      return r;
-    }
-    // Return false if both sides are false.
-    if (l.kind.value === false && r.kind.value === false) {
-      return boolValue(false);
-    }
-    // Check for unknown values
-    if (isUnknownValue(l)) {
-      return l;
-    }
-    if (isUnknownValue(r)) {
-      return r;
-    }
-    return new Error(`no such overload for '${LOGICAL_OR_OPERATOR}`);
-  }
-}
-
-export class EvalAnd implements Interpretable, Coster {
-  readonly #id: bigint;
-  readonly #left: Interpretable;
-  readonly #right: Interpretable;
-
-  constructor(id: bigint, left: Interpretable, right: Interpretable) {
-    this.#id = id;
-    this.#left = left;
-    this.#right = right;
-  }
-
-  id() {
-    return this.#id;
-  }
-
-  cost() {
-    const l = Cost.estimateCost(this.#left);
-    const r = Cost.estimateCost(this.#right);
-    return new Cost(l.min, l.max + r.max + 1);
-  }
-
-  eval(ctx: Activation) {
-    // Short-circuit lhs.
-    const l = this.#left.eval(ctx);
-    if (l instanceof Error) {
-      return l;
-    }
-    if (l.kind.value === false) {
-      return l;
-    }
-    // Short-circuit rhs.
-    const r = this.#right.eval(ctx);
-    if (r instanceof Error) {
-      return r;
-    }
-    if (r.kind.value === false) {
-      return r;
-    }
-    // Return true if both sides are true.
-    if (l.kind.value === true && r.kind.value === true) {
-      return boolValue(true);
-    }
-    // Check for unknown values
-    if (isUnknownValue(l)) {
-      return l;
-    }
-    if (isUnknownValue(r)) {
-      return r;
-    }
-    return new Error(`no such overload for '${LOGICAL_OR_OPERATOR}`);
-  }
-}
-
-export class EvalEq implements Interpretable, Coster {
-  readonly #id: bigint;
-  readonly #left: Interpretable;
-  readonly #right: Interpretable;
-
-  constructor(id: bigint, left: Interpretable, right: Interpretable) {
-    this.#id = id;
-    this.#left = left;
-    this.#right = right;
-  }
-
-  id() {
-    return this.#id;
-  }
-
-  cost() {
-    const l = Cost.estimateCost(this.#left);
-    const r = Cost.estimateCost(this.#right);
-    return Cost.OneOne.add(l).add(r);
-  }
-
-  eval(ctx: Activation) {
-    const l = this.#left.eval(ctx);
-    if (l instanceof Error) {
-      return l;
-    }
-    const r = this.#right.eval(ctx);
-    if (r instanceof Error) {
-      return r;
-    }
-    return equalValue(l, r);
-  }
-}
-
-export class EvalNe implements Interpretable, Coster {
-  readonly #id: bigint;
-  readonly #left: Interpretable;
-  readonly #right: Interpretable;
-
-  constructor(id: bigint, left: Interpretable, right: Interpretable) {
-    this.#id = id;
-    this.#left = left;
-    this.#right = right;
-  }
-
-  id() {
-    return this.#id;
-  }
-
-  cost() {
-    const l = Cost.estimateCost(this.#left);
-    const r = Cost.estimateCost(this.#right);
-    return Cost.OneOne.add(l).add(r);
-  }
-
-  eval(ctx: Activation) {
-    const l = this.#left.eval(ctx);
-    if (l instanceof Error) {
-      return l;
-    }
-    const r = this.#right.eval(ctx);
-    if (r instanceof Error) {
-      return r;
-    }
-    const isEqual = equalValue(l, r);
-    if (isEqual instanceof Error) {
-      return isEqual;
-    }
-    return boolValue(!isEqual.kind.value);
-  }
-}
-
-export class EvalZeroArity implements InterpretableCall, Coster {
-  readonly #id: bigint;
-  readonly #fn: string;
-  readonly #overloadID: string;
-  readonly #impl: FunctionOp;
-
-  constructor(id: bigint, fn: string, overloadID: string, impl: FunctionOp) {
-    this.#id = id;
-    this.#fn = fn;
-    this.#overloadID = overloadID;
-    this.#impl = impl;
-  }
-
-  id() {
-    return this.#id;
-  }
-
-  cost() {
-    return Cost.OneOne;
-  }
-
-  eval() {
-    return this.#impl();
-  }
-
-  function() {
-    return this.#fn;
-  }
-
-  overloadID() {
-    return this.#overloadID;
-  }
-
-  args() {
-    return [];
-  }
-}
-
-export class EvalUnary implements InterpretableCall, Coster {
-  readonly #id: bigint;
-  readonly #fn: string;
-  readonly #overloadID: string;
-  readonly #arg: Interpretable;
-  readonly #trait: Trait;
-  readonly #impl: UnaryOp;
-
-  constructor(
-    id: bigint,
-    fn: string,
-    overloadID: string,
-    arg: Interpretable,
-    trait: Trait,
-    impl: FunctionOp
-  ) {
-    this.#id = id;
-    this.#fn = fn;
-    this.#overloadID = overloadID;
-    this.#arg = arg;
-    this.#trait = trait;
-    this.#impl = impl;
-  }
-
-  id() {
-    return this.#id;
-  }
-
-  cost() {
-    return Cost.OneOne.add(Cost.estimateCost(this.#arg));
-  }
-
-  eval(ctx: Activation) {
-    const arg = this.#arg.eval(ctx);
-    if (arg instanceof Error) {
-      return arg;
-    }
-    if (isUnknownValue(arg)) {
-      return arg;
-    }
-    // If the implementation is bound and the argument value has the right
-    // traits required to invoke it, then call the implementation.
-    if (
-      !isNil(this.#impl) &&
-      (isNil(this.#trait) || valueHasTrait(arg, this.#trait))
-    ) {
-      return this.#impl(arg);
-    }
-    // Otherwise, if the argument is a ReceiverType attempt to invoke the
-    // receiver method on the operand (arg0).
-    if (valueHasTrait(arg, Trait.RECEIVER_TYPE)) {
-      return receiver(arg, this.#fn, this.#overloadID);
-    }
-    return new Error(`no such overload for '${this.#fn}'`);
-  }
-
-  function() {
-    return this.#fn;
-  }
-
-  overloadID() {
-    return this.#overloadID;
-  }
-
-  args() {
-    return [this.#arg];
   }
 }

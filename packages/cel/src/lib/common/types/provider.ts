@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable no-case-declarations */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-import { isMap, isNil, isString } from '@bearclaw/is';
+import { isMap, isNil, isPlainObject, isString } from '@bearclaw/is';
 import {
   createMutableRegistry,
   DescEnum,
@@ -33,6 +33,7 @@ import { dequal } from 'dequal';
 import { Adapter, FieldType, Registry as IRegistry } from '../ref/provider';
 import { isRefType, isRefVal, RefType, RefVal } from '../ref/reference';
 import { StandardProtoDescriptors } from '../stdlib';
+import { objectToMap } from '../utils';
 import { BoolRefVal } from './bool';
 import { BytesRefVal } from './bytes';
 import { DoubleRefVal } from './double';
@@ -391,6 +392,10 @@ export function nativeToValue(a: Adapter, value: any): RefVal | null {
   if (isRefVal(value)) {
     return value;
   }
+  // Convert plain objects to maps.
+  if (!isRefVal(value) && !isMessage(value) && isPlainObject(value)) {
+    value = objectToMap(value);
+  }
   switch (reflectNativeType(value)) {
     case Array:
       if (value.every((v: any) => isRefVal(v))) {
@@ -468,3 +473,21 @@ export function nativeToValue(a: Adapter, value: any): RefVal | null {
       return null;
   }
 }
+
+/**
+ * defaultTypeAdapter converts go native types to CEL values.
+ */
+class DefaultTypeAdapter implements Adapter {
+  nativeToValue(value: any): RefVal {
+    return (
+      nativeToValue(this, value) ??
+      ErrorRefVal.unsupportedRefValConversionErr(value)
+    );
+  }
+}
+
+/**
+ * DefaultTypeAdapter adapts canonical CEL types from their equivalent Go
+ * values.
+ */
+export const defaultTypeAdapter = new DefaultTypeAdapter();

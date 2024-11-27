@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { isFunction, isMap, isNil, isPlainObject } from '@bearclaw/is';
+import { isFunction, isMap, isNil } from '@bearclaw/is';
 import { objectToMap } from '../common/utils';
-import { ResolvedValue } from './resolved-value';
+import { AttributePattern } from './attribute-patterns';
 
 /**
  * Activation used to resolve identifiers by name and references by id.
@@ -15,7 +15,7 @@ export interface Activation {
    * ResolveName returns a value from the activation by qualified name, or
    * false if the name could not be found.
    */
-  resolveName<T>(name: string): ResolvedValue<T>;
+  resolveName<T = any>(name: string): T | null;
 
   /**
    * Parent returns the parent of the current activation, may be nil. If
@@ -25,36 +25,48 @@ export interface Activation {
 }
 
 /**
+ * EmptyActivation returns a variable-free activation.
+ */
+export class EmptyActivation implements Activation {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  resolveName(name: string): null {
+    return null;
+  }
+
+  parent() {
+    return null;
+  }
+}
+
+/**
  * mapActivation which implements Activation and maps of named values.
  *
  * Named bindings may lazily supply values by providing a function which
  * accepts no arguments and produces an interface value.
  */
 export class MapActivation implements Activation {
-  #bindings: Map<string, any>;
+  #bindings: Map<any, any>;
 
-  constructor(bindings: Map<string, any> | Record<string, any> = new Map()) {
-    this.#bindings = isMap<string, any>(bindings)
-      ? bindings
-      : objectToMap(bindings);
+  constructor(bindings: Map<any, any> | Record<any, any> = new Map()) {
+    this.#bindings = isMap(bindings) ? bindings : objectToMap(bindings);
   }
 
-  public resolveName<T>(name: string): ResolvedValue<T> {
+  resolveName<T = any>(name: string): T | null {
     if (!this.#bindings.has(name)) {
-      return ResolvedValue.ABSENT as ResolvedValue<T>;
+      return null;
     }
-    let obj: T = this.#bindings.get(name);
+    let obj = this.#bindings.get(name);
     if (isNil(obj)) {
-      return ResolvedValue.NULL_VALUE as ResolvedValue<T>;
+      return null;
     }
     if (isFunction(obj)) {
       obj = obj();
       this.#bindings.set(name, obj);
     }
-    return new ResolvedValue(obj, true);
+    return obj;
   }
 
-  public parent(): Activation | null {
+  parent() {
     return null;
   }
 }
@@ -72,15 +84,15 @@ export class HierarchicalActivation implements Activation {
     this.#child = child;
   }
 
-  public resolveName<T>(name: string): ResolvedValue<T> {
-    const value = this.#child.resolveName<T>(name);
-    if (!isNil(value) && value.present === true) {
+  resolveName<T = any>(name: string): T | null {
+    const value = this.#child.resolveName(name);
+    if (!isNil(value)) {
       return value;
     }
-    return this.#parent.resolveName<T>(name);
+    return this.#parent.resolveName(name);
   }
 
-  public parent(): Activation | null {
+  parent() {
     return this.#parent;
   }
 }
@@ -103,7 +115,7 @@ export class HierarchicalActivation implements Activation {
  * Values which are not represented as ref.Val types on input may be adapted to
  * a ref.Val using the ref.TypeAdapter configured in the environment.
  */
-export function newActivation(bindings: any) {
+export function newActivation(bindings: Map<string, any> | Activation) {
   if (isNil(bindings)) {
     throw new Error('bindings must be non-nil');
   }
@@ -113,7 +125,7 @@ export function newActivation(bindings: any) {
   ) {
     return bindings;
   }
-  if (bindings instanceof Map || isPlainObject(bindings)) {
+  if (isMap<string, any>(bindings)) {
     return new MapActivation(bindings);
   }
   throw new Error(
@@ -122,8 +134,32 @@ export function newActivation(bindings: any) {
 }
 
 /**
- * EmptyActivation returns a variable free activation.
+ * PartialActivation extends the Activation interface with a set of
+ * UnknownAttributePatterns.
  */
-export function emptyActivation() {
-  return newActivation(new Map<string, any>());
+export class PartialActivation implements Activation {
+  private _activation: Activation;
+  private _unknowns: AttributePattern[];
+
+  constructor(activation: Activation, ...unknowns: AttributePattern[]) {
+    this._activation = activation;
+    this._unknowns = unknowns ?? [];
+  }
+
+  resolveName<T = any>(name: string): T | null {
+    return this._activation.resolveName(name);
+  }
+
+  parent() {
+    return this._activation.parent();
+  }
+
+  /**
+   * UnknownAttributePatterns returns a set of AttributePattern values which
+   * match Attribute expressions for data accesses whose values are not yet
+   * known.
+   */
+  unknownAttributePatterns() {
+    return this._unknowns;
+  }
 }

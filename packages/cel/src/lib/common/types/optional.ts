@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { isNil } from '@bearclaw/is';
 import { isRefVal, RefType, RefVal } from '../ref/reference';
@@ -86,3 +87,10 @@ export class OptionalRefVal<T extends RefVal = RefVal> implements RefVal {
  * value.
  */
 export const OptionalNone = new OptionalRefVal();
+
+export function isOptionalRefVal(value: any): value is OptionalRefVal {
+  if (!isRefVal(value)) {
+    return false;
+  }
+  return value.type() === OptionalType;
+}

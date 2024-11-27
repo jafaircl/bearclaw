@@ -10,9 +10,11 @@ export class ErrorRefVal implements RefVal {
   // otherwise the tests will not be able to access it to check for equality.
   // TODO: do we want to alter the tests to use the getter instead?
   private readonly _value: Error;
+  private readonly _id: bigint;
 
-  constructor(message: string) {
+  constructor(message: string, id?: bigint) {
     this._value = new Error(message);
+    this._id = id || BigInt(0);
   }
 
   static errDivideByZero = new ErrorRefVal('divide by zero');
@@ -143,6 +145,10 @@ export class ErrorRefVal implements RefVal {
   value(): Error {
     return this._value;
   }
+
+  id(): bigint {
+    return this._id;
+  }
 }
 
 export function isErrorRefVal(value: any): value is ErrorRefVal {
@@ -155,4 +161,23 @@ export function isErrorRefVal(value: any): value is ErrorRefVal {
     default:
       return false;
   }
+}
+
+/**
+ * LabelErrNode returns val unaltered it is not an Err or if the error has a
+ * non-zero AST node ID already present. Otherwise the id is added to the error
+ * for recovery with the Err.NodeID method.
+ */
+export function labelErrorNode(id: bigint, val: RefVal): RefVal {
+  if (!isErrorRefVal(val)) {
+    return val;
+  }
+  return new ErrorRefVal(val.value().message, id);
+}
+
+/**
+ * WrapErr wraps an existing Go error value into a CEL Err value.
+ */
+export function wrapError(err: Error, id?: bigint): RefVal {
+  return new ErrorRefVal(err.message, id);
 }
