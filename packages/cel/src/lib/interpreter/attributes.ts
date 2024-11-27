@@ -391,13 +391,12 @@ class AbsoluteAttribute implements NamespacedAttribute {
     for (const nm of this.#namespacedNames) {
       // If the variable is found, process it. Otherwise, wait until the checks
       // to determine whether the type is unknown before returning.
-      let obj = vars.resolveName(nm);
+      const obj = vars.resolveName(nm);
       if (!isNil(obj)) {
         if (isErrorRefVal(obj)) {
           return obj.value();
         }
         const [_obj, isOpt, err] = applyQualifiers(vars, obj, this.#qualifiers);
-        obj = _obj;
         if (!isNil(err)) {
           return err;
         }
@@ -408,7 +407,7 @@ class AbsoluteAttribute implements NamespacedAttribute {
           }
           return new OptionalRefVal(val);
         }
-        return obj;
+        return _obj;
       }
       // Attempt to resolve the qualified type name if the name is not a
       // variable identifier.
