@@ -1,7 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable no-case-declarations */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-import { isMap, isNil, isPlainObject, isString } from '@bearclaw/is';
+import { HashMap } from '@bearclaw/collections';
+import { isMap, isNil, isPlainObject, isString, isType } from '@bearclaw/is';
 import {
   createMutableRegistry,
   DescEnum,
@@ -415,13 +416,13 @@ export function nativeToValue(a: Adapter, value: any): RefVal | null {
     case Function:
       return null;
     case Map:
-      if (!isMap(value)) {
+    case HashMap:
+      if (!isMap(value) && !isType(HashMap.name, value)) {
         throw new Error('value is not a map');
       }
       if (value.size === 0) {
         return new DynamicMap(a, value);
       }
-      // TODO: should we bother with other map types?
       const m = new Map();
       for (const [key, v] of value) {
         m.set(a.nativeToValue(key), a.nativeToValue(v));

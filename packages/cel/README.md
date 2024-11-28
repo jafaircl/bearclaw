@@ -1,6 +1,6 @@
 # Common Expression Library
 
-Note: This library intends to be a one to one port of [`cel-go`](https://github.com/google/cel-go). But, there may be differences caused by the limitations TypeScript/JavaScript compared to other CEL implementations. For instance, non-decimal doubles may lose precision after `2^53-1` as that is a limitation of the JavaScript lanaguage.
+Note: This library intends to be a one to one port of [`cel-go`](https://github.com/google/cel-go). But, there may be differences caused by the limitations TypeScript/JavaScript compared to other CEL implementations. For instance, floats may lose precision after `2^53-1` and there is no functional difference between `int` and `uint` values as those are limitations of JavaScript.
 
 The Common Expression Language (CEL) is a non-Turing complete language designed
 for simplicity, speed, safety, and portability. CEL's C-like [syntax][1] looks

@@ -1500,7 +1500,7 @@ function applyQualifiers(
   obj: any,
   qualifiers: Qualifier[]
 ): [any | null, boolean, Error | null] {
-  const isOpt = isOptionalRefVal(obj);
+  let isOpt = isOptionalRefVal(obj);
   if (isOpt) {
     if (!(obj as OptionalRefVal).hasValue()) {
       return [obj, false, null];
@@ -1510,7 +1510,8 @@ function applyQualifiers(
 
   for (const qual of qualifiers) {
     let qualObj: any;
-    if (isOptionalRefVal(obj) || qual.isOptional()) {
+    isOpt = isOpt || qual.isOptional();
+    if (isOpt) {
       const [_qualObj, present, err] = qual.qualifyIfPresent(vars, obj, false);
       qualObj = _qualObj;
 
@@ -1672,10 +1673,29 @@ export class ResolutionError extends Error {
     public readonly missingKey?: RefVal
   ) {
     super(
-      `resolution error: ${missingAttribute ?? ''} ${missingIndex ?? ''} ${
-        missingKey ?? ''
-      }`
+      constructResolutionErrorMessage(
+        missingAttribute,
+        missingIndex?.value(),
+        missingKey?.value()
+      )
     );
     this.name = 'ResolutionError';
   }
+}
+
+function constructResolutionErrorMessage(
+  missingAttribute?: string,
+  missingIndex?: string,
+  missingKey?: string
+) {
+  if (missingAttribute) {
+    return `no such attribute(s): ${missingAttribute}`;
+  }
+  if (missingIndex) {
+    return `index out of bounds: ${missingIndex}`;
+  }
+  if (missingKey) {
+    return `no such key: ${missingKey}`;
+  }
+  return 'invalid attribute';
 }
