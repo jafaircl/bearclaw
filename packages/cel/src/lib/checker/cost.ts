@@ -619,7 +619,7 @@ export class Coster {
     // Pick a cost estimate range that covers all the overload cost estimation
     // ranges
     let fnCost = new CostEstimate(MAX_UINT64, BigInt(0));
-    let resultSize = new SizeEstimate(BigInt(0), BigInt(0));
+    let resultSize: SizeEstimate | null = null;
     for (const overload of overloadIDs) {
       const overloadCost = this.#functionCost(
         call.function!,
@@ -645,7 +645,7 @@ export class Coster {
           break;
         case INDEX_MAP_OVERLOAD:
           if (args.length > 0) {
-            this.#addPath(e, [...(this.#getPath(args[0]) ?? []), '@keys']);
+            this.#addPath(e, [...(this.#getPath(args[0]) ?? []), '@values']);
           }
           break;
         default:

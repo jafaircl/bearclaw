@@ -154,7 +154,6 @@ describe('cost', () => {
       expr: `input.all(x, true)`,
       wanted: new CostEstimate(BigInt(2), BigInt(302)),
     },
-    // TODO: this evaluates to CostEstimate(BigInt(2), MAX_UINT64)
     {
       name: 'nested all comprehension',
       vars: [newVariableDecl('input', nestedList)],
@@ -388,17 +387,16 @@ describe('cost', () => {
       hints: new Map([['input', BigInt(10)]]),
       wanted: new CostEstimate(BigInt(2), BigInt(82)),
     },
-    // TODO: this one evaluates to CostEstimate(BigInt(2), BigInt(37))
-    // {
-    //   name: 'comprehension over nested map of maps',
-    //   expr: `input.all(k, input[k].all(x, true))`,
-    //   vars: [newVariableDecl('input', nestedMap)],
-    //   hints: new Map([
-    //     ['input', BigInt(5)],
-    //     ['input.@values', BigInt(10)],
-    //   ]),
-    //   wanted: new CostEstimate(BigInt(2), BigInt(187)),
-    // },
+    {
+      name: 'comprehension over nested map of maps',
+      expr: `input.all(k, input[k].all(x, true))`,
+      vars: [newVariableDecl('input', nestedMap)],
+      hints: new Map([
+        ['input', BigInt(5)],
+        ['input.@values', BigInt(10)],
+      ]),
+      wanted: new CostEstimate(BigInt(2), BigInt(187)),
+    },
     {
       name: 'string size of map keys',
       expr: `input.all(k, k.contains(k))`,
@@ -409,28 +407,28 @@ describe('cost', () => {
       ]),
       wanted: new CostEstimate(BigInt(2), BigInt(32)),
     },
-    // {
-    //   name: 'comprehension variable shadowing',
-    //   expr: `input.all(k, input[k].all(k, true) && k.contains(k))`,
-    //   vars: [newVariableDecl('input', nestedMap)],
-    //   hints: new Map([
-    //     ['input', BigInt(2)],
-    //     ['input.@values', BigInt(2)],
-    //     ['input.@keys', BigInt(5)],
-    //   ]),
-    //   wanted: new CostEstimate(BigInt(2), BigInt(34)),
-    // },
-    // {
-    //   name: 'comprehension variable shadowing',
-    //   expr: `input.all(k, input[k].all(k, true) && k.contains(k))`,
-    //   vars: [newVariableDecl('input', nestedMap)],
-    //   hints: new Map([
-    //     ['input', BigInt(2)],
-    //     ['input.@values', BigInt(2)],
-    //     ['input.@keys', BigInt(5)],
-    //   ]),
-    //   wanted: new CostEstimate(BigInt(2), BigInt(34)),
-    // },
+    {
+      name: 'comprehension variable shadowing',
+      expr: `input.all(k, input[k].all(k, true) && k.contains(k))`,
+      vars: [newVariableDecl('input', nestedMap)],
+      hints: new Map([
+        ['input', BigInt(2)],
+        ['input.@values', BigInt(2)],
+        ['input.@keys', BigInt(5)],
+      ]),
+      wanted: new CostEstimate(BigInt(2), BigInt(34)),
+    },
+    {
+      name: 'comprehension variable shadowing',
+      expr: `input.all(k, input[k].all(k, true) && k.contains(k))`,
+      vars: [newVariableDecl('input', nestedMap)],
+      hints: new Map([
+        ['input', BigInt(2)],
+        ['input.@values', BigInt(2)],
+        ['input.@keys', BigInt(5)],
+      ]),
+      wanted: new CostEstimate(BigInt(2), BigInt(34)),
+    },
     {
       name: 'list concat',
       expr: `(list1 + list2).all(x, true)`,
@@ -491,15 +489,15 @@ describe('cost', () => {
       },
       wanted: new CostEstimate(BigInt(2), BigInt(12)),
     },
-    // {
-    //   name: 'list size comparison',
-    //   expr: `list1.size() == list2.size()`,
-    //   vars: [
-    //     newVariableDecl('list1', newListType(IntType)),
-    //     newVariableDecl('list2', newListType(IntType)),
-    //   ],
-    //   wanted: new CostEstimate(BigInt(5), BigInt(5)),
-    // },
+    {
+      name: 'list size comparison',
+      expr: `list1.size() == list2.size()`,
+      vars: [
+        newVariableDecl('list1', newListType(IntType)),
+        newVariableDecl('list2', newListType(IntType)),
+      ],
+      wanted: new CostEstimate(BigInt(5), BigInt(5)),
+    },
     {
       name: 'list size from ternary',
       expr: `x > y ? list1.size() : list2.size()`,
@@ -511,29 +509,29 @@ describe('cost', () => {
       ],
       wanted: new CostEstimate(BigInt(5), BigInt(5)),
     },
-    // {
-    //   name: 'str endsWith equality',
-    //   expr: `str1.endsWith("abcdefghijklmnopqrstuvwxyz") == str2.endsWith("abcdefghijklmnopqrstuvwxyz")`,
-    //   vars: [
-    //     newVariableDecl('str1', StringType),
-    //     newVariableDecl('str2', StringType),
-    //   ],
-    //   wanted: new CostEstimate(BigInt(9), BigInt(9)),
-    // },
-    // {
-    //   name: 'nested subexpression operators',
-    //   expr: `((5 != 6) == (1 == 2)) == ((3 <= 4) == (9 != 9))`,
-    //   wanted: new CostEstimate(BigInt(7), BigInt(7)),
-    // },
-    // {
-    //   name: 'str size estimate',
-    //   expr: `string(timestamp1) == string(timestamp2)`,
-    //   vars: [
-    //     newVariableDecl('timestamp1', TimestampType),
-    //     newVariableDecl('timestamp2', TimestampType),
-    //   ],
-    //   wanted: new CostEstimate(BigInt(5), MAX_UINT64),
-    // },
+    {
+      name: 'str endsWith equality',
+      expr: `str1.endsWith("abcdefghijklmnopqrstuvwxyz") == str2.endsWith("abcdefghijklmnopqrstuvwxyz")`,
+      vars: [
+        newVariableDecl('str1', StringType),
+        newVariableDecl('str2', StringType),
+      ],
+      wanted: new CostEstimate(BigInt(9), BigInt(9)),
+    },
+    {
+      name: 'nested subexpression operators',
+      expr: `((5 != 6) == (1 == 2)) == ((3 <= 4) == (9 != 9))`,
+      wanted: new CostEstimate(BigInt(7), BigInt(7)),
+    },
+    {
+      name: 'str size estimate',
+      expr: `string(timestamp1) == string(timestamp2)`,
+      vars: [
+        newVariableDecl('timestamp1', TimestampType),
+        newVariableDecl('timestamp2', TimestampType),
+      ],
+      wanted: new CostEstimate(BigInt(5), BigInt('1844674407370955268')),
+    },
     {
       name: 'timestamp equality check',
       expr: `timestamp1 == timestamp2`,
@@ -552,21 +550,21 @@ describe('cost', () => {
       ],
       wanted: new CostEstimate(BigInt(3), BigInt(3)),
     },
-    // {
-    //   name: '.filter list literal',
-    //   expr: `[1,2,3,4,5].filter(x, x % 2 == 0)`,
-    //   wanted: new CostEstimate(BigInt(41), BigInt(101)),
-    // },
+    {
+      name: '.filter list literal',
+      expr: `[1,2,3,4,5].filter(x, x % 2 == 0)`,
+      wanted: new CostEstimate(BigInt(41), BigInt(101)),
+    },
     {
       name: '.map list literal',
       expr: `[1,2,3,4,5].map(x, x)`,
       wanted: new CostEstimate(BigInt(86), BigInt(86)),
     },
-    // {
-    //   name: '.map.filter list literal',
-    //   expr: `[1,2,3,4,5].map(x, x).filter(x, x % 2 == 0)`,
-    //   wanted: new CostEstimate(BigInt(117), BigInt(177)),
-    // },
+    {
+      name: '.map.filter list literal',
+      expr: `[1,2,3,4,5].map(x, x).filter(x, x % 2 == 0)`,
+      wanted: new CostEstimate(BigInt(117), BigInt(177)),
+    },
     {
       name: '.map.exists list literal',
       expr: `[1,2,3,4,5].map(x, x).exists(x, x == 5) == true`,
