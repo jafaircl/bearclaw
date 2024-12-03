@@ -14,6 +14,8 @@ import {
   ScalarType,
 } from '@bufbuild/protobuf';
 import {
+  Any,
+  anyUnpack,
   BoolValueSchema,
   BytesValueSchema,
   DoubleValueSchema,
@@ -76,6 +78,7 @@ import {
   getFieldValueFromMessage,
   isMessageFieldSet,
   sanitizeProtoName,
+  typeUrlToName,
 } from './utils';
 
 /**
@@ -375,10 +378,16 @@ export class Registry implements IRegistry {
       return val;
     }
     if (isMessage(value)) {
-      const typeName = value.$typeName;
+      let typeName = value.$typeName;
+      // Try to unwrap Any messages.
+      if (value.$typeName === 'google.protobuf.Any') {
+        const any = value as Any;
+        typeName = typeUrlToName(any.typeUrl);
+        value = anyUnpack(any, this.#pbdb);
+      }
       const desc = this.#pbdb.getMessage(typeName);
       if (isNil(desc)) {
-        return new ErrorRefVal(`unknown type: '${typeName}'`);
+        return ErrorRefVal.unknownType(typeName);
       }
       return new ObjectRefVal(this, value, desc, newObjectType(typeName));
     }

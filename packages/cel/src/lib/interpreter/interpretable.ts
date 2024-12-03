@@ -248,10 +248,7 @@ class TestOnlyQualifier implements Qualifier {
   }
 }
 
-/**
- * ConstValue creates a new constant valued Interpretable.
- */
-export class ConstValue implements InterpretableConst {
+export class EvalConst implements InterpretableConst {
   #id: bigint;
   #val: RefVal;
 

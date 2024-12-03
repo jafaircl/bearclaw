@@ -505,7 +505,7 @@ class ConditionalAttribute implements Attribute {
     if (isUnknownRefVal(val)) {
       return val;
     }
-    return ErrorRefVal.maybeNoSuchOverload(val);
+    return ErrorRefVal.maybeNoSuchOverload(val).value();
   }
 
   id(): bigint {

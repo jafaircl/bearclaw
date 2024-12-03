@@ -12,6 +12,10 @@ export function typeNameToUrl(name: string): string {
   return `type.googleapis.com/${name}`;
 }
 
+export function typeUrlToName(url: string): string {
+  return url.replace('type.googleapis.com/', '');
+}
+
 export function getFieldValueFromMessage<T = any>(
   field: DescField,
   value: Message

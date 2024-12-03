@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { TestAllTypesSchema } from '@buf/cel_spec.bufbuild_es/proto/test/v1/proto3/test_all_types_pb.js';
 import { create, createRegistry } from '@bufbuild/protobuf';
+import { anyPack } from '@bufbuild/protobuf/wkt';
 import { Container } from '../common/container';
 import { BoolRefVal } from '../common/types/bool';
 import { ErrorRefVal } from '../common/types/error';
@@ -8,10 +9,11 @@ import { IntRefVal } from '../common/types/int';
 import { OptionalNone, OptionalRefVal } from '../common/types/optional';
 import { Registry } from '../common/types/provider';
 import { IntType, newObjectType, Type } from '../common/types/types';
+import { UnknownRefVal } from '../common/types/unknown';
 import { objectToMap } from '../common/utils';
 import { EmptyActivation, MapActivation } from './activation';
 import { AttrFactory, AttributeFactory, Qualifier } from './attributes';
-import { ConstValue } from './interpretable';
+import { EvalConst } from './interpretable';
 
 describe('attributes', () => {
   it('TestAttributesAbsoluteAttr', () => {
@@ -79,7 +81,7 @@ describe('attributes', () => {
     // }
     //
     // The expression being evaluated is: <map-literal>.a[-1][b] -> 42
-    const op = new ConstValue(BigInt(1), reg.nativeToValue(data));
+    const op = new EvalConst(BigInt(1), reg.nativeToValue(data));
     const attr = attrs.relativeAttribute(BigInt(1), op);
     const qualA = makeQualifier(attrs, null, BigInt(2), 'a');
     const qualNegOne = makeQualifier(attrs, null, BigInt(3), BigInt(-1));
@@ -112,7 +114,7 @@ describe('attributes', () => {
     // - <map-literal>.a[-1][acme.b]
     //
     // The correct behavior should yield the value of the last alternative.
-    const op = new ConstValue(BigInt(1), reg.nativeToValue(data));
+    const op = new EvalConst(BigInt(1), reg.nativeToValue(data));
     const attr = attrs.relativeAttribute(BigInt(1), op);
     const qualA = makeQualifier(attrs, null, BigInt(2), 'a');
     const qualNeg1 = makeQualifier(attrs, null, BigInt(3), BigInt(-1));
@@ -144,7 +146,7 @@ describe('attributes', () => {
     // <map-literal>.a[-1][(false ? b : c)[0]] -> 42
     //
     // Effectively the same as saying <map-literal>.a[-1][c[0]]
-    const cond = new ConstValue(BigInt(2), BoolRefVal.False);
+    const cond = new EvalConst(BigInt(2), BoolRefVal.False);
     const condAttr = attrs.conditionalAttribute(
       BigInt(4),
       cond,
@@ -154,7 +156,7 @@ describe('attributes', () => {
     const qual0 = makeQualifier(attrs, null, BigInt(7), BigInt(0));
     condAttr.addQualifier(qual0);
 
-    const obj = new ConstValue(BigInt(1), reg.nativeToValue(data));
+    const obj = new EvalConst(BigInt(1), reg.nativeToValue(data));
     const attr = attrs.relativeAttribute(BigInt(1), obj);
     const qualA = makeQualifier(attrs, null, BigInt(2), 'a');
     const qualNeg1 = makeQualifier(attrs, null, BigInt(3), BigInt(-1));
@@ -210,8 +212,8 @@ describe('attributes', () => {
     //
     // This is equivalent to:
     //   <obj>.a[-1]["second"] -> 2u
-    const obj = new ConstValue(BigInt(1), reg.nativeToValue(data));
-    const mp = new ConstValue(
+    const obj = new EvalConst(BigInt(1), reg.nativeToValue(data));
+    const mp = new EvalConst(
       BigInt(1),
       reg.nativeToValue(
         new Map([
@@ -278,7 +280,7 @@ describe('attributes', () => {
     fv.addQualifier(qualC);
     const cond = attrs.conditionalAttribute(
       BigInt(1),
-      new ConstValue(BigInt(0), BoolRefVal.True),
+      new EvalConst(BigInt(0), BoolRefVal.True),
       tv,
       fv
     );
@@ -308,7 +310,7 @@ describe('attributes', () => {
     fv.addQualifier(qualC);
     const cond = attrs.conditionalAttribute(
       BigInt(1),
-      new ConstValue(BigInt(0), BoolRefVal.False),
+      new EvalConst(BigInt(0), BoolRefVal.False),
       tv,
       fv
     );
@@ -509,7 +511,7 @@ describe('attributes', () => {
         optQuals: [
           attrs.conditionalAttribute(
             BigInt(0),
-            new ConstValue(BigInt(100), BoolRefVal.False),
+            new EvalConst(BigInt(100), BoolRefVal.False),
             attrs.absoluteAttribute(BigInt(101), 'b'),
             attrs.absoluteAttribute(BigInt(102), 'c.d.e')
           ),
@@ -643,6 +645,134 @@ describe('attributes', () => {
       }
     }
   });
+
+  it('TestAttributesConditionalAttrErrorUnknown', () => {
+    const reg = new Registry();
+    const attrs = new AttrFactory(new Container(), reg, reg);
+
+    // err ? a : b
+    const tv = attrs.absoluteAttribute(BigInt(2), 'a');
+    const fv = attrs.maybeAttribute(BigInt(3), 'b');
+    const cond = attrs.conditionalAttribute(
+      BigInt(1),
+      new EvalConst(BigInt(0), new ErrorRefVal('test error')),
+      tv,
+      fv
+    );
+    const out = cond.resolve(new EmptyActivation());
+    expect(out).toStrictEqual(new Error('test error'));
+
+    // unk ? a : b
+    const condUnk = attrs.conditionalAttribute(
+      BigInt(1),
+      new EvalConst(BigInt(0), new UnknownRefVal(BigInt(1))),
+      tv,
+      fv
+    );
+    const outUnk = condUnk.resolve(new EmptyActivation());
+    expect(outUnk).toBeInstanceOf(UnknownRefVal);
+  });
+
+  it('BenchmarkResolverFieldQualifier', () => {
+    const reg = new Registry(undefined, createRegistry(TestAllTypesSchema));
+    const attrs = new AttrFactory(new Container(), reg, reg);
+    const vars = new MapActivation({
+      msg: create(TestAllTypesSchema, {
+        nestedType: {
+          case: 'singleNestedMessage',
+          value: {
+            bb: 123,
+          },
+        },
+      }),
+    });
+    const attr = attrs.absoluteAttribute(BigInt(1), 'msg');
+    const opType = reg.findStructType(
+      'google.api.expr.test.v1.proto3.TestAllTypes'
+    );
+    const fieldType = reg.findStructType(
+      'google.api.expr.test.v1.proto3.TestAllTypes.NestedMessage'
+    );
+    attr.addQualifier(
+      makeQualifier(attrs, opType, BigInt(2), 'single_nested_message')
+    );
+    attr.addQualifier(makeQualifier(attrs, fieldType, BigInt(3), 'bb'));
+    const now = Date.now();
+    for (let i = 0; i < 1000; i += 1) {
+      attr.resolve(vars);
+    }
+    const elapsed = Date.now() - now;
+    // TODO: what is a good number for this? This runs in 17ms on an M1 Pro Macbook which is about 58,823 ops/sec. Seems pretty quick.
+    expect(elapsed).toBeLessThan(100);
+  });
+
+  // TODO: TestResolverCustomQualifier
+
+  it('TestAttributesMissingMsg', () => {
+    const reg = new Registry();
+    const attrs = new AttrFactory(new Container(), reg, reg);
+    const vars = new MapActivation({
+      missing_msg: anyPack(TestAllTypesSchema, create(TestAllTypesSchema)),
+    });
+
+    // missing_msg.field
+    const attr = attrs.absoluteAttribute(BigInt(1), 'missing_msg');
+    const field = makeQualifier(attrs, null, BigInt(2), 'field');
+    attr.addQualifier(field);
+    const out = attr.resolve(vars);
+    expect(out).toEqual(
+      new Error(`unknown type: 'google.api.expr.test.v1.proto3.TestAllTypes'`)
+    );
+  });
+
+  // TODO: TestAttributeMissingMsgUnknownField
+
+  // TODO: TestAttributeStateTracking (requires interpreter)
+  //   it('TestAttributeStateTracking', () => {
+  //     interface TestCase {
+  //       expr: string;
+  //       vars: VariableDecl[];
+  //       in: any;
+  //       out: RefVal;
+  //       attrs?: AttributePattern[];
+  //       state: Map<bigint, any>;
+  //     }
+  //     const testCases: TestCase[] = [
+  //       {
+  //         expr: `[{"field": true}][0].field`,
+  //         vars: [],
+  //         in: {},
+  //         out: BoolRefVal.True,
+  //         state: new Map<bigint, any>([
+  //           // [{"field": true}]
+  //           [BigInt(1), defaultTypeAdapter.nativeToValue({ field: true })],
+  //           // [{"field": true}][0]
+  //           [BigInt(6), new Map([[new StringRefVal('field'), BoolRefVal.True]])],
+  //           // [{"field": true}][0].field
+  //           [BigInt(8), true],
+  //         ]),
+  //       },
+  //     ];
+  //     for (const testCase of testCases) {
+  //       const src = new TextSource(testCase.expr);
+  //       const parser = new Parser(src, {
+  //         enableOptionalSyntax: true,
+  //         macros: [...AllMacros],
+  //       });
+  //       const parsed = parser.parse();
+  //       const container = new Container();
+  //       const registry = new Registry();
+  //       const env = new Env(container, registry);
+  //       env.addFunctions(...stdFunctions);
+  //       if (testCase.vars) {
+  //         env.addIdents(...testCase.vars);
+  //       }
+  //       const checker = new Checker(parsed, env);
+  //       const checked = checker.check();
+  //       const act = newActivation(testCase.in);
+  //       const attrs = new AttrFactory(container, registry, registry);
+  //     }
+  //   });
 });
 
 function makeQualifier(

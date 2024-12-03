@@ -81,7 +81,7 @@ export class ObjectRefVal implements RefVal, Zeroer {
       (f) => f.name === field.value() || f.jsonName === field.value()
     );
     if (isNil(fd)) {
-      return new ErrorRefVal(`no such field '${field.value()}'`);
+      return ErrorRefVal.noSuchField(field.value());
     }
     return new BoolRefVal(isMessageFieldSet(fd, this.value()));
   }
@@ -94,7 +94,7 @@ export class ObjectRefVal implements RefVal, Zeroer {
       (f) => f.name === field.value() || f.jsonName === field.value()
     );
     if (isNil(fd)) {
-      return new ErrorRefVal(`no such field '${field.value()}'`);
+      return ErrorRefVal.noSuchField(field.value());
     }
     return this.registry.nativeToValue(
       (this.value() as any)[fd.name] ?? (this.value() as any)[fd.jsonName]

@@ -110,7 +110,7 @@ export class ErrorRefVal implements RefVal {
   }
 
   static unknownType(field: any) {
-    return new ErrorRefVal(`unknown type '${field}'`);
+    return new ErrorRefVal(`unknown type: '${field}'`);
   }
 
   static rangeError(from: any, to: any) {
