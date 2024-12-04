@@ -1,13 +1,28 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { isNil } from '@bearclaw/is';
+import { FunctionOp, UnaryOp } from '../common/functions';
+import { EQUALS_OPERATOR, NOT_EQUALS_OPERATOR } from '../common/operators';
+import { EQUALS_OVERLOAD, NOT_EQUALS_OVERLOAD } from '../common/overloads';
 import { Adapter } from '../common/ref/provider';
 import { RefVal } from '../common/ref/reference';
 import { BoolRefVal } from '../common/types/bool';
-import { labelErrorNode, wrapError } from '../common/types/error';
+import {
+  ErrorRefVal,
+  isErrorRefVal,
+  labelErrorNode,
+  wrapError,
+} from '../common/types/error';
 import { isOptionalRefVal } from '../common/types/optional';
-import { Type } from '../common/types/types';
-import { isUnknownRefVal, UnknownRefVal } from '../common/types/unknown';
+import { Receiver } from '../common/types/traits/receiver';
+import { Trait } from '../common/types/traits/trait';
+import { BoolType, Type } from '../common/types/types';
+import {
+  isUnknownRefVal,
+  maybeMergeUnknowns,
+  UnknownRefVal,
+} from '../common/types/unknown';
+import { isUnknownOrError } from '../common/types/utils';
 import { Activation } from './activation';
 import { Attribute, isConstantQualifier, Qualifier } from './attributes';
 
@@ -267,5 +282,287 @@ export class EvalConst implements InterpretableConst {
 
   eval(vars: Activation): RefVal {
     return this.#val;
+  }
+}
+
+export class EvalOr implements Interpretable {
+  #id: bigint;
+  #terms: Interpretable[];
+
+  constructor(id: bigint, terms: Interpretable[]) {
+    this.#id = id;
+    this.#terms = terms;
+  }
+
+  id() {
+    return this.#id;
+  }
+
+  eval(ctx: Activation): RefVal {
+    let err: RefVal | null = null;
+    let unk: UnknownRefVal | null = null;
+    for (const term of this.#terms) {
+      const val = term.eval(ctx);
+      if (val.type() === BoolType) {
+        // short-circuit on true.
+        if (val.value() === true) {
+          return BoolRefVal.True;
+        }
+      } else {
+        if (unk && isUnknownRefVal(unk)) {
+          unk = maybeMergeUnknowns(val, unk) as UnknownRefVal;
+        } else if (isNil(err)) {
+          if (isErrorRefVal(val)) {
+            err = val;
+          } else {
+            err = ErrorRefVal.maybeNoSuchOverload(val);
+          }
+          err = labelErrorNode(this.#id, err);
+        }
+      }
+    }
+    if (!isNil(unk)) {
+      return unk;
+    }
+    if (!isNil(err)) {
+      return err;
+    }
+    return BoolRefVal.False;
+  }
+}
+
+export class EvalAnd implements Interpretable {
+  #id: bigint;
+  #terms: Interpretable[];
+
+  constructor(id: bigint, terms: Interpretable[]) {
+    this.#id = id;
+    this.#terms = terms;
+  }
+
+  id() {
+    return this.#id;
+  }
+
+  eval(ctx: Activation): RefVal {
+    let err: RefVal | null = null;
+    let unk: UnknownRefVal | null = null;
+    for (const term of this.#terms) {
+      const val = term.eval(ctx);
+      if (val.type() === BoolType) {
+        // short-circuit on false.
+        if (val.value() === false) {
+          return BoolRefVal.False;
+        }
+      } else {
+        if (unk && isUnknownRefVal(unk)) {
+          unk = maybeMergeUnknowns(val, unk) as UnknownRefVal;
+        } else if (isNil(err)) {
+          if (isErrorRefVal(val)) {
+            err = val;
+          } else {
+            err = ErrorRefVal.maybeNoSuchOverload(val);
+          }
+          err = labelErrorNode(this.#id, err);
+        }
+      }
+    }
+    if (!isNil(unk)) {
+      return unk;
+    }
+    if (!isNil(err)) {
+      return err;
+    }
+    return BoolRefVal.True;
+  }
+}
+
+export class EvalEq implements InterpretableCall {
+  #id: bigint;
+  #lhs: Interpretable;
+  #rhs: Interpretable;
+
+  constructor(id: bigint, lhs: Interpretable, rhs: Interpretable) {
+    this.#id = id;
+    this.#lhs = lhs;
+    this.#rhs = rhs;
+  }
+
+  id() {
+    return this.#id;
+  }
+
+  eval(ctx: Activation) {
+    const lval = this.#lhs.eval(ctx);
+    const rval = this.#rhs.eval(ctx);
+    if (isUnknownOrError(lval)) {
+      return lval;
+    }
+    if (isUnknownOrError(rval)) {
+      return rval;
+    }
+    return lval.equal(rval);
+  }
+
+  function(): string {
+    return EQUALS_OPERATOR;
+  }
+
+  overloadID(): string {
+    return EQUALS_OVERLOAD;
+  }
+
+  args() {
+    return [this.#lhs, this.#rhs];
+  }
+}
+
+export class EvalNe implements InterpretableCall {
+  #id: bigint;
+  #lhs: Interpretable;
+  #rhs: Interpretable;
+
+  constructor(id: bigint, lhs: Interpretable, rhs: Interpretable) {
+    this.#id = id;
+    this.#lhs = lhs;
+    this.#rhs = rhs;
+  }
+
+  id() {
+    return this.#id;
+  }
+
+  eval(ctx: Activation) {
+    const lval = this.#lhs.eval(ctx);
+    const rval = this.#rhs.eval(ctx);
+    if (isUnknownOrError(lval)) {
+      return lval;
+    }
+    if (isUnknownOrError(rval)) {
+      return rval;
+    }
+    return new BoolRefVal(lval.equal(rval).value() !== true);
+  }
+
+  function(): string {
+    return NOT_EQUALS_OPERATOR;
+  }
+
+  overloadID(): string {
+    return NOT_EQUALS_OVERLOAD;
+  }
+
+  args() {
+    return [this.#lhs, this.#rhs];
+  }
+}
+
+export class EvalZeroArity implements InterpretableCall {
+  #id: bigint;
+  #function: string;
+  #overload: string;
+  #impl: FunctionOp;
+
+  constructor(id: bigint, func: string, overload: string, impl: FunctionOp) {
+    this.#id = id;
+    this.#function = func;
+    this.#overload = overload;
+    this.#impl = impl;
+  }
+
+  id() {
+    return this.#id;
+  }
+
+  eval(ctx: Activation) {
+    return labelErrorNode(this.#id, this.#impl());
+  }
+
+  function(): string {
+    return this.#function;
+  }
+
+  overloadID(): string {
+    return this.#overload;
+  }
+
+  args() {
+    return [];
+  }
+}
+
+export class EvalUnary implements InterpretableCall {
+  #id: bigint;
+  #function: string;
+  #overload: string;
+  #arg: Interpretable;
+  #trait: Trait;
+  #impl: UnaryOp;
+  #nonStrict: boolean;
+
+  constructor(
+    id: bigint,
+    func: string,
+    overload: string,
+    arg: Interpretable,
+    trait: Trait,
+    impl: UnaryOp,
+    nonStrict: boolean
+  ) {
+    this.#id = id;
+    this.#function = func;
+    this.#overload = overload;
+    this.#arg = arg;
+    this.#trait = trait;
+    this.#impl = impl;
+    this.#nonStrict = nonStrict;
+  }
+
+  id() {
+    return this.#id;
+  }
+
+  eval(ctx: Activation) {
+    const argVal = this.#arg.eval(ctx);
+    // Early return if the argument to the function is unknown or error.
+    const strict = !this.#nonStrict;
+    if (strict && isUnknownOrError(argVal)) {
+      return argVal;
+    }
+    // If the implementation is bound and the argument value has the right traits required to
+    // invoke it, then call the implementation.
+    if (
+      !isNil(this.#impl) &&
+      (this.#trait === 0 ||
+        (!strict && isUnknownOrError(argVal)) ||
+        argVal.type().hasTrait(this.#trait))
+    ) {
+      return labelErrorNode(this.#id, this.#impl(argVal));
+    }
+    // Otherwise, if the argument is a ReceiverType attempt to invoke the receiver method on the
+    // operand (arg0).
+    if (argVal.type().hasTrait(Trait.RECEIVER_TYPE)) {
+      return labelErrorNode(
+        this.#id,
+        (argVal as RefVal & Receiver).receive(
+          this.#function,
+          this.#overload,
+          []
+        )
+      );
+    }
+    return new ErrorRefVal(`no such overload: ${this.#function}`, this.#id);
+  }
+
+  function(): string {
+    return this.#function;
+  }
+
+  overloadID(): string {
+    return this.#overload;
+  }
+
+  args() {
+    return [this.#arg];
   }
 }
