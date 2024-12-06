@@ -4,11 +4,13 @@
 import { HashMap } from '@bearclaw/collections';
 import { isMap, isNil, isPlainObject, isString, isType } from '@bearclaw/is';
 import {
+  create,
   createMutableRegistry,
   DescEnum,
   DescField,
   DescMessage,
   isMessage,
+  Message,
   MutableRegistry,
   Registry as PbRegistry,
   ScalarType,
@@ -45,11 +47,18 @@ import { ErrorRefVal, isErrorRefVal } from './error';
 import { IntRefVal } from './int';
 import { DynamicList, RefValList, StringList } from './list';
 import { DynamicMap, RefValMap } from './map';
-import { reflectNativeType } from './native';
+import {
+  reflectNativeType,
+  reflectProtoFieldNativeType,
+  reflectProtoListElemFieldNativeType,
+  reflectProtoMapEntryFieldNativeType,
+} from './native';
 import { NullRefVal } from './null';
 import { ObjectRefVal } from './object';
 import { StringRefVal } from './string';
 import { TimestampRefVal } from './timestamp';
+import { isLister, Lister } from './traits/lister';
+import { isMapper, Mapper } from './traits/mapper';
 import {
   BoolType,
   BytesType,
@@ -368,8 +377,23 @@ export class Registry implements IRegistry {
     );
   }
 
-  newValue(typeName: string, fields: Map<string, RefVal>): RefVal {
-    throw new Error('Method not implemented.');
+  newValue(structType: string, fields: Map<string, RefVal>): RefVal {
+    const td = this.#pbdb.getMessage(structType);
+    if (isNil(td)) {
+      return ErrorRefVal.unknownType(structType);
+    }
+    const msg = create(td);
+    for (const [name, value] of fields) {
+      const field = td.fields.find((f) => f.name === name);
+      if (isNil(field)) {
+        return ErrorRefVal.noSuchField(name);
+      }
+      const err = msgSetField(msg, field, value);
+      if (isErrorRefVal(err)) {
+        return err;
+      }
+    }
+    return this.nativeToValue(msg);
   }
 
   nativeToValue(value: any): RefVal {
@@ -501,3 +525,117 @@ class DefaultTypeAdapter implements Adapter {
  * values.
  */
 export const defaultTypeAdapter = new DefaultTypeAdapter();
+
+function msgSetField(
+  target: Message,
+  field: DescField,
+  value: RefVal
+): void | ErrorRefVal {
+  // No need to set nil values
+  if (isNil(value?.value())) {
+    return;
+  }
+  if (field.fieldKind === 'list') {
+    if (!isLister(value)) {
+      return unsupportedTypeConversionError(field, value);
+    }
+    return msgSetListField(target, field, value);
+  }
+  if (field.fieldKind === 'map') {
+    if (!isMapper(value)) {
+      return unsupportedTypeConversionError(field, value);
+    }
+    return msgSetMapField(target, field, value);
+  }
+  const v = value.convertToNative(reflectProtoFieldNativeType(field));
+  // If the converted value is an error, then there was an error converting the
+  // value.
+  if (isErrorRefVal(v)) {
+    console.log({ v });
+    return fieldTypeConversionError(field, value);
+  }
+  (target as any)[field.jsonName] = v;
+}
+
+function msgSetListField(
+  target: Message,
+  listField: DescField,
+  listVal: Lister
+): void | ErrorRefVal {
+  if (listField.fieldKind !== 'list') {
+    return unsupportedTypeConversionError(listField, listVal);
+  }
+  const elemReflectType = reflectProtoListElemFieldNativeType(listField);
+  for (let i = 0; i < listVal.size().value(); i++) {
+    const elemVal = listVal.get(new IntRefVal(BigInt(i)));
+    if (isErrorRefVal(elemVal)) {
+      return elemVal;
+    }
+    if (isNil(elemVal.value())) {
+      continue;
+    }
+    const v = elemVal.convertToNative(elemReflectType);
+    if (isErrorRefVal(v)) {
+      console.log({ v });
+      return fieldTypeConversionError(listField, elemVal);
+    }
+    (target as any)[listField.jsonName].push(v);
+  }
+}
+
+function msgSetMapField(
+  target: Message,
+  listField: DescField,
+  mapVal: Mapper
+): void | ErrorRefVal {
+  if (listField.fieldKind !== 'map') {
+    return unsupportedTypeConversionError(listField, mapVal);
+  }
+  const [targetKeyType, targetValueType] =
+    reflectProtoMapEntryFieldNativeType(listField);
+  const it = mapVal.iterator();
+  while (it.hasNext().value()) {
+    const key = it.next();
+    if (isNil(key?.value())) {
+      return new ErrorRefVal('map key cannot be nil');
+    }
+    const val = mapVal.get(key);
+    if (isNil(val?.value())) {
+      continue;
+    }
+    const k = key.convertToNative(targetKeyType);
+    if (isErrorRefVal(k)) {
+      console.log({ k });
+      return fieldTypeConversionError(listField, key);
+    }
+    const v = val.convertToNative(targetValueType);
+    if (isErrorRefVal(v)) {
+      console.log({ v });
+      return fieldTypeConversionError(listField, key);
+    }
+    // No need to set nil values
+    if (isNil(v)) {
+      continue;
+    }
+    (target as any)[listField.jsonName][k] = v;
+  }
+}
+
+function unsupportedTypeConversionError(
+  field: DescField,
+  val: RefVal
+): ErrorRefVal {
+  return new ErrorRefVal(
+    `unsupported field type for ${field.message?.typeName}.${field.name}: ${val
+      .type()
+      .typeName()}`
+  );
+}
+
+function fieldTypeConversionError(field: DescField, val: RefVal): ErrorRefVal {
+  return new ErrorRefVal(
+    `field type conversion error for ${field.message?.typeName}.${
+      field.name
+    } value type ${val.type().typeName()}`
+  );
+}

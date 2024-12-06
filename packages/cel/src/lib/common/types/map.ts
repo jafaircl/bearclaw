@@ -2,6 +2,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { HashMap } from '@bearclaw/collections';
 import { isNil } from '@bearclaw/is';
+import { create } from '@bufbuild/protobuf';
+import { ValueSchema } from '@bufbuild/protobuf/wkt';
 import { Adapter } from '../ref/provider';
 import { RefType, RefVal } from '../ref/reference';
 import { BoolRefVal } from './bool';
@@ -11,7 +13,7 @@ import { IntRefVal, isValidInt32 } from './int';
 import { BaseIterator } from './iterator';
 import { NativeType, reflectNativeType } from './native';
 import { NullRefVal } from './null';
-import { Foldable, Folder, Iterator } from './traits/iterator';
+import { Foldable, Folder, isFoldable, Iterator } from './traits/iterator';
 import { isMapper, Mapper, MutableMapper } from './traits/mapper';
 import { DoubleType, IntType, MapType, TypeType, UintType } from './types';
 
@@ -73,12 +75,14 @@ class BaseMap<K = any, V = any> implements Mapper, Foldable {
       case Map:
         return new Map(this._nativeEntries());
       case Object:
-        // TODO: fix double iteration
-        const obj: Record<string | number | symbol, V> = {};
-        for (const [key, value] of this._nativeEntries()) {
-          obj[key as string | number | symbol] = value;
-        }
-        return obj;
+        return this._nativeEntriesToObject();
+      case ValueSchema:
+        return create(ValueSchema, {
+          kind: {
+            case: 'structValue',
+            value: this._nativeEntriesToObject(),
+          },
+        });
       default:
         return ErrorRefVal.nativeTypeConversionError(this, type);
     }
@@ -94,6 +98,14 @@ class BaseMap<K = any, V = any> implements Mapper, Foldable {
       entries.push([k, v]);
     }
     return entries;
+  }
+
+  private _nativeEntriesToObject(): Record<string | number | symbol, V> {
+    const obj: Record<string | number | symbol, V> = {};
+    for (const [key, value] of this._nativeEntries()) {
+      obj[key as string | number | symbol] = value;
+    }
+    return obj;
   }
 
   convertToType(type: RefType): RefVal {
@@ -321,4 +333,76 @@ export class DynamicMap<K = any, V = any> extends BaseMap<K, V> {
     }
     return new MapIterator(this.adapter, keys);
   }
+}
+
+class InteropFoldableMap<K = any, V = any> implements Mapper<K, V>, Foldable {
+  constructor(private _mapper: Mapper<K, V>) {}
+
+  find(key: K): V | null {
+    return this._mapper.find(key);
+  }
+
+  convertToNative(type: NativeType) {
+    return this._mapper.convertToNative(type);
+  }
+
+  convertToType(type: RefType): RefVal {
+    return this._mapper.convertToType(type);
+  }
+
+  equal(other: RefVal): RefVal {
+    return this._mapper.equal(other);
+  }
+
+  type(): RefType {
+    return this._mapper.type();
+  }
+
+  value() {
+    return this._mapper.value();
+  }
+
+  contains(value: RefVal): RefVal {
+    return this._mapper.contains(value);
+  }
+
+  get(index: RefVal): RefVal {
+    return this._mapper.get(index);
+  }
+
+  iterator(): Iterator {
+    return this._mapper.iterator();
+  }
+
+  size(): RefVal {
+    return this._mapper.size();
+  }
+
+  fold(f: Folder): void {
+    const it = this.iterator();
+    while (it.hasNext().value()) {
+      const k = it.next();
+      if (!f.foldEntry(k, this.get(k!))) {
+        break;
+      }
+    }
+  }
+}
+
+/**
+ * ToFoldableMap will create a Foldable version of a map suitable for key-value
+ * pair iteration.
+ *
+ * For values which are already Foldable, this call is a no-op. For all other
+ * values, the fold is driven via the Iterator HasNext() and Next() calls as
+ * well as the map's Get() method which means that the folding will function,
+ * but take a performance hit.
+ */
+export function toFoldableMap<K = any, V = any>(
+  mapper: Mapper<K, V>
+): Foldable {
+  if (isFoldable(mapper)) {
+    return mapper;
+  }
+  return new InteropFoldableMap(mapper);
 }

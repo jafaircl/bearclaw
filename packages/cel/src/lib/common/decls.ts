@@ -244,9 +244,9 @@ export class FunctionDecl {
       }
     }
     if (!isNil(this.singleton)) {
-      if (this.overloads.size !== 0) {
+      if (overloads.length !== 0) {
         throw new Error(
-          `singleton function incompatible with specialized overloads: %{this.name}`
+          `singleton function incompatible with specialized overloads: ${this.name()}`
         );
       }
       overloads = [
@@ -599,7 +599,9 @@ export class OverloadDecl {
    * hasBinding indicates whether the overload already has a definition.
    */
   hasBinding() {
-    return this.unaryOp || this.binaryOp || this.functionOp;
+    return (
+      !isNil(this.unaryOp) || !isNil(this.binaryOp) || !isNil(this.functionOp)
+    );
   }
 
   /**
@@ -612,7 +614,7 @@ export class OverloadDecl {
       return undefined;
     }
     return (arg: RefVal) => {
-      if (this.matchesRuntimeUnarySignature(disableTypeGuards, arg)) {
+      if (!this.matchesRuntimeUnarySignature(disableTypeGuards, arg)) {
         return maybeNoSuchOverload(funcName, arg);
       }
       return op(arg);
@@ -629,7 +631,7 @@ export class OverloadDecl {
       return undefined;
     }
     return (arg1: RefVal, arg2: RefVal) => {
-      if (this.matchesRuntimeBinarySignature(disableTypeGuards, arg1, arg2)) {
+      if (!this.matchesRuntimeBinarySignature(disableTypeGuards, arg1, arg2)) {
         return maybeNoSuchOverload(funcName, arg1, arg2);
       }
       return op(arg1, arg2);
@@ -646,7 +648,7 @@ export class OverloadDecl {
       return undefined;
     }
     return (...args: RefVal[]) => {
-      if (this.matchesRuntimeSignature(disableTypeGuards, ...args)) {
+      if (!this.matchesRuntimeSignature(disableTypeGuards, ...args)) {
         return maybeNoSuchOverload(funcName, ...args);
       }
       return op(...args);

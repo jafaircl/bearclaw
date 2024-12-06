@@ -1,7 +1,12 @@
 /* eslint-disable no-case-declarations */
 import { isNil } from '@bearclaw/is';
 import { create } from '@bufbuild/protobuf';
-import { AnySchema, StringValueSchema, anyPack } from '@bufbuild/protobuf/wkt';
+import {
+  AnySchema,
+  StringValueSchema,
+  ValueSchema,
+  anyPack,
+} from '@bufbuild/protobuf/wkt';
 import { parseBytes } from '../constants';
 import {
   CONTAINS_OVERLOAD,
@@ -94,6 +99,10 @@ export class StringRefVal
         );
       case StringValueSchema:
         return create(StringValueSchema, { value: this._value });
+      case ValueSchema:
+        return create(ValueSchema, {
+          kind: { case: 'stringValue', value: this._value },
+        });
       default:
         return ErrorRefVal.nativeTypeConversionError(this, type);
     }

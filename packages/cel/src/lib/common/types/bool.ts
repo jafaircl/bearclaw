@@ -1,5 +1,10 @@
 import { create } from '@bufbuild/protobuf';
-import { AnySchema, BoolValueSchema, anyPack } from '@bufbuild/protobuf/wkt';
+import {
+  AnySchema,
+  BoolValueSchema,
+  ValueSchema,
+  anyPack,
+} from '@bufbuild/protobuf/wkt';
 import { RefType, RefVal } from '../ref/reference';
 import { ErrorRefVal } from './error';
 import { IntRefVal } from './int';
@@ -34,6 +39,10 @@ export class BoolRefVal implements RefVal, Comparer, Zeroer, Negater {
         );
       case BoolValueSchema:
         return create(BoolValueSchema, { value: this._value });
+      case ValueSchema:
+        return create(ValueSchema, {
+          kind: { case: 'boolValue', value: this._value },
+        });
       default:
         return ErrorRefVal.nativeTypeConversionError(this, type);
     }
@@ -90,5 +99,14 @@ export class BoolRefVal implements RefVal, Comparer, Zeroer, Negater {
 
   negate(): RefVal {
     return new BoolRefVal(!this._value);
+  }
+}
+
+export function isBoolRefVal(val: RefVal): val is BoolRefVal {
+  switch (val.type()) {
+    case BoolType:
+      return true;
+    default:
+      return false;
   }
 }

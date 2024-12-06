@@ -1,22 +1,33 @@
+import { MutableMap, toFoldableMap } from './../common/types/map';
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { isNil } from '@bearclaw/is';
-import { FunctionOp, UnaryOp } from '../common/functions';
+import { isFunction, isNil } from '@bearclaw/is';
+import { BinaryOp, FunctionOp, UnaryOp } from '../common/functions';
 import { EQUALS_OPERATOR, NOT_EQUALS_OPERATOR } from '../common/operators';
 import { EQUALS_OVERLOAD, NOT_EQUALS_OVERLOAD } from '../common/overloads';
-import { Adapter } from '../common/ref/provider';
+import { Adapter, Provider } from '../common/ref/provider';
 import { RefVal } from '../common/ref/reference';
-import { BoolRefVal } from '../common/types/bool';
+import { BoolRefVal, isBoolRefVal } from '../common/types/bool';
 import {
   ErrorRefVal,
   isErrorRefVal,
   labelErrorNode,
   wrapError,
 } from '../common/types/error';
+import { MutableList, toFoldableList } from '../common/types/list';
 import { isOptionalRefVal } from '../common/types/optional';
+import { Foldable, Iterable } from '../common/types/traits/iterator';
+import { isLister, isMutableLister } from '../common/types/traits/lister';
+import { isMapper, isMutableMapper } from '../common/types/traits/mapper';
 import { Receiver } from '../common/types/traits/receiver';
 import { Trait } from '../common/types/traits/trait';
-import { BoolType, Type } from '../common/types/types';
+import {
+  BoolType,
+  ListType,
+  MapType,
+  newObjectType,
+  Type,
+} from '../common/types/types';
 import {
   isUnknownRefVal,
   maybeMergeUnknowns,
@@ -43,6 +54,10 @@ export interface Interpretable {
   eval(activation: Activation): RefVal;
 }
 
+export function isInterpretable(value: any): value is Interpretable {
+  return value && isFunction(value.id) && isFunction(value.eval);
+}
+
 /**
  * InterpretableConst interface for tracking whether the Interpretable is a
  * constant value.
@@ -52,6 +67,10 @@ export interface InterpretableConst extends Interpretable {
    * Value returns the constant value of the instruction.
    */
   value(): RefVal;
+}
+
+export function isInterpretableConst(value: any): value is InterpretableConst {
+  return value && isFunction(value.value) && isInterpretable(value);
 }
 
 /**
@@ -110,6 +129,22 @@ export interface InterpretableAttribute extends Interpretable {
   resolve(vars: Activation): any | Error;
 }
 
+export function isInterpretableAttribute(
+  value: any
+): value is InterpretableAttribute {
+  return (
+    value &&
+    isFunction(value.attr) &&
+    isFunction(value.adapter) &&
+    isFunction(value.addQualifier) &&
+    isFunction(value.qualify) &&
+    isFunction(value.qualifyIfPresent) &&
+    isFunction(value.isOptional) &&
+    isFunction(value.resolve) &&
+    isInterpretable(value)
+  );
+}
+
 /**
  * InterpretableCall interface for inspecting Interpretable instructions
  * related to function calls.
@@ -135,6 +170,16 @@ export interface InterpretableCall extends Interpretable {
   args(): Interpretable[];
 }
 
+export function isInterpretableCall(value: any): value is InterpretableCall {
+  return (
+    value &&
+    isFunction(value.function) &&
+    isFunction(value.overloadID) &&
+    isFunction(value.args) &&
+    isInterpretable(value)
+  );
+}
+
 /**
  * InterpretableConstructor interface for inspecting Interpretable instructions
  * that initialize a list, map or struct.
@@ -150,6 +195,17 @@ export interface InterpretableConstructor extends Interpretable {
    * Type returns the type constructed.
    */
   type(): Type;
+}
+
+export function isInterpretableConstructor(
+  value: any
+): value is InterpretableConstructor {
+  return (
+    value &&
+    isFunction(value.initVals) &&
+    isFunction(value.type) &&
+    isInterpretable(value)
+  );
 }
 
 // Core Interpretable implementations used during the program planning phase.
@@ -497,7 +553,7 @@ export class EvalUnary implements InterpretableCall {
   #overload: string;
   #arg: Interpretable;
   #trait: Trait;
-  #impl: UnaryOp;
+  #impl: UnaryOp | null;
   #nonStrict: boolean;
 
   constructor(
@@ -506,7 +562,7 @@ export class EvalUnary implements InterpretableCall {
     overload: string,
     arg: Interpretable,
     trait: Trait,
-    impl: UnaryOp,
+    impl: UnaryOp | null,
     nonStrict: boolean
   ) {
     this.#id = id;
@@ -529,18 +585,18 @@ export class EvalUnary implements InterpretableCall {
     if (strict && isUnknownOrError(argVal)) {
       return argVal;
     }
-    // If the implementation is bound and the argument value has the right traits required to
-    // invoke it, then call the implementation.
+    // If the implementation is bound and the argument value has the right
+    // traits required to invoke it, then call the implementation.
     if (
       !isNil(this.#impl) &&
-      (this.#trait === 0 ||
+      (this.#trait === Trait.UNSPECIFIED ||
         (!strict && isUnknownOrError(argVal)) ||
         argVal.type().hasTrait(this.#trait))
     ) {
       return labelErrorNode(this.#id, this.#impl(argVal));
     }
-    // Otherwise, if the argument is a ReceiverType attempt to invoke the receiver method on the
-    // operand (arg0).
+    // Otherwise, if the argument is a ReceiverType attempt to invoke the
+    // receiver method on the operand (arg0).
     if (argVal.type().hasTrait(Trait.RECEIVER_TYPE)) {
       return labelErrorNode(
         this.#id,
@@ -565,4 +621,710 @@ export class EvalUnary implements InterpretableCall {
   args() {
     return [this.#arg];
   }
+}
+
+export class EvalBinary implements InterpretableCall {
+  #id: bigint;
+  #function: string;
+  #overload: string;
+  #lhs: Interpretable;
+  #rhs: Interpretable;
+  #trait: Trait;
+  #impl: BinaryOp | null;
+  #nonStrict: boolean;
+
+  constructor(
+    id: bigint,
+    func: string,
+    overload: string,
+    lhs: Interpretable,
+    rhs: Interpretable,
+    trait: Trait,
+    impl: BinaryOp | null,
+    nonStrict: boolean
+  ) {
+    this.#id = id;
+    this.#function = func;
+    this.#overload = overload;
+    this.#lhs = lhs;
+    this.#rhs = rhs;
+    this.#trait = trait;
+    this.#impl = impl;
+    this.#nonStrict = nonStrict;
+  }
+
+  id() {
+    return this.#id;
+  }
+
+  eval(ctx: Activation) {
+    const lVal = this.#lhs.eval(ctx);
+    const rVal = this.#rhs.eval(ctx);
+    // Early return if any argument to the function is unknown or error.
+    const strict = !this.#nonStrict;
+    if (strict) {
+      if (isUnknownOrError(lVal)) {
+        return lVal;
+      }
+      if (isUnknownOrError(rVal)) {
+        return rVal;
+      }
+    }
+    // If the implementation is bound and the argument value has the right
+    // traits required to invoke it, then call the implementation.
+    if (
+      !isNil(this.#impl) &&
+      (this.#trait === Trait.UNSPECIFIED ||
+        (!strict && isUnknownOrError(lVal)) ||
+        lVal.type().hasTrait(this.#trait) ||
+        // TODO: this is almost certainly wrong. But "in" operators throw an error without checking the rVal for the trait.
+        rVal.type().hasTrait(this.#trait))
+    ) {
+      return labelErrorNode(this.#id, this.#impl(lVal, rVal));
+    }
+    // Otherwise, if the argument is a ReceiverType attempt to invoke the
+    // receiver method on the operand (arg0).
+    if (lVal.type().hasTrait(Trait.RECEIVER_TYPE)) {
+      return labelErrorNode(
+        this.#id,
+        (lVal as RefVal & Receiver).receive(this.#function, this.#overload, [
+          rVal,
+        ])
+      );
+    }
+    return new ErrorRefVal(`no such overload: ${this.#function}`, this.#id);
+  }
+
+  function(): string {
+    return this.#function;
+  }
+
+  overloadID(): string {
+    return this.#overload;
+  }
+
+  args() {
+    return [this.#lhs, this.#rhs];
+  }
+}
+
+export class EvalVarArgs implements InterpretableCall {
+  #id: bigint;
+  #function: string;
+  #overload: string;
+  #args: Interpretable[];
+  #trait: Trait;
+  #impl: FunctionOp | null;
+  #nonStrict: boolean;
+
+  constructor(
+    id: bigint,
+    func: string,
+    overload: string,
+    args: Interpretable[],
+    trait: Trait,
+    impl: FunctionOp | null,
+    nonStrict: boolean
+  ) {
+    this.#id = id;
+    this.#function = func;
+    this.#overload = overload;
+    this.#args = args;
+    this.#trait = trait;
+    this.#impl = impl;
+    this.#nonStrict = nonStrict;
+  }
+
+  id() {
+    return this.#id;
+  }
+
+  eval(ctx: Activation) {
+    const argVals: RefVal[] = [];
+    // Early return if any argument to the function is unknown or error.
+    const strict = !this.#nonStrict;
+    for (const arg of this.#args) {
+      const argVal = arg.eval(ctx);
+      if (strict && isUnknownOrError(argVal)) {
+        return argVal;
+      }
+      argVals.push(argVal);
+    }
+    // If the implementation is bound and the argument value has the right
+    // traits required to invoke it, then call the implementation.
+    const arg0 = argVals[0];
+    if (
+      !isNil(this.#impl) &&
+      (this.#trait == Trait.UNSPECIFIED ||
+        (!strict && isUnknownOrError(arg0)) ||
+        arg0.type().hasTrait(this.#trait))
+    ) {
+      return labelErrorNode(this.#id, this.#impl(...argVals));
+    }
+    // Otherwise, if the argument is a ReceiverType attempt to invoke the
+    // receiver method on the operand (arg0).
+    if (arg0.type().hasTrait(Trait.RECEIVER_TYPE)) {
+      return labelErrorNode(
+        this.#id,
+        (arg0 as RefVal & Receiver).receive(
+          this.#function,
+          this.#overload,
+          argVals.slice(1)
+        )
+      );
+    }
+    return new ErrorRefVal(`no such overload: ${this.#function}`, this.#id);
+  }
+
+  function(): string {
+    return this.#function;
+  }
+
+  overloadID(): string {
+    return this.#overload;
+  }
+
+  args() {
+    return this.#args;
+  }
+}
+
+export function newCall(
+  id: bigint,
+  func: string,
+  overload: string,
+  args: Interpretable[],
+  trait: Trait,
+  impl: FunctionOp,
+  nonStrict: boolean
+): InterpretableCall {
+  return new EvalVarArgs(id, func, overload, args, trait, impl, nonStrict);
+}
+
+export class EvalList implements InterpretableConstructor {
+  #id: bigint;
+  #elems: Interpretable[];
+  #optionals: boolean[];
+  #hasOptionals: boolean;
+  #adapter: Adapter;
+
+  constructor(
+    id: bigint,
+    elems: Interpretable[],
+    optionals: boolean[],
+    hasOptionals: boolean,
+    adapter: Adapter
+  ) {
+    this.#id = id;
+    this.#elems = elems;
+    this.#optionals = optionals;
+    this.#hasOptionals = hasOptionals;
+    this.#adapter = adapter;
+  }
+
+  id() {
+    return this.#id;
+  }
+
+  eval(ctx: Activation) {
+    const elemVals: RefVal[] = [];
+    // If any argument is unknown or error early terminate.
+    for (let i = 0; i < this.#elems.length; i++) {
+      const elem = this.#elems[i];
+      let elemVal = elem.eval(ctx);
+      if (isUnknownOrError(elemVal)) {
+        return elemVal;
+      }
+      if (this.#hasOptionals && this.#optionals[i]) {
+        if (!isOptionalRefVal(elemVal)) {
+          return labelErrorNode(this.#id, invalidOptionalElementInit(elemVal));
+        }
+        if (!elemVal.hasValue()) {
+          continue;
+        }
+        elemVal = elemVal.getValue();
+      }
+      elemVals.push(elemVal);
+    }
+    return this.#adapter.nativeToValue(elemVals);
+  }
+
+  initVals() {
+    return this.#elems;
+  }
+
+  type() {
+    return ListType;
+  }
+}
+
+export class EvalMap implements InterpretableConstructor {
+  #id: bigint;
+  #keys: Interpretable[];
+  #vals: Interpretable[];
+  #optionals: boolean[];
+  #hasOptionals: boolean;
+  #adapter: Adapter;
+
+  constructor(
+    id: bigint,
+    keys: Interpretable[],
+    vals: Interpretable[],
+    optionals: boolean[],
+    hasOptionals: boolean,
+    adapter: Adapter
+  ) {
+    this.#id = id;
+    this.#keys = keys;
+    this.#vals = vals;
+    this.#optionals = optionals;
+    this.#hasOptionals = hasOptionals;
+    this.#adapter = adapter;
+  }
+
+  id() {
+    return this.#id;
+  }
+
+  eval(ctx: Activation) {
+    const entries = new Map<RefVal, RefVal>();
+    // If any argument is unknown or error early terminate.
+    for (let i = 0; i < this.#keys.length; i++) {
+      const key = this.#keys[i];
+      const keyVal = key.eval(ctx);
+      if (isUnknownOrError(keyVal)) {
+        return keyVal;
+      }
+      let valVal = this.#vals[i].eval(ctx);
+      if (isUnknownOrError(valVal)) {
+        return valVal;
+      }
+      if (this.#hasOptionals && this.#optionals[i]) {
+        if (!isOptionalRefVal(valVal)) {
+          return labelErrorNode(
+            this.#id,
+            invalidOptionalEntryInit(keyVal, valVal)
+          );
+        }
+        if (!valVal.hasValue()) {
+          entries.delete(keyVal);
+          continue;
+        }
+        valVal = valVal.getValue();
+      }
+      entries.set(keyVal, valVal);
+    }
+    return this.#adapter.nativeToValue(entries);
+  }
+
+  initVals() {
+    if (this.#keys.length != this.#vals.length) {
+      throw new Error('map keys and values must be of equal length');
+    }
+    const result: Interpretable[] = [];
+    let idx = 0;
+    for (let i = 0; i < this.#keys.length; i++) {
+      const k = this.#keys[i];
+      const v = this.#vals[i];
+      result[idx] = k;
+      idx++;
+      result[idx] = v;
+      idx++;
+    }
+    return result;
+  }
+
+  type() {
+    return MapType;
+  }
+}
+
+export class EvalObj implements InterpretableConstructor {
+  #id: bigint;
+  #typeName: string;
+  #fields: string[];
+  #vals: Interpretable[];
+  #optionals: boolean[];
+  #hasOptionals: boolean;
+  #provider: Provider;
+
+  constructor(
+    id: bigint,
+    typeName: string,
+    fields: string[],
+    vals: Interpretable[],
+    optionals: boolean[],
+    hasOptionals: boolean,
+    provider: Provider
+  ) {
+    this.#id = id;
+    this.#typeName = typeName;
+    this.#fields = fields;
+    this.#vals = vals;
+    this.#optionals = optionals;
+    this.#hasOptionals = hasOptionals;
+    this.#provider = provider;
+  }
+
+  id() {
+    return this.#id;
+  }
+
+  eval(ctx: Activation) {
+    const fieldVals = new Map<string, RefVal>();
+    // If any argument is unknown or error early terminate.
+    for (let i = 0; i < this.#fields.length; i++) {
+      const field = this.#fields[i];
+      let val = this.#vals[i].eval(ctx);
+      if (isUnknownOrError(val)) {
+        return val;
+      }
+      if (this.#hasOptionals && this.#optionals[i]) {
+        if (!isOptionalRefVal(val)) {
+          return labelErrorNode(this.#id, invalidOptionalEntryInit(field, val));
+        }
+        if (!val.hasValue()) {
+          fieldVals.delete(field);
+          continue;
+        }
+        val = val.getValue();
+      }
+      fieldVals.set(field, val);
+    }
+    return labelErrorNode(
+      this.#id,
+      this.#provider.newValue(this.#typeName, fieldVals)
+    );
+  }
+
+  initVals(): Interpretable[] {
+    return this.#vals;
+  }
+
+  type() {
+    return newObjectType(this.#typeName);
+  }
+}
+
+export class EvalFold implements Interpretable {
+  #id: bigint;
+  accuVar: string;
+  iterVar: string;
+  iterVar2: string;
+  iterRange: Interpretable;
+  accu: Interpretable;
+  cond: Interpretable;
+  step: Interpretable;
+  result: Interpretable;
+  adapter: Adapter;
+
+  // note an exhaustive fold will ensure that all branches are evaluated
+  // when using mutable values, these branches will mutate the final result
+  // rather than make a throw-away computation.
+  exhaustive: boolean;
+  interruptable: boolean;
+
+  constructor(
+    id: bigint,
+    accuVar: string,
+    iterVar: string,
+    iterVar2: string,
+    iterRange: Interpretable,
+    accu: Interpretable,
+    cond: Interpretable,
+    step: Interpretable,
+    result: Interpretable,
+    adapter: Adapter,
+    exhaustive: boolean,
+    interruptable: boolean
+  ) {
+    this.#id = id;
+    this.accuVar = accuVar;
+    this.iterVar = iterVar;
+    this.iterVar2 = iterVar2;
+    this.iterRange = iterRange;
+    this.accu = accu;
+    this.cond = cond;
+    this.step = step;
+    this.result = result;
+    this.adapter = adapter;
+    this.exhaustive = exhaustive;
+    this.interruptable = interruptable;
+  }
+
+  id() {
+    return this.#id;
+  }
+
+  eval(ctx: Activation) {
+    // Initialize the folder interface
+    const f = new Folder(this, ctx);
+
+    const foldRange = this.iterRange.eval(ctx);
+    if (this.iterVar2 != '') {
+      let foldable: Foldable | null = null;
+      if (isMapper(foldRange)) {
+        foldable = toFoldableMap(foldRange);
+      } else if (isLister(foldRange)) {
+        foldable = toFoldableList(foldRange);
+      } else {
+        return new ErrorRefVal(
+          `unsupported comprehension range type: ${foldRange}`,
+          this.#id
+        );
+      }
+      foldable?.fold(f);
+      return f.evalResult();
+    }
+
+    if (!foldRange.type().hasTrait(Trait.ITERABLE_TYPE)) {
+      return ErrorRefVal.valOrErr(
+        foldRange,
+        `got '${foldRange}', expected iterable type`
+      );
+    }
+    const iterable = foldRange as RefVal & Iterable;
+    return f.foldIterable(iterable);
+  }
+}
+
+// TODO: add optional interpretables
+// Optional Interpretable implementations that specialize, subsume, or extend
+// the core evaluation plan via decorators.
+
+/**
+ * evalAttr evaluates an Attribute value.
+ */
+export class EvalAttr implements InterpretableAttribute {
+  #adapter: Adapter;
+  #attr: Attribute;
+  #optional: boolean;
+
+  constructor(adapter: Adapter, attr: Attribute, optional = false) {
+    this.#adapter = adapter;
+    this.#attr = attr;
+    this.#optional = optional;
+  }
+
+  attr(): Attribute {
+    return this.#attr;
+  }
+
+  adapter(): Adapter {
+    return this.#adapter;
+  }
+
+  addQualifier(qual: Qualifier): Attribute | Error {
+    const attr = this.#attr.addQualifier(qual);
+    if (attr instanceof Error) {
+      return attr;
+    }
+    this.#attr = attr;
+    return attr;
+  }
+
+  qualify(vars: Activation, obj: any) {
+    return this.#attr.qualify(vars, obj);
+  }
+
+  qualifyIfPresent(
+    vars: Activation,
+    obj: any,
+    presenceOnly: boolean
+  ): [any | null, boolean, Error | null] {
+    return this.#attr.qualifyIfPresent(vars, obj, presenceOnly);
+  }
+
+  isOptional(): boolean {
+    return this.#optional;
+  }
+
+  resolve(vars: Activation) {
+    return this.#attr.resolve(vars);
+  }
+
+  id(): bigint {
+    return this.#attr.id();
+  }
+
+  eval(activation: Activation): RefVal {
+    const v = this.#attr.resolve(activation);
+    if (v instanceof Error) {
+      return labelErrorNode(this.#attr.id(), wrapError(v));
+    }
+    return this.#adapter.nativeToValue(v);
+  }
+}
+
+/**
+ * folder tracks the state associated with folding a list or map with a
+ * comprehension v2 style macro.
+ *
+ * The folder embeds an interpreter.Activation and Interpretable evalFold value
+ * as well as implements the traits.Folder interface methods.
+ *
+ * TODO: golang uses a pool of folders to reduce memory allocation overhead.
+ */
+export class Folder {
+  #evalFold: EvalFold;
+  #activation: Activation;
+
+  // fold state objects.
+  #accuVal: RefVal | null;
+  #iterVar1Val: any;
+  #iterVar2Val: any;
+
+  // bookkeeping flags to modify Activation and fold behaviors.
+  #initialized: boolean;
+  #mutableValue: boolean;
+  #interrupted: boolean;
+  #computeResult: boolean;
+
+  constructor(evalFold: EvalFold, activation: Activation) {
+    this.#evalFold = evalFold;
+    this.#activation = activation;
+    this.#accuVal = null;
+    this.#iterVar1Val = null;
+    this.#iterVar2Val = null;
+    this.#initialized = false;
+    this.#mutableValue = false;
+    this.#interrupted = false;
+    this.#computeResult = false;
+  }
+
+  foldIterable(iterable: Iterable): RefVal {
+    const it = iterable.iterator();
+    while (it.hasNext().value()) {
+      this.#iterVar1Val = it.next();
+
+      const cond = this.#evalFold.cond.eval(this.#activation);
+      if (isBoolRefVal(cond)) {
+        if (
+          this.#interrupted ||
+          (!this.#evalFold.exhaustive && cond.value() !== true)
+        ) {
+          return this.evalResult();
+        }
+      }
+
+      // Update the accumulation value and check for eval interuption.
+      this.#accuVal = this.#evalFold.step.eval(this.#activation);
+      this.#initialized = true;
+      if (this.#evalFold.interruptable && checkInterrupt(this.#activation)) {
+        this.#interrupted = true;
+        return this.evalResult();
+      }
+    }
+    return this.evalResult();
+  }
+
+  /**
+   * FoldEntry will either fold comprehension v1 style macros if iterVar2 is
+   * unset, or comprehension v2 style macros if both the iterVar and iterVar2
+   * are set to non-empty strings.
+   */
+  foldEntry(key: any, val: any): boolean {
+    // Default to referencing both values.
+    this.#iterVar1Val = key;
+    this.#iterVar2Val = val;
+
+    // Terminate evaluation if evaluation is interrupted or the condition is
+    // not true and exhaustive eval is not enabled.
+    const cond = this.#evalFold.cond.eval(this.#activation);
+    if (isBoolRefVal(cond)) {
+      if (
+        this.#interrupted ||
+        (!this.#evalFold.exhaustive && cond.value() !== true)
+      ) {
+        return false;
+      }
+    }
+
+    // Update the accumulation value and check for eval interuption.
+    this.#accuVal = this.#evalFold.step.eval(this.#activation);
+    this.#initialized = true;
+    if (this.#evalFold.interruptable && checkInterrupt(this.#activation)) {
+      this.#interrupted = true;
+      return false;
+    }
+    return true;
+  }
+
+  /**
+   * ResolveName overrides the default Activation lookup to perform lazy
+   * initialization of the accumulator and specialized lookups of iteration
+   * values with consideration for whether the final result is being computed
+   * and the iteration variables should be ignored.
+   */
+  resolveName(name: string): any {
+    if (name == this.#evalFold.accuVar) {
+      if (!this.#initialized) {
+        this.#initialized = true;
+        let initVal = this.#evalFold.accu.eval(this.#activation);
+        if (!this.#evalFold.exhaustive) {
+          if (isLister(initVal) && initVal.size().value() === BigInt(0)) {
+            initVal = new MutableList(this.#evalFold.adapter, []);
+            this.#mutableValue = true;
+          }
+          if (isMapper(initVal) && initVal.size().value() === BigInt(0)) {
+            initVal = new MutableMap(this.#evalFold.adapter, new Map());
+            this.#mutableValue = true;
+          }
+        }
+        this.#accuVal = initVal;
+      }
+      return this.#accuVal;
+    }
+    if (!this.#computeResult) {
+      if (name == this.#evalFold.iterVar) {
+        this.#iterVar1Val = this.#evalFold.adapter.nativeToValue(
+          this.#iterVar1Val
+        );
+        return this.#iterVar1Val;
+      }
+      if (name == this.#evalFold.iterVar2) {
+        this.#iterVar2Val = this.#evalFold.adapter.nativeToValue(
+          this.#iterVar2Val
+        );
+        return this.#iterVar2Val;
+      }
+    }
+    return this.#activation.resolveName(name);
+  }
+
+  evalResult(): RefVal {
+    this.#computeResult = true;
+    if (this.#interrupted) {
+      return new ErrorRefVal('operation interrupted');
+    }
+    let res = this.#evalFold.result.eval(this.#activation);
+    // Convert a mutable list or map to an immutable one if the comprehension
+    // has generated a list or map as a result.
+    if (!isUnknownOrError(res) && this.#mutableValue) {
+      if (isMutableLister(res)) {
+        res = res.toImmutableList();
+      }
+      if (isMutableMapper(res)) {
+        res = res.toImmutableMap();
+      }
+    }
+    return res;
+  }
+}
+
+function checkInterrupt(a: Activation) {
+  const stop = a.resolveName('#interrupted');
+  return stop === true;
+}
+
+function invalidOptionalEntryInit(field: any, value: RefVal): ErrorRefVal {
+  return new ErrorRefVal(
+    `cannot initialize optional entry '${field}' from non-optional value ${value}`
+  );
+}
+
+function invalidOptionalElementInit(value: RefVal): ErrorRefVal {
+  return new ErrorRefVal(
+    `cannot initialize optional list element from non-optional value ${value}`
+  );
 }

@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import {
+  NestedTestAllTypesSchema,
   TestAllTypes_NestedEnum,
   TestAllTypes_NestedEnumSchema,
   TestAllTypes_NestedMessageSchema,
@@ -9,7 +10,8 @@ import {
   DeclSchema,
   ReferenceSchema,
 } from '@buf/google_cel-spec.bufbuild_es/cel/expr/checked_pb.js';
-import { create } from '@bufbuild/protobuf';
+import { SourceInfoSchema } from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb';
+import { create, Message } from '@bufbuild/protobuf';
 import {
   BoolValueSchema,
   BytesValueSchema,
@@ -20,7 +22,10 @@ import {
   StringValueSchema,
   UInt32ValueSchema,
   UInt64ValueSchema,
+  ValueSchema,
 } from '@bufbuild/protobuf/wkt';
+import { RefVal } from '../ref/reference';
+import { objectToMap } from '../utils';
 import { BoolRefVal } from './bool';
 import { BytesRefVal } from './bytes';
 import { DoubleRefVal } from './double';
@@ -358,5 +363,154 @@ describe('Registry', () => {
     expect(
       registry.nativeToValue([new StringRefVal('a')]).value()
     ).toStrictEqual([new StringRefVal('a')]);
+  });
+
+  it('TestRegistryNewValue', () => {
+    const reg = new Registry();
+    reg.registerDescriptor(TestAllTypesSchema);
+    reg.registerDescriptor(NestedTestAllTypesSchema);
+    reg.registerDescriptor(SourceInfoSchema);
+
+    interface TestCase {
+      typeName: string;
+      fields: Map<string, RefVal>;
+      out: Message;
+    }
+    const testCases: TestCase[] = [
+      {
+        typeName: 'google.api.expr.test.v1.proto3.TestAllTypes',
+        fields: new Map(),
+        out: create(TestAllTypesSchema),
+      },
+      {
+        typeName: 'google.api.expr.test.v1.proto3.TestAllTypes',
+        fields: objectToMap({
+          standalone_enum: new IntRefVal(BigInt(1)),
+        }),
+        out: create(TestAllTypesSchema, {
+          standaloneEnum: TestAllTypes_NestedEnum.BAR,
+        }),
+      },
+      {
+        typeName: 'google.api.expr.test.v1.proto3.TestAllTypes',
+        fields: objectToMap({
+          single_int32_wrapper: new IntRefVal(BigInt(123)),
+          single_int64_wrapper: new NullRefVal(),
+        }),
+        out: create(TestAllTypesSchema, {
+          singleInt32Wrapper: 123,
+        }),
+      },
+      {
+        typeName: 'google.api.expr.test.v1.proto3.TestAllTypes',
+        fields: objectToMap({
+          repeated_int64: reg.nativeToValue([BigInt(3), BigInt(2), BigInt(1)]),
+        }),
+        out: create(TestAllTypesSchema, {
+          repeatedInt64: [BigInt(3), BigInt(2), BigInt(1)],
+        }),
+      },
+      // TODO: this doesn't work
+      // {
+      //   typeName: 'google.api.expr.test.v1.proto3.TestAllTypes',
+      //   fields: objectToMap({
+      //     single_nested_enum: new IntRefVal(BigInt(2)),
+      //   }),
+      //   out: create(TestAllTypesSchema, {
+      //     nestedType: {
+      //       case: 'singleNestedEnum',
+      //       value: TestAllTypes_NestedEnum.BAZ,
+      //     },
+      //   }),
+      // },
+      {
+        typeName: 'google.api.expr.test.v1.proto3.TestAllTypes',
+        fields: objectToMap({
+          single_value: BoolRefVal.True,
+        }),
+        out: create(TestAllTypesSchema, {
+          singleValue: {
+            kind: {
+              case: 'boolValue',
+              value: true,
+            },
+          },
+        }),
+      },
+      {
+        typeName: 'google.api.expr.test.v1.proto3.TestAllTypes',
+        fields: objectToMap({
+          single_value: reg.nativeToValue(['hello', 10.2]),
+        }),
+        out: create(TestAllTypesSchema, {
+          singleValue: {
+            kind: {
+              case: 'listValue',
+              value: {
+                values: [
+                  create(ValueSchema, {
+                    kind: { case: 'stringValue', value: 'hello' },
+                  }),
+                  create(ValueSchema, {
+                    kind: { case: 'numberValue', value: 10.2 },
+                  }),
+                ],
+              },
+            },
+          },
+        }),
+      },
+      {
+        typeName: 'google.api.expr.test.v1.proto3.TestAllTypes',
+        fields: objectToMap({
+          repeated_nested_message: reg.nativeToValue([
+            create(TestAllTypes_NestedMessageSchema, { bb: 123 }),
+          ]),
+        }),
+        out: create(TestAllTypesSchema, {
+          repeatedNestedMessage: [{ bb: 123 }],
+        }),
+      },
+      {
+        typeName: 'google.api.expr.test.v1.proto3.TestAllTypes',
+        fields: objectToMap({
+          map_int64_nested_type: reg.nativeToValue(
+            new Map([
+              [
+                BigInt(1234),
+                create(NestedTestAllTypesSchema, {
+                  payload: { singleInt32: 123 },
+                }),
+              ],
+            ])
+          ),
+        }),
+        out: create(TestAllTypesSchema, {
+          mapInt64NestedType: { 1234: { payload: { singleInt32: 123 } } },
+        }),
+      },
+      {
+        typeName: 'cel.expr.SourceInfo',
+        fields: objectToMap({
+          location: new StringRefVal('TestRegistryNewValue'),
+          line_offsets: reg.nativeToValue([BigInt(0), BigInt(2)]),
+          positions: reg.nativeToValue(
+            new Map([
+              [BigInt(1), BigInt(2)],
+              [BigInt(2), BigInt(4)],
+            ])
+          ),
+        }),
+        out: create(SourceInfoSchema, {
+          location: 'TestRegistryNewValue',
+          lineOffsets: [0, 2],
+          positions: { 1: 2, 2: 4 },
+        }),
+      },
+    ];
+    for (const tc of testCases) {
+      const out = reg.newValue(tc.typeName, tc.fields);
+      expect(out.value()).toStrictEqual(tc.out);
+    }
   });
 });

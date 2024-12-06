@@ -17,7 +17,7 @@ export class ErrorRefVal implements RefVal {
     this._id = id || BigInt(0);
   }
 
-  static errDivideByZero = new ErrorRefVal('divide by zero');
+  static errDivideByZero = new ErrorRefVal('division by zero');
 
   static errModulusByZero = new ErrorRefVal('modulus by zero');
 

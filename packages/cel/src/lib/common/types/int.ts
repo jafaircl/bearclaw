@@ -4,6 +4,7 @@ import {
   AnySchema,
   Int32ValueSchema,
   Int64ValueSchema,
+  ValueSchema,
   anyPack,
 } from '@bufbuild/protobuf/wkt';
 import { RefType, RefVal } from '../ref/reference';
@@ -114,6 +115,10 @@ export class IntRefVal
           return ErrorRefVal.errIntOverflow;
         }
         return create(Int64ValueSchema, { value: this._value });
+      case ValueSchema:
+        return create(ValueSchema, {
+          kind: { case: 'numberValue', value: Number(this._value) },
+        });
       default:
         return ErrorRefVal.nativeTypeConversionError(this, type);
     }

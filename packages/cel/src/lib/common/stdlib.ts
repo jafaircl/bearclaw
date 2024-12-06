@@ -236,7 +236,7 @@ import {
   UINT_TO_DOUBLE_OVERLOAD,
 } from './overloads';
 import { RefVal } from './ref/reference';
-import { BoolRefVal } from './types/bool';
+import { BoolRefVal, isBoolRefVal } from './types/bool';
 import { ErrorRefVal } from './types/error';
 import { IntRefVal } from './types/int';
 import {
@@ -380,7 +380,7 @@ export const stdFunctions = [
     singleton: new Overload({
       operator: LOGICAL_NOT_OPERATOR,
       unary: (v) => {
-        if (!v.type().equal(BoolType)) {
+        if (!isBoolRefVal(v)) {
           return ErrorRefVal.maybeNoSuchOverload(v);
         }
         return (v as RefVal & Negater).negate();

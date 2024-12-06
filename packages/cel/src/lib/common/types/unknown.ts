@@ -243,7 +243,7 @@ export class UnknownRefVal implements RefVal {
  * IsUnknown returns whether the element ref.Val is in instance of
  * *types.Unknown
  */
-export function isUnknownRefVal(val: RefVal): val is UnknownRefVal {
+export function isUnknownRefVal(val: any): val is UnknownRefVal {
   if (!isRefVal(val)) {
     return false;
   }
@@ -261,7 +261,10 @@ export function isUnknownRefVal(val: RefVal): val is UnknownRefVal {
  * If both values are non-nil and unknown, then the return value will be a
  * merge of both unknowns.
  */
-export function maybeMergeUnknowns(val: RefVal, unk: UnknownRefVal): RefVal {
+export function maybeMergeUnknowns(
+  val: RefVal | null,
+  unk: UnknownRefVal | null
+): RefVal | null {
   if (!isUnknownRefVal(val)) {
     return unk;
   }
@@ -272,9 +275,9 @@ export function maybeMergeUnknowns(val: RefVal, unk: UnknownRefVal): RefVal {
  * MergeUnknowns combines two unknown values into a new unknown value.
  */
 export function mergeUnknowns(
-  unk1: UnknownRefVal,
-  unk2: UnknownRefVal
-): UnknownRefVal {
+  unk1: UnknownRefVal | null,
+  unk2: UnknownRefVal | null
+): UnknownRefVal | null {
   if (isNil(unk1)) {
     return unk2;
   }

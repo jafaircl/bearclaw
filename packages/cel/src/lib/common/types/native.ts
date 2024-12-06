@@ -1,6 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { isArray, isMap, isSet } from '@bearclaw/is';
-import { DescMessage, isMessage } from '@bufbuild/protobuf';
+import {
+  DescField,
+  DescMessage,
+  isMessage,
+  ScalarType,
+} from '@bufbuild/protobuf';
 import {
   AnySchema,
   BoolValueSchema,
@@ -135,5 +140,112 @@ export function reflectNativeType(value: any): NativeType {
       return value.constructor;
     default:
       return Object;
+  }
+}
+
+/**
+ * ReflectProtoFieldNativeType attempts to reflect the native type of a
+ * protobuf field.
+ */
+export function reflectProtoFieldNativeType(field: DescField): NativeType {
+  switch (field.fieldKind) {
+    case 'enum':
+      return Number;
+    case 'list':
+      return Array;
+    case 'map':
+      return Map;
+    case 'message':
+      return reflectProtoFieldMessageNativeType(field.message);
+    case 'scalar':
+      return reflectProtoFieldScalarNativeType(field.scalar);
+    default:
+      throw new Error('unknown field kind');
+  }
+}
+
+/**
+ * ReflectProtoFieldNativeType attempts to reflect the native type of the list
+ * elements for a protobuf list field.
+ */
+export function reflectProtoListElemFieldNativeType(
+  field: DescField & { fieldKind: 'list' }
+): NativeType {
+  switch (field.listKind) {
+    case 'enum':
+      return Number;
+    case 'message':
+      return reflectProtoFieldMessageNativeType(field.message);
+    case 'scalar':
+      return reflectProtoFieldScalarNativeType(field.scalar);
+    default:
+      throw new Error('unknown list kind');
+  }
+}
+
+/**
+ * ReflectProtoFieldNativeType attempts to reflect the native types of the map
+ * key and value for a protobuf map field.
+ */
+export function reflectProtoMapEntryFieldNativeType(
+  field: DescField & { fieldKind: 'map' }
+): [NativeType, NativeType] {
+  const keyType = reflectProtoFieldScalarNativeType(field.mapKey);
+  switch (field.mapKind) {
+    case 'enum':
+      return [keyType, Number];
+    case 'message':
+      return [keyType, reflectProtoFieldMessageNativeType(field.message)];
+    case 'scalar':
+      return [keyType, reflectProtoFieldScalarNativeType(field.scalar)];
+    default:
+      throw new Error('unknown map kind');
+  }
+}
+
+function reflectProtoFieldMessageNativeType(message: DescMessage): NativeType {
+  switch (message.typeName) {
+    case BoolValueSchema.typeName:
+      return Boolean;
+    case BytesValueSchema.typeName:
+      return Uint8Array;
+    case Int32ValueSchema.typeName:
+    case DoubleValueSchema.typeName:
+    case UInt32ValueSchema.typeName:
+      return Number;
+    case Int64ValueSchema.typeName:
+    case UInt64ValueSchema.typeName:
+      return BigInt;
+    case StringValueSchema.typeName:
+      return String;
+    default:
+      return message;
+  }
+}
+
+function reflectProtoFieldScalarNativeType(scalar: ScalarType): NativeType {
+  switch (scalar) {
+    case ScalarType.BOOL:
+      return Boolean;
+    case ScalarType.BYTES:
+      return Uint8Array;
+    case ScalarType.DOUBLE:
+    case ScalarType.FIXED32:
+    case ScalarType.FLOAT:
+    case ScalarType.INT32:
+    case ScalarType.SFIXED32:
+    case ScalarType.SINT32:
+    case ScalarType.UINT32:
+      return Number;
+    case ScalarType.FIXED64:
+    case ScalarType.INT64:
+    case ScalarType.SFIXED64:
+    case ScalarType.SINT64:
+    case ScalarType.UINT64:
+      return BigInt;
+    case ScalarType.STRING:
+      return String;
+    default:
+      throw new Error('unknown scalar type');
   }
 }

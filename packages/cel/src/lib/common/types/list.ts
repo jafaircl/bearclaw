@@ -1,7 +1,8 @@
 /* eslint-disable no-case-declarations */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { isNil } from '@bearclaw/is';
-import { ListValue, Value } from '@bufbuild/protobuf/wkt';
+import { create } from '@bufbuild/protobuf';
+import { ListValue, Value, ValueSchema } from '@bufbuild/protobuf/wkt';
 import { Adapter } from '../ref/provider';
 import { isRefVal, RefType, RefVal } from '../ref/reference';
 import { BoolRefVal } from './bool';
@@ -9,7 +10,7 @@ import { ErrorRefVal, isErrorRefVal } from './error';
 import { IntRefVal } from './int';
 import { BaseIterator } from './iterator';
 import { NativeType, reflectNativeType } from './native';
-import { Iterator } from './traits/iterator';
+import { Foldable, Folder, isFoldable, Iterator } from './traits/iterator';
 import { isLister, Lister } from './traits/lister';
 import { Zeroer } from './traits/zeroer';
 import {
@@ -45,22 +46,73 @@ class BaseList<T = any> implements Lister, Zeroer {
   convertToNative(type: NativeType) {
     switch (type) {
       case Array:
-        const values = [];
-        for (let i = 0; i < this.size().value(); i++) {
-          let value = this.get(new IntRefVal(BigInt(i))).value();
-          if (isErrorRefVal(value)) {
-            return value;
-          }
-          if (isRefVal(value)) {
-            value = value.convertToNative(reflectNativeType(value.value()));
-          }
-          values.push(value);
-        }
-        return values;
+        return this._valuesToNativeValues();
       // TODO: AnySchema
+      case ValueSchema:
+        const values = this._valuesToProtoValueValues();
+        if (isErrorRefVal(values)) {
+          return values;
+        }
+        return create(ValueSchema, {
+          kind: {
+            case: 'listValue',
+            value: { values },
+          },
+        });
       default:
         return ErrorRefVal.nativeTypeConversionError(this, type);
     }
+  }
+
+  private _valuesToNativeValues() {
+    const values = [];
+    for (let i = 0; i < this.size().value(); i++) {
+      let value = this.get(new IntRefVal(BigInt(i))).value();
+      if (isErrorRefVal(value)) {
+        return value;
+      }
+      if (isRefVal(value)) {
+        value = value.convertToNative(reflectNativeType(value.value()));
+      }
+      values.push(value);
+    }
+    return values;
+  }
+
+  private _valuesToProtoValueValues() {
+    const nativeValues = this._valuesToNativeValues();
+    if (isErrorRefVal(nativeValues)) {
+      return nativeValues;
+    }
+    const values = [];
+    for (const value of nativeValues) {
+      switch (reflectNativeType(value)) {
+        case Boolean:
+          values.push(
+            create(ValueSchema, { kind: { case: 'boolValue', value } })
+          );
+          break;
+        case Number:
+        case BigInt:
+          values.push(
+            create(ValueSchema, {
+              kind: { case: 'numberValue', value: Number(value) },
+            })
+          );
+          break;
+        case String:
+          values.push(
+            create(ValueSchema, { kind: { case: 'stringValue', value } })
+          );
+          break;
+        // TODO: list, null, struct
+        default:
+          return new ErrorRefVal(
+            `unsupported type '${reflectNativeType(value)}' in list`
+          );
+      }
+    }
+    return values;
   }
 
   convertToType(type: RefType): RefVal {
@@ -310,4 +362,62 @@ export function indexOrError(index: RefVal): IntRefVal | ErrorRefVal {
     );
   }
   return retval;
+}
+
+class InteropFoldableList implements Lister, Foldable {
+  constructor(private _lister: Lister) {}
+
+  convertToNative(type: NativeType) {
+    return this._lister.convertToNative(type);
+  }
+  convertToType(type: RefType): RefVal {
+    return this._lister.convertToType(type);
+  }
+  equal(other: RefVal): RefVal {
+    return this._lister.equal(other);
+  }
+  type(): RefType {
+    return this._lister.type();
+  }
+  value() {
+    return this._lister.value();
+  }
+  add(other: RefVal): RefVal {
+    return this._lister.add(other);
+  }
+  contains(value: RefVal): RefVal {
+    return this._lister.contains(value);
+  }
+  get(index: RefVal): RefVal {
+    return this._lister.get(index);
+  }
+  iterator(): Iterator {
+    return this._lister.iterator();
+  }
+  size(): RefVal {
+    return this._lister.size();
+  }
+  fold(f: Folder): void {
+    const sz = this.size();
+    for (let i = 0; i < sz.value(); i++) {
+      if (!f.foldEntry(i, this.get(new IntRefVal(BigInt(i))))) {
+        break;
+      }
+    }
+  }
+}
+
+/**
+ * ToFoldableList will create a Foldable version of a list suitable for
+ * key-value pair iteration.
+ *
+ * For values which are already Foldable, this call is a no-op. For all other
+ * values, the fold is driven via the Size() and Get() calls which means that
+ * the folding will function, but take a performance hit.
+ */
+export function toFoldableList(lister: Lister): Foldable {
+  if (isFoldable(lister)) {
+    return lister;
+  }
+  return new InteropFoldableList(lister);
 }

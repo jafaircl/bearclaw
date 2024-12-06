@@ -4,6 +4,7 @@ import {
   AnySchema,
   DoubleValueSchema,
   FloatValueSchema,
+  ValueSchema,
   anyPack,
 } from '@bufbuild/protobuf/wkt';
 import { RefType, RefVal } from '../ref/reference';
@@ -58,6 +59,10 @@ export class DoubleRefVal
         return create(DoubleValueSchema, { value: this._value });
       case FloatValueSchema:
         return create(FloatValueSchema, { value: this._value });
+      case ValueSchema:
+        return create(ValueSchema, {
+          kind: { case: 'numberValue', value: this._value },
+        });
       default:
         return ErrorRefVal.nativeTypeConversionError(this, type);
     }
