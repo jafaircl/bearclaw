@@ -369,7 +369,7 @@ export class Planner implements InterpretablePlanner {
   ): Interpretable | Error {
     let fn: UnaryOp | null = null;
     let trait = Trait.UNSPECIFIED;
-    let nonStrict = true;
+    let nonStrict = false;
     if (!isNil(impl)) {
       if (isNil(impl.unary)) {
         return new Error(`no such overload: ${_function}(arg)`);
@@ -401,7 +401,7 @@ export class Planner implements InterpretablePlanner {
   ): Interpretable | Error {
     let fn: BinaryOp | null = null;
     let trait = Trait.UNSPECIFIED;
-    let nonStrict = true;
+    let nonStrict = false;
     if (!isNil(impl)) {
       if (isNil(impl.binary)) {
         return new Error(`no such overload: ${_function}(lhs, rhs)`);
@@ -434,7 +434,7 @@ export class Planner implements InterpretablePlanner {
   ): Interpretable | Error {
     let fn: FunctionOp | null = null;
     let trait = Trait.UNSPECIFIED;
-    let nonStrict = true;
+    let nonStrict = false;
     if (!isNil(impl)) {
       if (isNil(impl.function)) {
         return new Error(`no such overload: ${_function}(...)`);

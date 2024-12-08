@@ -21,12 +21,14 @@ import { ErrorRefVal, isErrorRefVal } from '../common/types/error';
 import { IntRefVal } from '../common/types/int';
 import { Registry } from '../common/types/provider';
 import { StringRefVal } from '../common/types/string';
+import { timestampFromSeconds } from '../common/types/timestamp';
 import { Adder } from '../common/types/traits/math';
 import { Trait } from '../common/types/traits/trait';
 import {
   BoolType,
   BytesType,
   DoubleType,
+  DynType,
   IntType,
   newListType,
   newMapType,
@@ -332,6 +334,168 @@ describe('interpreter', () => {
         c: ['hello'],
       }),
       out: false,
+    },
+    {
+      name: 'cond_attr_out_of_bounds_error',
+      expr: `m[(x ? 0 : 1)] >= 0`,
+      vars: [
+        newVariableDecl('m', newListType(IntType)),
+        newVariableDecl('x', BoolType),
+      ],
+      in: objectToMap({
+        m: [BigInt(-1)],
+        x: false,
+      }),
+      err: 'index out of bounds: 1',
+    },
+    {
+      name: 'cond_attr_qualify_bad_type_error',
+      expr: `m[(x ? a : b)] >= 0`,
+      vars: [
+        newVariableDecl('m', newListType(DynType)),
+        newVariableDecl('a', DynType),
+        newVariableDecl('b', DynType),
+        newVariableDecl('x', BoolType),
+      ],
+      in: objectToMap({
+        m: [BigInt(-1)],
+        x: false,
+        a: timestampFromSeconds(0.1),
+        b: timestampFromSeconds(0.1),
+      }),
+      err: 'invalid qualifier type',
+    },
+    {
+      name: 'cond_attr_qualify_bad_field_error',
+      expr: `m[(x ? a : b).c] >= 0`,
+      vars: [
+        newVariableDecl('m', newListType(DynType)),
+        newVariableDecl('a', DynType),
+        newVariableDecl('b', DynType),
+        newVariableDecl('x', BoolType),
+      ],
+      in: objectToMap({
+        m: [BigInt(1)],
+        x: false,
+        a: 1,
+        b: 2,
+      }),
+      err: 'no such key: c',
+    },
+    {
+      name: 'in_empty_list',
+      expr: `6 in []`,
+      out: false,
+    },
+    {
+      name: 'in_constant_list',
+      expr: `6 in [2, 12, 6]`,
+      out: true,
+    },
+    {
+      name: 'bytes_in_constant_list',
+      expr: "b'hello' in [b'world', b'universe', b'hello']",
+      out: true,
+    },
+    {
+      name: 'list_in_constant_list',
+      expr: `[6] in [2, 12, [6]]`,
+      out: true,
+    },
+    {
+      name: 'in_constant_list_cross_type_uint_int',
+      expr: `dyn(12u) in [2, 12, 6]`,
+      out: true,
+    },
+    {
+      name: 'in_constant_list_cross_type_double_int',
+      expr: `dyn(6.0) in [2, 12, 6]`,
+      out: true,
+    },
+    {
+      name: 'in_constant_list_cross_type_int_double',
+      expr: `dyn(6) in [2.1, 12.0, 6.0]`,
+      out: true,
+    },
+    {
+      name: 'not_in_constant_list_cross_type_int_double',
+      expr: `dyn(2) in [2.1, 12.0, 6.0]`,
+      out: false,
+    },
+    {
+      name: 'in_constant_list_cross_type_int_uint',
+      expr: `dyn(6) in [2u, 12u, 6u]`,
+      out: true,
+    },
+    {
+      name: 'in_constant_list_cross_type_negative_int_uint',
+      expr: `dyn(-6) in [2u, 12u, 6u]`,
+      out: false,
+    },
+    {
+      name: 'in_constant_list_cross_type_negative_double_uint',
+      expr: `dyn(-6.1) in [2u, 12u, 6u]`,
+      out: false,
+    },
+    {
+      name: 'in_var_list_int',
+      expr: `6 in [2, 12, x]`,
+      vars: [newVariableDecl('x', DynType)],
+      in: objectToMap({ x: BigInt(6) }),
+    },
+    {
+      // TODO: since js has no uint type, this test case is identical to the previous one
+      name: 'in_var_list_uint',
+      expr: `6 in [2, 12, x]`,
+      vars: [newVariableDecl('x', DynType)],
+      in: objectToMap({ x: BigInt(6) }),
+    },
+    {
+      name: 'in_var_list_double',
+      expr: `6 in [2, 12, x]`,
+      vars: [newVariableDecl('x', DynType)],
+      in: objectToMap({ x: 6.0 }),
+    },
+    {
+      name: 'in_var_list_double_double',
+      expr: `dyn(6.0) in [2, 12, x]`,
+      vars: [newVariableDecl('x', DynType)],
+      in: objectToMap({ x: BigInt(6) }),
+    },
+    {
+      name: 'in_constant_map',
+      expr: `'other-key' in {'key': null, 'other-key': 42}`,
+      out: true,
+    },
+    {
+      name: 'in_constant_map_cross_type_string_number',
+      expr: `'other-key' in {1: null, 2u: 42}`,
+      out: false,
+    },
+    {
+      name: 'in_constant_map_cross_type_double_int',
+      expr: `2.0 in {1: null, 2u: 42}`,
+      out: true,
+    },
+    {
+      name: 'not_in_constant_map_cross_type_double_int',
+      expr: `2.1 in {1: null, 2u: 42}`,
+      out: false,
+    },
+    {
+      name: 'in_constant_heterogeneous_map',
+      expr: `'hello' in {1: 'one', false: true, 'hello': 'world'}`,
+      out: true,
+    },
+    {
+      name: 'not_in_constant_heterogeneous_map',
+      expr: `!('hello' in {1: 'one', false: true})`,
+      out: true,
+    },
+    {
+      name: 'not_in_constant_heterogeneous_map_with_same_key_type',
+      expr: `!('hello' in {1: 'one', 'world': true})`,
+      out: true,
     },
   ];
   it('ExprInterpreter', () => {

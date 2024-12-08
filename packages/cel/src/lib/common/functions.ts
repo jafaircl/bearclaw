@@ -103,6 +103,6 @@ export class Overload {
     this.unary = input.unary;
     this.binary = input.binary;
     this.function = input.function;
-    this.nonStrict = isNil(input.nonStrict) ? true : input.nonStrict;
+    this.nonStrict = isNil(input.nonStrict) ? false : input.nonStrict;
   }
 }
