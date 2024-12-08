@@ -24,8 +24,11 @@ import { StringRefVal } from '../common/types/string';
 import { Adder } from '../common/types/traits/math';
 import { Trait } from '../common/types/traits/trait';
 import {
+  BoolType,
   BytesType,
+  DoubleType,
   IntType,
+  newListType,
   newMapType,
   StringType,
 } from '../common/types/types';
@@ -287,13 +290,48 @@ describe('interpreter', () => {
 			`,
       vars: [newVariableDecl('headers', newMapType(StringType, StringType))],
       in: objectToMap({
-        headers: objectToMap({
+        headers: {
           ip: '10.0.1.2',
           path: '/admin/edit',
           token: 'admin',
-        }),
+        },
       }),
       out: true,
+    },
+    {
+      name: 'complex_qual_vars',
+      expr: `
+			!(headers.ip in ["10.0.1.4", "10.0.1.5"]) &&
+				((headers.path.startsWith("v1") && headers.token in ["v1", "v2", "admin"]) ||
+				(headers.path.startsWith("v2") && headers.token in ["v2", "admin"]) ||
+				(headers.path.startsWith("/admin") && headers.token == "admin" && headers.ip in ["10.0.1.2", "10.0.1.2", "10.0.1.2"]))
+			`,
+      vars: [
+        newVariableDecl('headers.ip', StringType),
+        newVariableDecl('headers.path', StringType),
+        newVariableDecl('headers.token', StringType),
+      ],
+      in: objectToMap({
+        'headers.ip': '10.0.1.2',
+        'headers.path': '/admin/edit',
+        'headers.token': 'admin',
+      }),
+      out: true,
+    },
+    {
+      name: 'cond',
+      expr: `a ? b < 1.2 : c == ['hello']`,
+      vars: [
+        newVariableDecl('a', BoolType),
+        newVariableDecl('b', DoubleType),
+        newVariableDecl('c', newListType(StringType)),
+      ],
+      in: objectToMap({
+        a: true,
+        b: 2.0,
+        c: ['hello'],
+      }),
+      out: false,
     },
   ];
   it('ExprInterpreter', () => {

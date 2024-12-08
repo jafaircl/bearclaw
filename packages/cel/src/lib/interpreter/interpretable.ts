@@ -1,3 +1,4 @@
+import { IN_OPERATOR } from './../common/operators';
 import { MutableMap, toFoldableMap } from './../common/types/map';
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -678,7 +679,7 @@ export class EvalBinary implements InterpretableCall {
         (!strict && isUnknownOrError(lVal)) ||
         lVal.type().hasTrait(this.#trait) ||
         // TODO: this is almost certainly wrong. But "in" operators throw an error without checking the rVal for the trait.
-        rVal.type().hasTrait(this.#trait))
+        (this.#function === IN_OPERATOR && rVal.type().hasTrait(this.#trait)))
     ) {
       return labelErrorNode(this.#id, this.#impl(lVal, rVal));
     }

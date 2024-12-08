@@ -730,10 +730,13 @@ export const stdFunctions = [
       operator: LESS_OPERATOR,
       binary: (lhs, rhs) => {
         const cmp = (lhs as RefVal & Comparer).compare(rhs);
-        if (cmp.equal(IntRefVal.IntNegOne)) {
+        if (cmp.equal(IntRefVal.IntNegOne).value()) {
           return BoolRefVal.True;
         }
-        if (cmp.equal(IntRefVal.IntOne) || cmp.equal(IntRefVal.IntZero)) {
+        if (
+          cmp.equal(IntRefVal.IntOne).value() ||
+          cmp.equal(IntRefVal.IntZero).value()
+        ) {
           return BoolRefVal.False;
         }
         return cmp;
@@ -820,10 +823,13 @@ export const stdFunctions = [
       operator: LESS_EQUALS_OPERATOR,
       binary: (lhs, rhs) => {
         const cmp = (lhs as RefVal & Comparer).compare(rhs);
-        if (cmp.equal(IntRefVal.IntNegOne) || cmp.equal(IntRefVal.IntZero)) {
+        if (
+          cmp.equal(IntRefVal.IntNegOne).value() ||
+          cmp.equal(IntRefVal.IntZero).value()
+        ) {
           return BoolRefVal.True;
         }
-        if (cmp === IntRefVal.IntOne) {
+        if (cmp.equal(IntRefVal.IntOne).value()) {
           return BoolRefVal.False;
         }
         return cmp;
@@ -910,10 +916,13 @@ export const stdFunctions = [
       operator: GREATER_OPERATOR,
       binary: (lhs, rhs) => {
         const cmp = (lhs as RefVal & Comparer).compare(rhs);
-        if (cmp.equal(IntRefVal.IntOne)) {
+        if (cmp.equal(IntRefVal.IntOne).value()) {
           return BoolRefVal.True;
         }
-        if (cmp.equal(IntRefVal.IntNegOne) || cmp.equal(IntRefVal.IntZero)) {
+        if (
+          cmp.equal(IntRefVal.IntNegOne).value() ||
+          cmp.equal(IntRefVal.IntZero).value()
+        ) {
           return BoolRefVal.False;
         }
         return cmp;
@@ -1000,10 +1009,13 @@ export const stdFunctions = [
       operator: GREATER_EQUALS_OPERATOR,
       binary: (lhs, rhs) => {
         const cmp = (lhs as RefVal & Comparer).compare(rhs);
-        if (cmp.equal(IntRefVal.IntOne) || cmp.equal(IntRefVal.IntZero)) {
+        if (
+          cmp.equal(IntRefVal.IntOne).value() ||
+          cmp.equal(IntRefVal.IntZero).value()
+        ) {
           return BoolRefVal.True;
         }
-        if (cmp.equal(IntRefVal.IntNegOne)) {
+        if (cmp.equal(IntRefVal.IntNegOne).value()) {
           return BoolRefVal.False;
         }
         return cmp;
