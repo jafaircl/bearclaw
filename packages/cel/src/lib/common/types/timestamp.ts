@@ -511,4 +511,8 @@ export class TimestampRefVal
   isZeroValue(): boolean {
     return timestampToNanos(this._value) === BigInt(0);
   }
+
+  toString() {
+    return timestampToDateString(this._value);
+  }
 }

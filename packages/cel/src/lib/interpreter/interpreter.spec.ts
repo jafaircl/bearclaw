@@ -19,6 +19,7 @@ import { stdFunctions, stdTypes } from '../common/stdlib';
 import { BoolRefVal } from '../common/types/bool';
 import { ErrorRefVal, isErrorRefVal } from '../common/types/error';
 import { IntRefVal } from '../common/types/int';
+import { NullRefVal } from '../common/types/null';
 import { Registry } from '../common/types/provider';
 import { StringRefVal } from '../common/types/string';
 import { timestampFromSeconds } from '../common/types/timestamp';
@@ -497,23 +498,187 @@ describe('interpreter', () => {
       expr: `!('hello' in {1: 'one', 'world': true})`,
       out: true,
     },
+    {
+      name: 'in_var_key_map',
+      expr: `'other-key' in {x: null, y: 42}`,
+      out: true,
+      vars: [newVariableDecl('x', StringType), newVariableDecl('y', IntType)],
+      in: objectToMap({ x: 'other-key', y: BigInt(2) }),
+    },
+    {
+      name: 'in_var_value_map',
+      expr: `'other-key' in {1: x, 2u: y}`,
+      out: false,
+      vars: [newVariableDecl('x', StringType), newVariableDecl('y', IntType)],
+      in: objectToMap({ x: 'other-key', y: BigInt(2) }),
+    },
+    {
+      name: 'index',
+      expr: `m['key'][1] == 42u && m['null'] == null && m[string(0)] == 10`,
+      vars: [newVariableDecl('m', newMapType(StringType, DynType))],
+      in: objectToMap({
+        m: {
+          key: [BigInt(21), BigInt(42)],
+          null: null,
+          '0': BigInt(10),
+        },
+      }),
+      out: true,
+    },
+    {
+      name: 'index_cross_type_float_uint',
+      expr: `{1: 'hello'}[x] == 'hello' && {2: 'world'}[y] == 'world'`,
+      vars: [newVariableDecl('x', DynType), newVariableDecl('y', DynType)],
+      in: objectToMap({ x: 1.0, y: BigInt(2) }),
+      out: true,
+    },
+    {
+      name: 'no_index_cross_type_float_uint',
+      expr: `{1: 'hello'}[x] == 'hello' && ['world'][y] == 'world'`,
+      vars: [newVariableDecl('x', DynType), newVariableDecl('y', DynType)],
+      in: objectToMap({ x: 2.0, y: BigInt(3) }),
+      err: 'no such key: 2',
+    },
+    {
+      name: 'index_cross_type_double',
+      expr: `{1: 'hello', 2: 'world'}[x] == 'hello'`,
+      vars: [newVariableDecl('x', DynType)],
+      in: objectToMap({ x: 1.0 }),
+      out: true,
+    },
+    {
+      name: 'index_cross_type_double_const',
+      expr: `{1: 'hello', 2: 'world'}[dyn(2.0)] == 'world'`,
+      out: true,
+    },
+    {
+      name: 'index_cross_type_uint',
+      expr: `{1: 'hello', 2: 'world'}[dyn(2u)] == 'world'`,
+      out: true,
+    },
+    {
+      name: 'index_cross_type_bad_qualifier',
+      expr: `{1: 'hello', 2: 'world'}[x] == 'world'`,
+      vars: [newVariableDecl('x', DynType)],
+      in: objectToMap({ x: timestampFromSeconds(0.1) }),
+      err: 'invalid qualifier type',
+    },
+    // TODO: these throw errors
+    // {
+    //   name: 'index_list_int_double_type_index',
+    //   expr: `[7, 8, 9][dyn(0.0)] == 7`,
+    //   out: true,
+    // },
+    // {
+    //   name: 'index_list_int_uint_type_index',
+    //   expr: `[7, 8, 9][dyn(0u)] == 7`,
+    //   out: true,
+    // },
+    // {
+    //   name: 'index_list_int_bad_double_type_index',
+    //   expr: `[7, 8, 9][dyn(0.1)] == 7`,
+    //   err: `unsupported index value`,
+    // },
+    // {
+    //   name: 'index_relative',
+    //   expr: `([[[1]], [[2]], [[3]]][0][0] + [2, 3, {'four': {'five': 'six'}}])[3].four.five == 'six'`,
+    //   out: true,
+    // },
+    {
+      name: 'list_eq_false_with_error',
+      expr: `['string', 1] == [2, 3]`,
+      out: false,
+    },
+    {
+      name: 'list_eq_error',
+      expr: `['string', true] == [2, 3]`,
+      out: false,
+    },
+    {
+      name: 'literal_bool_false',
+      expr: `false`,
+      out: false,
+    },
+    {
+      name: 'literal_bool_true',
+      expr: `true`,
+    },
+    {
+      name: 'literal_null',
+      expr: `null`,
+      out: new NullRefVal(),
+    },
+    {
+      name: 'literal_list',
+      expr: `[1, 2, 3]`,
+      out: [BigInt(1), BigInt(2), BigInt(3)],
+    },
+    {
+      name: 'literal_map',
+      expr: `{'hi': 21, 'world': 42u}`,
+      out: objectToMap({
+        hi: BigInt(21),
+        world: BigInt(42),
+      }),
+    },
+    // TODO: javascript throws an error for "octal escape sequences are not allowed." The 3 test cases below these are what js will allow
+    // {
+    //   name: 'literal_equiv_string_bytes',
+    //   expr: `string(bytes("\303\277")) == '''\303\277'''`,
+    // },
+    // {
+    //   name: 'literal_not_equiv_string_bytes',
+    //   expr: `string(b"\303\277") != '''\303\277'''`,
+    // },
+    // {
+    //   name: 'literal_equiv_bytes_string',
+    //   expr: `string(b"\303\277") == 'ÿ'`,
+    // },
+    {
+      name: 'literal_equiv_string_bytes',
+      expr: `string(bytes("\xc3\xbf")) == '''\xc3\xbf'''`,
+    },
+    {
+      name: 'literal_not_equiv_string_bytes',
+      expr: `string(b"\xc3\xbf") != '''\xc3\xbf'''`,
+    },
+    {
+      name: 'literal_equiv_bytes_string',
+      expr: `string(b"\xc3\xbf") == 'ÿ'`,
+    },
+    {
+      name: 'literal_bytes_string',
+      expr: `string(b'aaa"bbb')`,
+      out: `aaa"bbb`,
+    },
+    {
+      name: 'literal_bytes_string2',
+      expr: `string(b"""Kim\t""")`,
+      out: `Kim	`,
+    },
   ];
-  it('ExprInterpreter', () => {
-    for (const tc of testCases) {
+  for (const tc of testCases) {
+    it(`ExprInterpreter - ${tc.name}`, () => {
       const [prg, act, err] = program(tc);
-      const out = prg?.eval(act ?? new EmptyActivation());
+      const got = prg?.eval(act ?? new EmptyActivation());
       if (!isNil(tc.out)) {
-        if (isErrorRefVal(out)) {
+        if (isErrorRefVal(got)) {
           console.log({ err });
+          throw got.value();
         }
-        expect(out).toStrictEqual(tc.out);
+        try {
+          expect(got?.equal(tc.out).value()).toEqual(true);
+        } catch (e) {
+          console.log({ got, want: tc.out });
+          throw e;
+        }
       }
       if (!isNil(tc.err)) {
-        expect(out).toBeInstanceOf(ErrorRefVal);
-        expect(out?.value().message).toContain(tc.err);
+        expect(got).toBeInstanceOf(ErrorRefVal);
+        expect(got?.value().message).toContain(tc.err);
       }
-    }
-  });
+    });
+  }
 });
 
 function program(

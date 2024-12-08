@@ -264,4 +264,8 @@ export class DurationRefVal
   isZeroValue(): boolean {
     return durationToNanos(this._value) === BigInt(0);
   }
+
+  toString() {
+    return `${durationToSeconds(this._value)}s`;
+  }
 }

@@ -852,7 +852,9 @@ function newQualifier(
       if (isQualifier(v)) {
         return v;
       }
-      return new Error(`invalid qualifier type: ${v}`);
+      return new Error(
+        `invalid qualifier type: ${adapter.nativeToValue(v).type().typeName()}`
+      );
   }
 }
 
