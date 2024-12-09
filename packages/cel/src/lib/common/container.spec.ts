@@ -12,4 +12,21 @@ describe('Container', () => {
       'R.s',
     ]);
   });
+
+  it('addAbbrevs', () => {
+    let container = new Container();
+    container.addAbbrevs('my.alias.R');
+    expect(container.resolveCandidateNames('R')).toEqual(['my.alias.R']);
+    container = new Container('a.b.c');
+    container.addAbbrevs('my.alias.R');
+    expect(container.resolveCandidateNames('R.S.T')).toEqual([
+      'my.alias.R.S.T',
+    ]);
+    expect(container.resolveCandidateNames('S')).toEqual([
+      'a.b.c.S',
+      'a.b.S',
+      'a.S',
+      'S',
+    ]);
+  });
 });

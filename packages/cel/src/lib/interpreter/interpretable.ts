@@ -1166,7 +1166,7 @@ export class EvalAttr implements InterpretableAttribute {
  *
  * TODO: golang uses a pool of folders to reduce memory allocation overhead.
  */
-export class Folder {
+export class Folder implements Activation {
   #evalFold: EvalFold;
   #activation: Activation;
 
@@ -1193,12 +1193,16 @@ export class Folder {
     this.#computeResult = false;
   }
 
+  parent() {
+    return this.#activation.parent();
+  }
+
   foldIterable(iterable: Iterable): RefVal {
     const it = iterable.iterator();
     while (it.hasNext().value()) {
       this.#iterVar1Val = it.next();
 
-      const cond = this.#evalFold.cond.eval(this.#activation);
+      const cond = this.#evalFold.cond.eval(this);
       if (isBoolRefVal(cond)) {
         if (
           this.#interrupted ||
@@ -1209,7 +1213,7 @@ export class Folder {
       }
 
       // Update the accumulation value and check for eval interuption.
-      this.#accuVal = this.#evalFold.step.eval(this.#activation);
+      this.#accuVal = this.#evalFold.step.eval(this);
       this.#initialized = true;
       if (this.#evalFold.interruptable && checkInterrupt(this.#activation)) {
         this.#interrupted = true;
@@ -1231,7 +1235,7 @@ export class Folder {
 
     // Terminate evaluation if evaluation is interrupted or the condition is
     // not true and exhaustive eval is not enabled.
-    const cond = this.#evalFold.cond.eval(this.#activation);
+    const cond = this.#evalFold.cond.eval(this);
     if (isBoolRefVal(cond)) {
       if (
         this.#interrupted ||
@@ -1242,7 +1246,7 @@ export class Folder {
     }
 
     // Update the accumulation value and check for eval interuption.
-    this.#accuVal = this.#evalFold.step.eval(this.#activation);
+    this.#accuVal = this.#evalFold.step.eval(this);
     this.#initialized = true;
     if (this.#evalFold.interruptable && checkInterrupt(this.#activation)) {
       this.#interrupted = true;
@@ -1298,7 +1302,7 @@ export class Folder {
     if (this.#interrupted) {
       return new ErrorRefVal('operation interrupted');
     }
-    let res = this.#evalFold.result.eval(this.#activation);
+    let res = this.#evalFold.result.eval(this);
     // Convert a mutable list or map to an immutable one if the comprehension
     // has generated a list or map as a result.
     if (!isUnknownOrError(res) && this.#mutableValue) {

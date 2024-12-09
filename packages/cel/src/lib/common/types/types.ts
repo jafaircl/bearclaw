@@ -244,6 +244,9 @@ export class Type implements RefType, RefVal {
   }
 
   equal(other: RefVal): RefVal {
+    if (isType(other)) {
+      return new BoolRefVal(this.isExactType(other));
+    }
     return new BoolRefVal(this.typeName() === other.type().typeName());
   }
 

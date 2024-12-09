@@ -7,16 +7,22 @@ import {
   isMessage,
   Message,
 } from '@bufbuild/protobuf';
+import {
+  isReflectList,
+  isReflectMap,
+  isReflectMessage,
+  reflect,
+} from '@bufbuild/protobuf/reflect';
 import { anyPack, AnySchema } from '@bufbuild/protobuf/wkt';
 import { RefType, RefVal } from '../ref/reference';
 import { BoolRefVal } from './bool';
 import { ErrorRefVal } from './error';
 import { NativeType } from './native';
+import { NullRefVal } from './null';
 import { Registry } from './provider';
 import { isStringRefVal } from './string';
 import { Zeroer } from './traits/zeroer';
 import { TypeType } from './types';
-import { isMessageFieldSet } from './utils';
 
 export class ObjectRefVal implements RefVal, Zeroer {
   private readonly _value: Message;
@@ -83,7 +89,9 @@ export class ObjectRefVal implements RefVal, Zeroer {
     if (isNil(fd)) {
       return ErrorRefVal.noSuchField(field.value());
     }
-    return new BoolRefVal(isMessageFieldSet(fd, this.value()));
+    return new BoolRefVal(
+      reflect(this.typeDesc, this.value(), false).isSet(fd)
+    );
   }
 
   get(field: RefVal) {
@@ -96,9 +104,20 @@ export class ObjectRefVal implements RefVal, Zeroer {
     if (isNil(fd)) {
       return ErrorRefVal.noSuchField(field.value());
     }
-    return this.registry.nativeToValue(
-      (this.value() as any)[fd.name] ?? (this.value() as any)[fd.jsonName]
-    );
+    let fieldValue: any = reflect(this.typeDesc, this.value(), false).get(fd);
+    if (isNil(fieldValue)) {
+      return new NullRefVal();
+    }
+    if (isReflectMessage(fieldValue)) {
+      fieldValue = fieldValue.message;
+    }
+    if (isReflectMap(fieldValue)) {
+      fieldValue = new Map(fieldValue.entries());
+    }
+    if (isReflectList(fieldValue)) {
+      fieldValue = [...fieldValue.values()];
+    }
+    return this.registry.nativeToValue(fieldValue);
   }
 }
 

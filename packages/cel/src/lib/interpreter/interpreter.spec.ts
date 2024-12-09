@@ -1,8 +1,18 @@
+import { UintRefVal } from './../common/types/uint';
 import { DefaultDispatcher, Dispatcher } from './dispatcher';
 import { ExprInterpreter } from './interpreter';
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { isNil } from '@bearclaw/is';
-import { DescMessage } from '@bufbuild/protobuf';
+import {
+  NestedTestAllTypesSchema,
+  TestAllTypesSchema as TestAllTypesSchemaProto2,
+} from '@buf/cel_spec.bufbuild_es/proto/test/v1/proto2/test_all_types_pb.js';
+import {
+  TestAllTypes_NestedEnum,
+  TestAllTypesSchema,
+} from '@buf/cel_spec.bufbuild_es/proto/test/v1/proto3/test_all_types_pb.js';
+import { ExprSchema } from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb.js';
+import { create, DescMessage } from '@bufbuild/protobuf';
 import { Checker } from '../checker/checker';
 import { Env } from '../checker/env';
 import { Container } from '../common/container';
@@ -13,6 +23,7 @@ import {
   VariableDecl,
 } from '../common/decls';
 import { Overload } from '../common/functions';
+import { newStringProtoExpr } from '../common/pb/expressions';
 import { RefVal } from '../common/ref/reference';
 import { TextSource } from '../common/source';
 import { stdFunctions, stdTypes } from '../common/stdlib';
@@ -33,6 +44,7 @@ import {
   IntType,
   newListType,
   newMapType,
+  newObjectType,
   StringType,
 } from '../common/types/types';
 import { objectToMap } from '../common/utils';
@@ -563,27 +575,26 @@ describe('interpreter', () => {
       in: objectToMap({ x: timestampFromSeconds(0.1) }),
       err: 'invalid qualifier type',
     },
-    // TODO: these throw errors
-    // {
-    //   name: 'index_list_int_double_type_index',
-    //   expr: `[7, 8, 9][dyn(0.0)] == 7`,
-    //   out: true,
-    // },
-    // {
-    //   name: 'index_list_int_uint_type_index',
-    //   expr: `[7, 8, 9][dyn(0u)] == 7`,
-    //   out: true,
-    // },
-    // {
-    //   name: 'index_list_int_bad_double_type_index',
-    //   expr: `[7, 8, 9][dyn(0.1)] == 7`,
-    //   err: `unsupported index value`,
-    // },
-    // {
-    //   name: 'index_relative',
-    //   expr: `([[[1]], [[2]], [[3]]][0][0] + [2, 3, {'four': {'five': 'six'}}])[3].four.five == 'six'`,
-    //   out: true,
-    // },
+    {
+      name: 'index_list_int_double_type_index',
+      expr: `[7, 8, 9][dyn(0.0)] == 7`,
+      out: true,
+    },
+    {
+      name: 'index_list_int_uint_type_index',
+      expr: `[7, 8, 9][dyn(0u)] == 7`,
+      out: true,
+    },
+    {
+      name: 'index_list_int_bad_double_type_index',
+      expr: `[7, 8, 9][dyn(0.1)] == 7`,
+      err: `unsupported index value`,
+    },
+    {
+      name: 'index_relative',
+      expr: `([[[1]], [[2]], [[3]]][0][0] + [2, 3, {'four': {'five': 'six'}}])[3].four.five == 'six'`,
+      out: true,
+    },
     {
       name: 'list_eq_false_with_error',
       expr: `['string', 1] == [2, 3]`,
@@ -656,6 +667,634 @@ describe('interpreter', () => {
       expr: `string(b"""Kim\t""")`,
       out: `Kim	`,
     },
+    {
+      name: 'literal_pb3_msg',
+      container: 'cel',
+      types: [ExprSchema],
+      expr: `expr.Expr{
+				id: 1,
+				const_expr: expr.Constant{
+					string_value: "oneof_test"
+				}
+			}`,
+      out: newStringProtoExpr(BigInt(1), 'oneof_test'),
+    },
+    {
+      name: 'literal_pb_enum',
+      container: 'google.api.expr.test.v1.proto3',
+      types: [TestAllTypesSchema],
+      expr: `TestAllTypes{
+				repeated_nested_enum: [
+					0,
+					TestAllTypes.NestedEnum.BAZ,
+					TestAllTypes.NestedEnum.BAR],
+				repeated_int32: [
+					TestAllTypes.NestedEnum.FOO,
+					TestAllTypes.NestedEnum.BAZ]}`,
+      out: create(TestAllTypesSchema, {
+        repeatedNestedEnum: [
+          TestAllTypes_NestedEnum.FOO,
+          TestAllTypes_NestedEnum.BAZ,
+          TestAllTypes_NestedEnum.BAR,
+        ],
+        repeatedInt32: [
+          TestAllTypes_NestedEnum.FOO,
+          TestAllTypes_NestedEnum.BAZ,
+        ],
+      }),
+    },
+    {
+      name: 'literal_pb_wrapper_assign',
+      container: 'google.api.expr.test.v1.proto3',
+      types: [TestAllTypesSchema],
+      expr: `TestAllTypes{
+				single_int64_wrapper: 10,
+				single_int32_wrapper: TestAllTypes{}.single_int32_wrapper,
+			}`,
+      out: create(TestAllTypesSchema, {
+        singleInt64Wrapper: BigInt(10),
+      }),
+    },
+    {
+      name: 'literal_pb_wrapper_assign_roundtrip',
+      container: 'google.api.expr.test.v1.proto3',
+      types: [TestAllTypesSchema],
+      expr: `TestAllTypes{
+    		single_int32_wrapper: TestAllTypes{}.single_int32_wrapper,
+    	}.single_int32_wrapper == null`,
+      out: true,
+    },
+    {
+      name: 'literal_pb_list_assign_null_wrapper',
+      container: 'google.api.expr.test.v1.proto3',
+      types: [TestAllTypesSchema],
+      expr: `TestAllTypes{
+    		repeated_int32: [123, 456, TestAllTypes{}.single_int32_wrapper],
+    	}`,
+      err: 'field type conversion error',
+    },
+    {
+      name: 'literal_pb_map_assign_null_entry_value',
+      container: 'google.api.expr.test.v1.proto3',
+      types: [TestAllTypesSchema],
+      expr: `TestAllTypes{
+    		map_string_string: {
+    			'hello': 'world',
+    			'goodbye': TestAllTypes{}.single_string_wrapper,
+    		},
+    	}`,
+      err: 'field type conversion error',
+    },
+    {
+      name: 'unset_wrapper_access',
+      container: 'google.api.expr.test.v1.proto3',
+      types: [TestAllTypesSchema],
+      expr: `TestAllTypes{}.single_string_wrapper`,
+      out: new NullRefVal(),
+    },
+    {
+      name: 'timestamp_eq_timestamp',
+      expr: `timestamp(0) == timestamp(0)`,
+      out: true,
+    },
+    {
+      name: 'timestamp_ne_timestamp',
+      expr: `timestamp(1) != timestamp(2)`,
+      out: true,
+    },
+    {
+      name: 'timestamp_lt_timestamp',
+      expr: `timestamp(0) < timestamp(1)`,
+      out: true,
+    },
+    {
+      name: 'timestamp_le_timestamp',
+      expr: `timestamp(2) <= timestamp(2)`,
+      out: true,
+    },
+    {
+      name: 'timestamp_gt_timestamp',
+      expr: `timestamp(1) > timestamp(0)`,
+      out: true,
+    },
+    {
+      name: 'timestamp_ge_timestamp',
+      expr: `timestamp(2) >= timestamp(2)`,
+      out: true,
+    },
+    {
+      name: 'string_to_timestamp',
+      expr: `timestamp('1986-04-26T01:23:40Z')`,
+      out: timestampFromSeconds(514862620),
+    },
+    {
+      name: 'macro_all_non_strict',
+      expr: `![0, 2, 4].all(x, 4/x != 2 && 4/(4-x) != 2)`,
+      out: true,
+    },
+    {
+      name: 'macro_all_non_strict_var',
+      expr: `code == "111" && ["a", "b"].all(x, x in tags)
+				|| code == "222" && ["a", "b"].all(x, x in tags)`,
+      vars: [
+        newVariableDecl('code', StringType),
+        newVariableDecl('tags', newListType(StringType)),
+      ],
+      in: objectToMap({
+        code: '222',
+        tags: ['a', 'b'],
+      }),
+      out: true,
+    },
+    {
+      name: 'macro_exists_lit',
+      expr: `[1, 2, 3, 4, 5u, 1.0].exists(e, type(e) == uint)`,
+      out: true,
+    },
+    {
+      name: 'macro_exists_nonstrict',
+      expr: `[0, 2, 4].exists(x, 4/x == 2 && 4/(4-x) == 2)`,
+      out: true,
+    },
+    {
+      name: 'macro_exists_var',
+      expr: `elems.exists(e, type(e) == uint)`,
+      vars: [newVariableDecl('elems', newListType(DynType))],
+      in: objectToMap({
+        elems: [0, 1, 2, 3, 4, new UintRefVal(BigInt(5)), 6],
+      }),
+      out: true,
+    },
+    {
+      name: 'macro_exists_one',
+      expr: `[1, 2, 3].exists_one(x, (x % 2) == 0)`,
+      out: true,
+    },
+    {
+      name: 'macro_filter',
+      expr: `[-10, -9, -8, -7, -6, -5, -4, -3, -2, -1, 0, 1, 2, 3].filter(x, x > 0)`,
+      out: [BigInt(1), BigInt(2), BigInt(3)],
+    },
+    {
+      name: 'macro_has_map_key',
+      expr: `has({'a':1}.a) && !has({}.a)`,
+      out: true,
+    },
+    {
+      name: 'macro_has_pb2_field_undefined',
+      container: 'google.api.expr.test.v1.proto2',
+      types: [TestAllTypesSchemaProto2],
+      unchecked: true,
+      expr: `has(TestAllTypes{}.invalid_field)`,
+      err: "no such field 'invalid_field'",
+    },
+    // TODO: this one seems to fail because the expression expects fields with default values to return true for "has." This is probably due to a difference in the way proto2 default fields are handled by protobuf-es. The test immediately below this is very similar but for proto3, and it passes.
+    // {
+    //   name: 'macro_has_pb2_field',
+    //   container: 'google.api.expr.test.v1.proto2',
+    //   types: [TestAllTypesSchemaProto2, NestedTestAllTypesSchemaProto2],
+    //   vars: [
+    //     newVariableDecl(
+    //       'pb2',
+    //       newObjectType('google.api.expr.test.v1.proto2.TestAllTypes')
+    //     ),
+    //   ],
+    //   in: objectToMap({
+    //     pb2: create(TestAllTypesSchemaProto2, {
+    //       repeatedBool: [false],
+    //       mapInt64NestedType: { '1': {} },
+    //       mapStringString: {},
+    //     }),
+    //   }),
+    //   expr: `has(TestAllTypes{standalone_enum: TestAllTypes.NestedEnum.BAR}.standalone_enum)
+    // 	&& has(TestAllTypes{standalone_enum: TestAllTypes.NestedEnum.FOO}.standalone_enum)
+    // 	&& !has(TestAllTypes{single_nested_enum: TestAllTypes.NestedEnum.FOO}.single_nested_message)
+    // 	&& has(TestAllTypes{single_nested_enum: TestAllTypes.NestedEnum.FOO}.single_nested_enum)
+    // 	&& !has(TestAllTypes{}.standalone_enum)
+    // 	&& !has(pb2.single_int64)
+    // 	&& has(pb2.repeated_bool)
+    // 	&& !has(pb2.repeated_int32)
+    // 	&& has(pb2.map_int64_nested_type)
+    // 	&& !has(pb2.map_string_string)`,
+    //   out: true,
+    // },
+    {
+      name: 'macro_has_pb3_field',
+      container: 'google.api.expr.test.v1.proto3',
+      types: [TestAllTypesSchema, NestedTestAllTypesSchema],
+      vars: [
+        newVariableDecl(
+          'pb3',
+          newObjectType('google.api.expr.test.v1.proto3.TestAllTypes')
+        ),
+      ],
+      in: objectToMap({
+        pb3: create(TestAllTypesSchema, {
+          repeatedBool: [false],
+          mapInt64NestedType: { '1': {} },
+          mapStringString: {},
+        }),
+      }),
+      expr: `has(TestAllTypes{standalone_enum: TestAllTypes.NestedEnum.BAR}.standalone_enum)
+			&& !has(TestAllTypes{standalone_enum: TestAllTypes.NestedEnum.FOO}.standalone_enum)
+			&& !has(TestAllTypes{single_nested_enum: TestAllTypes.NestedEnum.FOO}.single_nested_message)
+			&& has(TestAllTypes{single_nested_enum: TestAllTypes.NestedEnum.FOO}.single_nested_enum)
+			&& !has(TestAllTypes{}.single_nested_message)
+			&& has(TestAllTypes{single_nested_message: TestAllTypes.NestedMessage{}}.single_nested_message)
+			&& !has(TestAllTypes{}.standalone_enum)
+			&& !has(pb3.single_int64)
+			&& has(pb3.repeated_bool)
+			&& !has(pb3.repeated_int32)
+			&& has(pb3.map_int64_nested_type)
+			&& !has(pb3.map_string_string)`,
+    },
+    {
+      name: 'macro_map',
+      expr: `[1, 2, 3].map(x, x * 2) == [2, 4, 6]`,
+      out: true,
+    },
+    {
+      name: 'matches_global',
+      expr: `matches(input, 'k.*')`,
+      vars: [newVariableDecl('input', StringType)],
+      in: objectToMap({
+        input: 'kathmandu',
+      }),
+      out: true,
+    },
+    {
+      name: 'matches_member',
+      expr: `input.matches('k.*')
+				&& !'foo'.matches('k.*')
+				&& !'bar'.matches('k.*')
+				&& 'kilimanjaro'.matches('.*ro')`,
+      vars: [newVariableDecl('input', StringType)],
+      in: objectToMap({
+        input: 'kathmandu',
+      }),
+      out: true,
+    },
+    // TODO: regex optimization
+    // {
+    // 	name: "matches_error",
+    // 	expr: `input.matches(')k.*')`,
+    // 	vars: []*decls.VariableDecl{
+    // 		decls.NewVariable("input", types.StringType),
+    // 	},
+    // 	in: map[string]any{
+    // 		"input": "kathmandu",
+    // 	},
+    // 	extraOpts: []InterpretableDecorator{CompileRegexConstants(MatchesRegexOptimization)},
+    // 	// unoptimized program should report a regex compile error at runtime
+    // 	err: "unexpected ): `)k.*`",
+    // 	// optimized program should report a regex compile at program creation time
+    // 	progErr: "unexpected ): `)k.*`",
+    // },
+    {
+      name: 'nested_proto_field',
+      expr: `pb3.single_nested_message.bb`,
+      types: [TestAllTypesSchema],
+      vars: [
+        newVariableDecl(
+          'pb3',
+          newObjectType('google.api.expr.test.v1.proto3.TestAllTypes')
+        ),
+      ],
+      in: objectToMap({
+        pb3: create(TestAllTypesSchema, {
+          nestedType: {
+            case: 'singleNestedMessage',
+            value: {
+              bb: 1234,
+            },
+          },
+        }),
+      }),
+      out: 1234,
+    },
+    {
+      name: 'nested_proto_field_with_index',
+      expr: `pb3.map_int64_nested_type[0].child.payload.single_int32 == 1`,
+      types: [TestAllTypesSchema, NestedTestAllTypesSchema],
+      vars: [
+        newVariableDecl(
+          'pb3',
+          newObjectType('google.api.expr.test.v1.proto3.TestAllTypes')
+        ),
+      ],
+      in: objectToMap({
+        pb3: create(TestAllTypesSchema, {
+          mapInt64NestedType: {
+            '0': {
+              child: {
+                payload: {
+                  singleInt32: 1,
+                },
+              },
+            },
+          },
+        }),
+      }),
+    },
+    {
+      name: 'or_true_1st',
+      expr: `ai == 20 || ar["foo"] == "bar"`,
+      vars: [
+        newVariableDecl('ai', IntType),
+        newVariableDecl('ar', newMapType(StringType, StringType)),
+      ],
+      in: objectToMap({
+        ai: BigInt(20),
+        ar: {
+          foo: 'bar',
+        },
+      }),
+      out: true,
+    },
+    {
+      name: 'or_true_2nd',
+      expr: `ai == 20 || ar["foo"] == "bar"`,
+      vars: [
+        newVariableDecl('ai', IntType),
+        newVariableDecl('ar', newMapType(StringType, StringType)),
+      ],
+      in: objectToMap({
+        ai: BigInt(2),
+        ar: {
+          foo: 'bar',
+        },
+      }),
+      out: true,
+    },
+    {
+      name: 'or_false',
+      expr: `ai == 20 || ar["foo"] == "bar"`,
+      vars: [
+        newVariableDecl('ai', IntType),
+        newVariableDecl('ar', newMapType(StringType, StringType)),
+      ],
+      in: objectToMap({
+        ai: BigInt(2),
+        ar: {
+          foo: 'baz',
+        },
+      }),
+      out: false,
+    },
+    {
+      name: 'or_error_1st_error',
+      expr: `1/0 != 0 || false`,
+      err: 'division by zero',
+    },
+    {
+      name: 'or_error_2nd_error',
+      expr: `false || 1/0 != 0`,
+      err: 'division by zero',
+    },
+    {
+      name: 'or_error_1st_true',
+      expr: `1/0 != 0 || true`,
+      out: true,
+    },
+    {
+      name: 'or_error_2nd_true',
+      expr: `true || 1/0 != 0`,
+      out: true,
+    },
+    {
+      name: 'pkg_qualified_id',
+      expr: `b.c.d != 10`,
+      container: 'a.b',
+      vars: [newVariableDecl('a.b.c.d', IntType)],
+      in: objectToMap({
+        'a.b.c.d': BigInt(9),
+      }),
+      out: true,
+    },
+    {
+      name: 'pkg_qualified_id_unchecked',
+      expr: `c.d != 10`,
+      unchecked: true,
+      container: 'a.b',
+      in: objectToMap({
+        'a.b.c.d': BigInt(9),
+      }),
+      out: true,
+    },
+    {
+      name: 'pkg_qualified_index_unchecked',
+      expr: `b.c['d'] == 10`,
+      unchecked: true,
+      container: 'a.b',
+      in: objectToMap({
+        'a.b.c': objectToMap({
+          d: BigInt(10),
+        }),
+      }),
+      out: true,
+    },
+    {
+      name: 'select_key',
+      expr: `m.strMap['val'] == 'string'
+				&& m.floatMap['val'] == 1.5
+				&& m.doubleMap['val'] == -2.0
+				&& m.intMap['val'] == -3
+				&& m.int32Map['val'] == 4
+				&& m.int64Map['val'] == -5
+				&& m.uintMap['val'] == 6u
+				&& m.uint32Map['val'] == 7u
+				&& m.uint64Map['val'] == 8u
+				&& m.boolMap['val'] == true
+				&& m.boolMap['val'] != false`,
+      vars: [newVariableDecl('m', newMapType(StringType, DynType))],
+      in: objectToMap({
+        m: {
+          strMap: { val: 'string' },
+          floatMap: { val: 1.5 },
+          doubleMap: { val: -2.0 },
+          intMap: { val: BigInt(-3) },
+          int32Map: { val: 4 },
+          int64Map: { val: BigInt(-5) },
+          uintMap: { val: BigInt(6) },
+          uint32Map: { val: 7 },
+          uint64Map: { val: BigInt(8) },
+          boolMap: { val: true },
+        },
+      }),
+      out: true,
+    },
+    {
+      name: 'select_bool_key',
+      expr: `m.boolStr[true] == 'string'
+				&& m.boolFloat32[true] == 1.5
+				&& m.boolFloat64[false] == -2.1
+				&& m.boolInt[false] == -3
+				&& m.boolInt32[false] == 0
+				&& m.boolInt64[true] == 4
+				&& m.boolUint[true] == 5u
+				&& m.boolUint32[true] == 6u
+				&& m.boolUint64[false] == 7u
+				&& m.boolBool[true]
+				&& m.boolIface[false] == true`,
+      vars: [newVariableDecl('m', newMapType(StringType, DynType))],
+      in: objectToMap({
+        m: {
+          boolStr: new Map([[true, 'string']]),
+          boolFloat32: new Map([[true, 1.5]]),
+          boolFloat64: new Map([[false, -2.1]]),
+          boolInt: new Map([[false, BigInt(-3)]]),
+          boolInt32: new Map([[false, 0]]),
+          boolInt64: new Map([[true, BigInt(4)]]),
+          boolUint: new Map([[true, BigInt(5)]]),
+          boolUint32: new Map([[true, 6]]),
+          boolUint64: new Map([[false, BigInt(7)]]),
+          boolBool: new Map([[true, true]]),
+          boolIface: new Map([[false, true]]),
+        },
+      }),
+      out: true,
+    },
+    {
+      name: 'select_uint_key',
+      expr: `m.uintIface[1u] == 'string'
+				&& m.uint32Iface[2u] == 1.5
+				&& m.uint64Iface[3u] == -2.1
+				&& m.uint64String[4u] == 'three'`,
+      vars: [newVariableDecl('m', newMapType(StringType, DynType))],
+      in: objectToMap({
+        m: {
+          uintIface: new Map([[BigInt(1), 'string']]),
+          uint32Iface: new Map([[BigInt(2), 1.5]]),
+          uint64Iface: new Map([[BigInt(3), -2.1]]),
+          uint64String: new Map([[BigInt(4), 'three']]),
+        },
+      }),
+      out: true,
+    },
+    {
+      name: 'select_index',
+      expr: `m.strList[0] == 'string'
+				&& m.floatList[0] == 1.5
+				&& m.doubleList[0] == -2.0
+				&& m.intList[0] == -3
+				&& m.int32List[0] == 4
+				&& m.int64List[0] == -5
+				&& m.uintList[0] == 6u
+				&& m.uint32List[0] == 7u
+				&& m.uint64List[0] == 8u
+				&& m.boolList[0] == true
+				&& m.boolList[1] != true
+				&& m.ifaceList[0] == {}`,
+      vars: [newVariableDecl('m', newMapType(StringType, DynType))],
+      in: objectToMap({
+        m: {
+          strList: ['string'],
+          floatList: [1.5],
+          doubleList: [-2.0],
+          intList: [-3],
+          int32List: [4],
+          int64List: [-5],
+          uintList: [6],
+          uint32List: [7],
+          uint64List: [8],
+          boolList: [true, false],
+          ifaceList: [{}],
+        },
+      }),
+      out: true,
+    },
+    {
+      name: 'select_field',
+      expr: `a.b.c
+				&& pb3.repeated_nested_enum[0] == proto3.TestAllTypes.NestedEnum.BAR
+				&& json.list[0] == 'world'`,
+      container: 'google.api.expr.test.v1',
+      types: [TestAllTypesSchema],
+      vars: [
+        newVariableDecl('a.b', newMapType(StringType, BoolType)),
+        newVariableDecl(
+          'pb3',
+          newObjectType('google.api.expr.test.v1.proto3.TestAllTypes')
+        ),
+        newVariableDecl('json', newMapType(StringType, DynType)),
+      ],
+      in: objectToMap({
+        'a.b': { c: true },
+        pb3: create(TestAllTypesSchema, {
+          repeatedNestedEnum: [TestAllTypes_NestedEnum.BAR],
+        }),
+        json: {
+          list: ['world'],
+        },
+      }),
+      out: true,
+    },
+    // TODO: think this is the same issue as above where protobuf-es handles default values differently for proto2
+    // // pb2 primitive fields may have default values set.
+    // {
+    //   name: 'select_pb2_primitive_fields',
+    //   expr: `!has(a.single_int32)
+    // 	&& a.single_int32 == -32
+    // 	&& a.single_int64 == -64
+    // 	&& a.single_uint32 == 32u
+    // 	&& a.single_uint64 == 64u
+    // 	&& a.single_float == 3.0
+    // 	&& a.single_double == 6.4
+    // 	&& a.single_bool
+    // 	&& "empty" == a.single_string`,
+    //   types: [TestAllTypesSchemaProto2],
+    //   in: objectToMap({
+    //     a: create(TestAllTypesSchemaProto2),
+    //   }),
+    //   vars: [
+    //     newVariableDecl(
+    //       'a',
+    //       newObjectType('google.api.expr.test.v1.proto2.TestAllTypes')
+    //     ),
+    //   ],
+    //   out: true,
+    // },
+    // Wrapper type nil or value test.
+    {
+      name: 'select_pb3_wrapper_fields',
+      expr: `!has(a.single_int32_wrapper) && a.single_int32_wrapper == null
+				&& has(a.single_int64_wrapper) && a.single_int64_wrapper == 0
+				&& has(a.single_string_wrapper) && a.single_string_wrapper == "hello"
+				&& a.single_int64_wrapper == Int32Value{value: 0}`,
+      types: [TestAllTypesSchema],
+      abbrevs: ['google.protobuf.Int32Value'],
+      vars: [
+        newVariableDecl(
+          'a',
+          newObjectType('google.api.expr.test.v1.proto3.TestAllTypes')
+        ),
+      ],
+      in: objectToMap({
+        a: create(TestAllTypesSchema, {
+          singleInt64Wrapper: BigInt(0),
+          singleStringWrapper: 'hello',
+        }),
+      }),
+      out: true,
+    },
+    {
+      name: 'select_pb3_compare',
+      expr: `a.single_uint64 > 3u`,
+      container: 'google.api.expr.test.v1.proto3',
+      types: [TestAllTypesSchema],
+      vars: [
+        newVariableDecl(
+          'a',
+          newObjectType('google.api.expr.test.v1.proto3.TestAllTypes')
+        ),
+      ],
+      in: objectToMap({
+        a: create(TestAllTypesSchema, {
+          singleUint64: BigInt(10),
+        }),
+      }),
+      out: true,
+    },
   ];
   for (const tc of testCases) {
     it(`ExprInterpreter - ${tc.name}`, () => {
@@ -663,13 +1302,13 @@ describe('interpreter', () => {
       const got = prg?.eval(act ?? new EmptyActivation());
       if (!isNil(tc.out)) {
         if (isErrorRefVal(got)) {
-          console.log({ err });
+          console.log({ err, got });
           throw got.value();
         }
         try {
           expect(got?.equal(tc.out).value()).toEqual(true);
         } catch (e) {
-          console.log({ got, want: tc.out });
+          console.log({ got, want: tc.out, err });
           throw e;
         }
       }
@@ -687,15 +1326,9 @@ function program(
 ): [Interpretable | null, Activation | null, Error | null] {
   // Configure the package.
   const cont = new Container(tst.container);
-  // var err error
-  // if tst.abbrevs != nil {
-  // 	cont, err = containers.NewContainer(
-  // 		containers.Name(cont.Name()),
-  // 		containers.Abbrevs(tst.abbrevs...))
-  // 	if err != nil {
-  // 		return nil, nil, err
-  // 	}
-  // }
+  if (!isNil(tst.abbrevs)) {
+    cont.addAbbrevs(...tst.abbrevs);
+  }
   const reg = new Registry();
   if (!isNil(tst.types)) {
     for (const type of tst.types) {

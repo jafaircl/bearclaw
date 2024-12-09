@@ -16,6 +16,12 @@ import {
   ScalarType,
 } from '@bufbuild/protobuf';
 import {
+  isReflectList,
+  isReflectMap,
+  isReflectMessage,
+  reflect,
+} from '@bufbuild/protobuf/reflect';
+import {
   Any,
   anyUnpack,
   BoolValueSchema,
@@ -38,7 +44,7 @@ import { dequal } from 'dequal';
 import { Adapter, FieldType, Registry as IRegistry } from '../ref/provider';
 import { isRefType, isRefVal, RefType, RefVal } from '../ref/reference';
 import { StandardProtoDescriptors } from '../stdlib';
-import { objectToMap } from '../utils';
+import { mapToObject, objectToMap } from '../utils';
 import { BoolRefVal } from './bool';
 import { BytesRefVal } from './bytes';
 import { DoubleRefVal } from './double';
@@ -83,12 +89,7 @@ import {
   UintType,
 } from './types';
 import { UintRefVal } from './uint';
-import {
-  getFieldValueFromMessage,
-  isMessageFieldSet,
-  sanitizeProtoName,
-  typeUrlToName,
-} from './utils';
+import { sanitizeProtoName, typeUrlToName } from './utils';
 
 /**
  * ProtoCELPrimitives provides a map from the protoreflect Kind to the
@@ -372,8 +373,28 @@ export class Registry implements IRegistry {
     }
     return new FieldType(
       fieldType,
-      (v) => isMessageFieldSet(field, v),
-      (v) => getFieldValueFromMessage(field, v)
+      (v) => reflect(msgType, isRefVal(v) ? v.value() : v, false).isSet(field),
+      (v) => {
+        // TODO: this is slow but returns the correct value. A simple object index would be much faster but does not always return the correct value. A faster solution is needed.
+        const reflectMessage = isReflectMessage(v)
+          ? v
+          : reflect(msgType, isRefVal(v) ? v.value() : v, false);
+        // If the field is not set, we can stop here.
+        if (!reflectMessage.isSet(field)) {
+          return null;
+        }
+        let value: any = reflectMessage.get(field);
+        if (isReflectMessage(value)) {
+          value = value.message;
+        }
+        if (isReflectMap(value)) {
+          value = new Map(value.entries());
+        }
+        if (isReflectList(value)) {
+          value = [...value.values()];
+        }
+        return value;
+      }
     );
   }
 
@@ -388,7 +409,7 @@ export class Registry implements IRegistry {
       if (isNil(field)) {
         return ErrorRefVal.noSuchField(name);
       }
-      const err = msgSetField(msg, field, value);
+      const err = msgSetField(td, msg, field, value);
       if (isErrorRefVal(err)) {
         return err;
       }
@@ -527,6 +548,7 @@ class DefaultTypeAdapter implements Adapter {
 export const defaultTypeAdapter = new DefaultTypeAdapter();
 
 function msgSetField(
+  desc: DescMessage,
   target: Message,
   field: DescField,
   value: RefVal
@@ -539,25 +561,26 @@ function msgSetField(
     if (!isLister(value)) {
       return unsupportedTypeConversionError(field, value);
     }
-    return msgSetListField(target, field, value);
+    return msgSetListField(desc, target, field, value);
   }
   if (field.fieldKind === 'map') {
     if (!isMapper(value)) {
       return unsupportedTypeConversionError(field, value);
     }
-    return msgSetMapField(target, field, value);
+    return msgSetMapField(desc, target, field, value);
   }
   const v = value.convertToNative(reflectProtoFieldNativeType(field));
   // If the converted value is an error, then there was an error converting the
   // value.
   if (isErrorRefVal(v)) {
-    console.log({ v });
     return fieldTypeConversionError(field, value);
   }
-  (target as any)[field.jsonName] = v;
+  // Use the proto reflect method to set the field.
+  reflect(desc, target, false).set(field, v);
 }
 
 function msgSetListField(
+  targetDesc: DescMessage,
   target: Message,
   listField: DescField,
   listVal: Lister
@@ -566,24 +589,26 @@ function msgSetListField(
     return unsupportedTypeConversionError(listField, listVal);
   }
   const elemReflectType = reflectProtoListElemFieldNativeType(listField);
+  const toSet: any[] = [];
   for (let i = 0; i < listVal.size().value(); i++) {
     const elemVal = listVal.get(new IntRefVal(BigInt(i)));
     if (isErrorRefVal(elemVal)) {
       return elemVal;
     }
     if (isNil(elemVal.value())) {
-      continue;
+      return fieldTypeConversionError(listField, elemVal);
     }
     const v = elemVal.convertToNative(elemReflectType);
     if (isErrorRefVal(v)) {
-      console.log({ v });
       return fieldTypeConversionError(listField, elemVal);
     }
-    (target as any)[listField.jsonName].push(v);
+    toSet.push(v);
   }
+  reflect(targetDesc, target, false).set(listField, toSet);
 }
 
 function msgSetMapField(
+  desc: DescMessage,
   target: Message,
   listField: DescField,
   mapVal: Mapper
@@ -593,6 +618,7 @@ function msgSetMapField(
   }
   const [targetKeyType, targetValueType] =
     reflectProtoMapEntryFieldNativeType(listField);
+  const toSet = new Map();
   const it = mapVal.iterator();
   while (it.hasNext().value()) {
     const key = it.next();
@@ -601,24 +627,23 @@ function msgSetMapField(
     }
     const val = mapVal.get(key);
     if (isNil(val?.value())) {
-      continue;
+      return fieldTypeConversionError(listField, key);
     }
     const k = key.convertToNative(targetKeyType);
     if (isErrorRefVal(k)) {
-      console.log({ k });
       return fieldTypeConversionError(listField, key);
     }
     const v = val.convertToNative(targetValueType);
     if (isErrorRefVal(v)) {
-      console.log({ v });
       return fieldTypeConversionError(listField, key);
     }
     // No need to set nil values
     if (isNil(v)) {
       continue;
     }
-    (target as any)[listField.jsonName][k] = v;
+    toSet.set(k, v);
   }
+  reflect(desc, target, false).set(listField, mapToObject(toSet));
 }
 
 function unsupportedTypeConversionError(

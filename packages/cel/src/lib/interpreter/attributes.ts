@@ -1632,7 +1632,7 @@ function refQualify(
     if (isErrorRefVal(i)) {
       return [null, false, i.value()];
     }
-    if (i.value() > 0 && i.value() < celVal.size().value()) {
+    if (i.value() >= 0 && i.value() < celVal.size().value()) {
       return [celVal.get(i), true, null];
     }
     if (presenceTest) {
@@ -1690,13 +1690,13 @@ function constructResolutionErrorMessage(
   missingIndex?: string,
   missingKey?: string
 ) {
-  if (missingAttribute) {
+  if (!isNil(missingAttribute)) {
     return `no such attribute(s): ${missingAttribute}`;
   }
-  if (missingIndex) {
+  if (!isNil(missingIndex)) {
     return `index out of bounds: ${missingIndex}`;
   }
-  if (missingKey) {
+  if (!isNil(missingKey)) {
     return `no such key: ${missingKey}`;
   }
   return 'invalid attribute';

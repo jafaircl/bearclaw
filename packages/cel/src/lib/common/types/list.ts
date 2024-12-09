@@ -32,15 +32,9 @@ import { isValidUint64 } from './uint';
  */
 class BaseList<T = any> implements Lister, Zeroer {
   protected _value: T[];
-  protected _get: (index: bigint) => T;
 
-  constructor(
-    public adapter: Adapter,
-    _get: (index: bigint) => T,
-    _value: T[]
-  ) {
+  constructor(public adapter: Adapter, _value: T[]) {
     this._value = _value;
-    this._get = _get;
   }
 
   convertToNative(type: NativeType) {
@@ -165,7 +159,7 @@ class BaseList<T = any> implements Lister, Zeroer {
     if (other.size().value() === BigInt(0)) {
       return this;
     }
-    return new ConcatList(this.adapter, this, other, this._get);
+    return new ConcatList(this.adapter, this, other);
   }
 
   contains(elem: RefVal): RefVal {
@@ -201,7 +195,9 @@ class BaseList<T = any> implements Lister, Zeroer {
         `index '${i.value()}' out of range in list size '${this.size().value()}'`
       );
     }
-    return this.adapter.nativeToValue(this._get((i as IntRefVal).value()));
+    return this.adapter.nativeToValue(
+      this._value[Number((i as IntRefVal).value())]
+    );
   }
 
   toString() {
@@ -222,7 +218,7 @@ class BaseList<T = any> implements Lister, Zeroer {
  */
 export class MutableList<T = any> extends BaseList<T> {
   constructor(adapter: Adapter, private mutableValues: T[]) {
-    super(adapter, (index) => this.mutableValues[Number(index)], []);
+    super(adapter, []);
   }
 
   /**
@@ -234,9 +230,9 @@ export class MutableList<T = any> extends BaseList<T> {
       case ListType:
         const otherList = other as Lister;
         for (let i = 0; i < otherList.size().value(); i++) {
-          this.mutableValues.push(
-            otherList.get(new IntRefVal(BigInt(i))).value()
-          );
+          const val = otherList.get(new IntRefVal(BigInt(i))).value();
+          this.mutableValues.push(val);
+          this._value.push(val);
         }
         return this;
       default:
@@ -252,7 +248,7 @@ export class MutableList<T = any> extends BaseList<T> {
  */
 export class DynamicList<T = any> extends BaseList<T> {
   constructor(adapter: Adapter, value: T[]) {
-    super(adapter, (index) => value[Number(index)], value);
+    super(adapter, value);
   }
 }
 
@@ -261,7 +257,7 @@ export class DynamicList<T = any> extends BaseList<T> {
  */
 export class StringList extends BaseList<string> {
   constructor(adapter: Adapter, value: string[]) {
-    super(adapter, (index) => value[Number(index)], value);
+    super(adapter, value);
   }
 }
 
@@ -272,7 +268,7 @@ export class StringList extends BaseList<string> {
  */
 export class RefValList extends BaseList<RefVal> {
   constructor(adapter: Adapter, value: RefVal[]) {
-    super(adapter, (index) => value[Number(index)], value);
+    super(adapter, value);
   }
 }
 
@@ -281,7 +277,7 @@ export class RefValList extends BaseList<RefVal> {
  */
 export class ProtoList extends BaseList<Value> {
   constructor(adapter: Adapter, value: ListValue) {
-    super(adapter, (index) => value.values[Number(index)], value.values);
+    super(adapter, value.values);
   }
 }
 
@@ -293,10 +289,9 @@ class ConcatList<T = any> extends BaseList<T> {
   constructor(
     public override adapter: Adapter,
     prevList: Lister,
-    nextList: Lister,
-    _get: (index: bigint) => T
+    nextList: Lister
   ) {
-    super(adapter, _get, []);
+    super(adapter, []);
     for (let i = 0; i < prevList.size().value(); i++) {
       this._value.push(prevList.get(new IntRefVal(BigInt(i))).value());
     }
