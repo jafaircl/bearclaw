@@ -7,7 +7,7 @@ import { BinaryOp, FunctionOp, UnaryOp } from '../common/functions';
 import { EQUALS_OPERATOR, NOT_EQUALS_OPERATOR } from '../common/operators';
 import { EQUALS_OVERLOAD, NOT_EQUALS_OVERLOAD } from '../common/overloads';
 import { Adapter, Provider } from '../common/ref/provider';
-import { RefVal } from '../common/ref/reference';
+import { isRefVal, RefVal } from '../common/ref/reference';
 import { BoolRefVal, isBoolRefVal } from '../common/types/bool';
 import {
   ErrorRefVal,
@@ -1323,13 +1323,16 @@ function checkInterrupt(a: Activation) {
 }
 
 function invalidOptionalEntryInit(field: any, value: RefVal): ErrorRefVal {
+  if (isRefVal(field)) {
+    field = field.value();
+  }
   return new ErrorRefVal(
-    `cannot initialize optional entry '${field}' from non-optional value ${value}`
+    `cannot initialize optional entry '${field}' from non-optional value ${value.value()}`
   );
 }
 
 function invalidOptionalElementInit(value: RefVal): ErrorRefVal {
   return new ErrorRefVal(
-    `cannot initialize optional list element from non-optional value ${value}`
+    `cannot initialize optional list element from non-optional value ${value.value()}`
   );
 }

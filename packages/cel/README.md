@@ -59,12 +59,14 @@ Let's expose `name` and  `group` variables to CEL using the `cel.Variable`
 environment option:
 
 ```ts
-import { Env, Variable, StringType } from '@bearclaw/cel'
+import { Env, variable, StringType } from '@bearclaw/cel'
 
-const env = new Env(
-    new Variable('name', StringType),
-    new Variable('group', StringType),
-)
+const env = new Env({
+    variables: [
+        variable('name', StringType),
+        variable('group', StringType),
+    ]
+})
 ```
 
 That's it. The environment is ready to be used for parsing and type-checking.

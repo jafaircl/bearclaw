@@ -381,7 +381,19 @@ export class Registry implements IRegistry {
           : reflect(msgType, isRefVal(v) ? v.value() : v, false);
         // If the field is not set, we can stop here.
         if (!reflectMessage.isSet(field)) {
-          return null;
+          // See https://protobuf.dev/programming-guides/proto3/#default
+          switch (field.fieldKind) {
+            case 'enum':
+              return field.enum.proto.value[0].number;
+            case 'list':
+              return [];
+            case 'map':
+              return {};
+            case 'scalar':
+              return field.proto.defaultValue;
+            default:
+              return null;
+          }
         }
         let value: any = reflectMessage.get(field);
         if (isReflectMessage(value)) {

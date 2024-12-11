@@ -9,6 +9,7 @@ import {
 } from '@buf/cel_spec.bufbuild_es/proto/test/v1/proto2/test_all_types_pb.js';
 import {
   TestAllTypes_NestedEnum,
+  TestAllTypes_NestedMessageSchema,
   TestAllTypesSchema,
 } from '@buf/cel_spec.bufbuild_es/proto/test/v1/proto3/test_all_types_pb.js';
 import { ExprSchema } from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb.js';
@@ -30,9 +31,11 @@ import { stdFunctions, stdTypes } from '../common/stdlib';
 import { BoolRefVal } from '../common/types/bool';
 import { ErrorRefVal, isErrorRefVal } from '../common/types/error';
 import { IntRefVal } from '../common/types/int';
+import { DynamicList } from '../common/types/list';
 import { NullRefVal } from '../common/types/null';
-import { Registry } from '../common/types/provider';
-import { StringRefVal } from '../common/types/string';
+import { OptionalNone, OptionalRefVal } from '../common/types/optional';
+import { defaultTypeAdapter, Registry } from '../common/types/provider';
+import { isStringRefVal, StringRefVal } from '../common/types/string';
 import { timestampFromSeconds } from '../common/types/timestamp';
 import { Adder } from '../common/types/traits/math';
 import { Trait } from '../common/types/traits/trait';
@@ -1295,6 +1298,313 @@ describe('interpreter', () => {
       }),
       out: true,
     },
+    {
+      name: 'select_custom_pb3_compare',
+      expr: `a.bb > 100`,
+      container: 'google.api.expr.test.v1.proto3',
+      types: [TestAllTypes_NestedMessageSchema],
+      vars: [
+        newVariableDecl(
+          'a',
+          newObjectType(
+            'google.api.expr.test.v1.proto3.TestAllTypes.NestedMessage'
+          )
+        ),
+      ],
+      // TODO: not sure how relevant this is to the test
+      // attrs: &custAttrFactory{
+      // 	AttributeFactory: NewAttributeFactory(
+      // 		testContainer("google.expr.proto3.test"),
+      // 		newTestRegistry(t, &proto3pb.TestAllTypes_NestedMessage{}),
+      // 		newTestRegistry(t, &proto3pb.TestAllTypes_NestedMessage{}),
+      // 	),
+      // },
+      in: objectToMap({
+        a: create(TestAllTypes_NestedMessageSchema, {
+          bb: 101,
+        }),
+      }),
+      out: true,
+    },
+    {
+      name: 'select_custom_pb3_optional_field',
+      expr: `a.?bb`,
+      container: 'google.api.expr.test.v1.proto3',
+      types: [TestAllTypes_NestedMessageSchema],
+      vars: [
+        newVariableDecl(
+          'a',
+          newObjectType(
+            'google.api.expr.test.v1.proto3.TestAllTypes.NestedMessage'
+          )
+        ),
+      ],
+      // TODO: not sure how relevant this is to the test
+      // attrs: &custAttrFactory{
+      // 	AttributeFactory: NewAttributeFactory(
+      // 		testContainer("google.expr.proto3.test"),
+      // 		newTestRegistry(t, &proto3pb.TestAllTypes_NestedMessage{}),
+      // 		newTestRegistry(t, &proto3pb.TestAllTypes_NestedMessage{}),
+      // 	),
+      // },
+      in: objectToMap({
+        a: create(TestAllTypes_NestedMessageSchema, {
+          bb: 101,
+        }),
+      }),
+      out: new OptionalRefVal(new IntRefVal(BigInt(101))),
+    },
+    {
+      name: 'select_relative',
+      expr: `json('{"hi":"world"}').hi == 'world'`,
+      funcs: [
+        new FunctionDecl({
+          name: 'json',
+          overloads: [
+            new OverloadDecl({
+              id: 'json_string',
+              argTypes: [StringType],
+              resultType: DynType,
+              unaryOp: (val) => {
+                if (!isStringRefVal(val)) {
+                  return ErrorRefVal.maybeNoSuchOverload(val);
+                }
+                const m = JSON.parse(val.value());
+                return defaultTypeAdapter.nativeToValue(m);
+              },
+            }),
+          ],
+        }),
+      ],
+      out: true,
+    },
+    {
+      name: 'select_subsumed_field',
+      expr: `a.b.c`,
+      vars: [
+        newVariableDecl('a.b.c', IntType),
+        newVariableDecl('a.b', newMapType(StringType, StringType)),
+      ],
+      in: objectToMap({
+        'a.b.c': BigInt(10),
+        'a.b': {
+          c: 'ten',
+        },
+      }),
+      out: BigInt(10),
+    },
+    {
+      name: 'select_empty_repeated_nested',
+      expr: `TestAllTypes{}.repeated_nested_message.size() == 0`,
+      container: 'google.api.expr.test.v1.proto3',
+      types: [TestAllTypesSchema],
+      out: true,
+    },
+    {
+      name: 'select_empty_map_nested',
+      expr: `TestAllTypes{}.map_string_string.size() == 0`,
+      container: 'google.api.expr.test.v1.proto3',
+      types: [TestAllTypesSchema],
+      out: true,
+    },
+    {
+      name: 'call_with_error_unary',
+      expr: `try(0/0)`,
+      unchecked: true,
+      funcs: [
+        new FunctionDecl({
+          name: 'try',
+          overloads: [
+            new OverloadDecl({
+              id: 'try_dyn',
+              argTypes: [DynType],
+              resultType: DynType,
+              nonStrict: true,
+              unaryOp: (arg) => {
+                if (isErrorRefVal(arg)) {
+                  return new StringRefVal(`error: ${arg.value().message}`);
+                }
+                return arg;
+              },
+            }),
+          ],
+        }),
+      ],
+      out: 'error: division by zero',
+    },
+    {
+      name: 'call_with_error_binary',
+      expr: `try(0/0, 0)`,
+      unchecked: true,
+      funcs: [
+        new FunctionDecl({
+          name: 'try',
+          overloads: [
+            new OverloadDecl({
+              id: 'try_dyn',
+              argTypes: [DynType, DynType],
+              resultType: newListType(DynType),
+              nonStrict: true,
+              binaryOp: (arg0, arg1) => {
+                if (isErrorRefVal(arg0)) {
+                  return new StringRefVal(`error: ${arg0.value().message}`);
+                }
+                return new DynamicList(defaultTypeAdapter, [arg0, arg1]);
+              },
+            }),
+          ],
+        }),
+      ],
+      out: 'error: division by zero',
+    },
+    {
+      name: 'call_with_error_function',
+      expr: `try(0/0, 0, 0)`,
+      unchecked: true,
+      funcs: [
+        new FunctionDecl({
+          name: 'try',
+          overloads: [
+            new OverloadDecl({
+              id: 'try_dyn',
+              argTypes: [DynType, DynType, DynType],
+              resultType: newListType(DynType),
+              nonStrict: true,
+              functionOp: (arg0, arg1, arg2) => {
+                if (isErrorRefVal(arg0)) {
+                  return new StringRefVal(`error: ${arg0.value().message}`);
+                }
+                return new DynamicList(defaultTypeAdapter, [arg0, arg1, arg2]);
+              },
+            }),
+          ],
+        }),
+      ],
+      out: 'error: division by zero',
+    },
+    {
+      name: 'literal_map_optional_field',
+      expr: `{?'hi': {}.?missing,
+			        ?'world': {'present': 42u}.?present}`,
+      out: objectToMap({
+        world: BigInt(42),
+      }),
+    },
+    {
+      name: 'literal_map_optional_field_bad_init',
+      expr: `{?'hi': 'world'}`,
+      unchecked: true,
+      err: `cannot initialize optional entry 'hi' from non-optional`,
+    },
+    {
+      name: 'literal_pb_optional_field',
+      expr: `TestAllTypes{?single_int32: {'value': 1}.?value, ?single_string: {}.?missing}`,
+      container: 'google.api.expr.test.v1.proto3',
+      types: [TestAllTypesSchema],
+      out: create(TestAllTypesSchema, {
+        singleInt32: 1,
+      }),
+    },
+    {
+      name: 'literal_pb_optional_field_bad_init',
+      expr: `TestAllTypes{?single_int32: 1}`,
+      container: 'google.api.expr.test.v1.proto3',
+      types: [TestAllTypesSchema],
+      unchecked: true,
+      err: `cannot initialize optional entry 'single_int32' from non-optional`,
+    },
+    {
+      name: 'literal_list_optional_element',
+      expr: `[?{}.?missing, ?{'present': 42u}.?present]`,
+      out: [BigInt(42)],
+    },
+    {
+      name: 'literal_list_optional_bad_element',
+      expr: `[?123]`,
+      unchecked: true,
+      err: `cannot initialize optional list element from non-optional value 123`,
+    },
+    {
+      name: 'bad_argument_in_optimized_list',
+      expr: `1/0 in [1, 2, 3]`,
+      err: `division by zero`,
+    },
+    {
+      name: 'list_index_error',
+      expr: `mylistundef[0]`,
+      unchecked: true,
+      err: `no such attribute(s): mylistundef`,
+    },
+    {
+      name: 'pkg_list_index_error',
+      container: 'goog',
+      expr: `pkg.mylistundef[0]`,
+      unchecked: true,
+      // TODO; the original go test omits the ".0"
+      err: `no such attribute(s): goog.pkg.mylistundef.0, pkg.mylistundef.0`,
+    },
+    // TODO: partial activations
+    // {
+    // 	name: "unknown_attribute",
+    // 	expr: `a[0]`,
+    //   vars: [
+    //     newVariableDecl('a', newMapType(IntType, BoolType)),
+    //   ],
+    // 	attrs: NewPartialAttributeFactory(testContainer(""), types.DefaultTypeAdapter, types.NewEmptyRegistry()),
+    // 	in: newTestPartialActivation(t, map[string]any{
+    // 		"a": map[int64]any{
+    // 			1: true,
+    // 		},
+    // 	}, NewAttributePattern("a").QualInt(0)),
+    // 	out: types.NewUnknown(2, types.QualifyAttribute[int64](types.NewAttributeTrail("a"), 0)),
+    // },
+    // {
+    // 	name: "unknown_attribute_mixed_qualifier",
+    // 	expr: `a[dyn(0u)]`,
+    // 	vars: []*decls.VariableDecl{
+    // 		decls.NewVariable("a",
+    // 			types.NewMapType(types.IntType, types.BoolType)),
+    // 	},
+    // 	attrs: NewPartialAttributeFactory(testContainer(""), types.DefaultTypeAdapter, types.NewEmptyRegistry()),
+    // 	in: newTestPartialActivation(t, map[string]any{
+    // 		"a": map[int64]any{
+    // 			1: true,
+    // 		},
+    // 	}, NewAttributePattern("a").QualInt(0)),
+    // 	out: types.NewUnknown(2, types.QualifyAttribute[uint64](types.NewAttributeTrail("a"), 0)),
+    // },
+    {
+      name: 'invalid_presence_test_on_int_literal',
+      expr: `has(dyn(1).invalid)`,
+      err: 'no such key: invalid',
+      attrs: new AttrFactory(
+        new Container(''),
+        new Registry(),
+        new Registry(),
+        { enableErrorOnBadPresenceTest: true }
+      ),
+    },
+    {
+      name: 'invalid_presence_test_on_list_literal',
+      expr: `has(dyn([]).invalid)`,
+      err: "unsupported index type 'string' in list",
+      attrs: new AttrFactory(
+        new Container(''),
+        new Registry(),
+        new Registry(),
+        { enableErrorOnBadPresenceTest: true }
+      ),
+    },
+    {
+      name: 'optional_select_on_undefined',
+      expr: `{}.?invalid`,
+      out: OptionalNone,
+    },
+    {
+      name: 'optional_select_on_null_literal',
+      expr: `{"invalid": dyn(null)}.?invalid.?nested`,
+      out: OptionalNone,
+    },
   ];
   for (const tc of testCases) {
     it(`ExprInterpreter - ${tc.name}`, () => {
@@ -1337,6 +1647,9 @@ function program(
   }
   const env = new Env(cont, reg);
   env.addFunctions(...stdFunctions);
+  if (!isNil(tst.funcs)) {
+    env.addFunctions(...tst.funcs);
+  }
   env.addIdents(...stdTypes);
   if (!isNil(tst.vars)) {
     env.addIdents(...tst.vars);
