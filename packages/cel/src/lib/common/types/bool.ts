@@ -1,11 +1,12 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { create } from '@bufbuild/protobuf';
 import {
+  anyPack,
   AnySchema,
   BoolValueSchema,
   ValueSchema,
-  anyPack,
 } from '@bufbuild/protobuf/wkt';
-import { RefType, RefVal } from '../ref/reference';
+import { isRefVal, RefType, RefVal } from '../ref/reference';
 import { ErrorRefVal } from './error';
 import { IntRefVal } from './int';
 import { NativeType } from './native';
@@ -102,7 +103,10 @@ export class BoolRefVal implements RefVal, Comparer, Zeroer, Negater {
   }
 }
 
-export function isBoolRefVal(val: RefVal): val is BoolRefVal {
+export function isBoolRefVal(val: any): val is BoolRefVal {
+  if (!isRefVal(val)) {
+    return false;
+  }
   switch (val.type()) {
     case BoolType:
       return true;

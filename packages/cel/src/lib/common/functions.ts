@@ -29,7 +29,7 @@ interface OverloadInput {
    * global function overload or that one of the Unary / Binary / Function
    * definitions should be used to execute the call.
    */
-  operandTrait?: Trait;
+  operandTraits?: Trait[];
 
   /**
    * Unary defines the overload with a UnaryOp implementation. May be nil.
@@ -70,11 +70,11 @@ export class Overload {
   operator: string;
 
   /**
-   * Operand trait used to dispatch the call. The zero-value indicates a
+   * Operand traits used to dispatch the call. The zero-value indicates a
    * global function overload or that one of the Unary / Binary / Function
    * definitions should be used to execute the call.
    */
-  operandTrait: Trait;
+  operandTraits: Trait[];
 
   /**
    * Unary defines the overload with a UnaryOp implementation. May be nil.
@@ -99,7 +99,7 @@ export class Overload {
 
   constructor(input: OverloadInput) {
     this.operator = input.operator;
-    this.operandTrait = input.operandTrait ?? Trait.UNSPECIFIED;
+    this.operandTraits = input.operandTraits ?? [];
     this.unary = input.unary;
     this.binary = input.binary;
     this.function = input.function;

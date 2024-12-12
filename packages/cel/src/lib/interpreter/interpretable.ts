@@ -553,7 +553,7 @@ export class EvalUnary implements InterpretableCall {
   #function: string;
   #overload: string;
   #arg: Interpretable;
-  #trait: Trait;
+  #traits: Trait[];
   #impl: UnaryOp | null;
   #nonStrict: boolean;
 
@@ -562,7 +562,7 @@ export class EvalUnary implements InterpretableCall {
     func: string,
     overload: string,
     arg: Interpretable,
-    trait: Trait,
+    traits: Trait[],
     impl: UnaryOp | null,
     nonStrict: boolean
   ) {
@@ -570,7 +570,7 @@ export class EvalUnary implements InterpretableCall {
     this.#function = func;
     this.#overload = overload;
     this.#arg = arg;
-    this.#trait = trait;
+    this.#traits = traits;
     this.#impl = impl;
     this.#nonStrict = nonStrict;
   }
@@ -590,9 +590,9 @@ export class EvalUnary implements InterpretableCall {
     // traits required to invoke it, then call the implementation.
     if (
       !isNil(this.#impl) &&
-      (this.#trait === Trait.UNSPECIFIED ||
+      (this.#traits.length === 0 ||
         (!strict && isUnknownOrError(argVal)) ||
-        argVal.type().hasTrait(this.#trait))
+        argVal.type().hasTraits(this.#traits))
     ) {
       return labelErrorNode(this.#id, this.#impl(argVal));
     }
@@ -630,7 +630,7 @@ export class EvalBinary implements InterpretableCall {
   #overload: string;
   #lhs: Interpretable;
   #rhs: Interpretable;
-  #trait: Trait;
+  #traits: Trait[];
   #impl: BinaryOp | null;
   #nonStrict: boolean;
 
@@ -640,7 +640,7 @@ export class EvalBinary implements InterpretableCall {
     overload: string,
     lhs: Interpretable,
     rhs: Interpretable,
-    trait: Trait,
+    traits: Trait[],
     impl: BinaryOp | null,
     nonStrict: boolean
   ) {
@@ -649,7 +649,7 @@ export class EvalBinary implements InterpretableCall {
     this.#overload = overload;
     this.#lhs = lhs;
     this.#rhs = rhs;
-    this.#trait = trait;
+    this.#traits = traits;
     this.#impl = impl;
     this.#nonStrict = nonStrict;
   }
@@ -675,11 +675,11 @@ export class EvalBinary implements InterpretableCall {
     // traits required to invoke it, then call the implementation.
     if (
       !isNil(this.#impl) &&
-      (this.#trait === Trait.UNSPECIFIED ||
+      (this.#traits.length === 0 ||
         (!strict && isUnknownOrError(lVal)) ||
-        lVal.type().hasTrait(this.#trait) ||
+        lVal.type().hasTraits(this.#traits) ||
         // TODO: this is almost certainly wrong. But "in" operators throw an error without checking the rVal for the trait.
-        (this.#function === IN_OPERATOR && rVal.type().hasTrait(this.#trait)))
+        (this.#function === IN_OPERATOR && rVal.type().hasTraits(this.#traits)))
     ) {
       return labelErrorNode(this.#id, this.#impl(lVal, rVal));
     }
@@ -714,7 +714,7 @@ export class EvalVarArgs implements InterpretableCall {
   #function: string;
   #overload: string;
   #args: Interpretable[];
-  #trait: Trait;
+  #traits: Trait[];
   #impl: FunctionOp | null;
   #nonStrict: boolean;
 
@@ -723,7 +723,7 @@ export class EvalVarArgs implements InterpretableCall {
     func: string,
     overload: string,
     args: Interpretable[],
-    trait: Trait,
+    traits: Trait[],
     impl: FunctionOp | null,
     nonStrict: boolean
   ) {
@@ -731,7 +731,7 @@ export class EvalVarArgs implements InterpretableCall {
     this.#function = func;
     this.#overload = overload;
     this.#args = args;
-    this.#trait = trait;
+    this.#traits = traits;
     this.#impl = impl;
     this.#nonStrict = nonStrict;
   }
@@ -756,9 +756,9 @@ export class EvalVarArgs implements InterpretableCall {
     const arg0 = argVals[0];
     if (
       !isNil(this.#impl) &&
-      (this.#trait == Trait.UNSPECIFIED ||
+      (this.#traits.length === 0 ||
         (!strict && isUnknownOrError(arg0)) ||
-        arg0.type().hasTrait(this.#trait))
+        arg0.type().hasTraits(this.#traits))
     ) {
       return labelErrorNode(this.#id, this.#impl(...argVals));
     }
@@ -795,11 +795,11 @@ export function newCall(
   func: string,
   overload: string,
   args: Interpretable[],
-  trait: Trait,
+  traits: Trait[],
   impl: FunctionOp,
   nonStrict: boolean
 ): InterpretableCall {
-  return new EvalVarArgs(id, func, overload, args, trait, impl, nonStrict);
+  return new EvalVarArgs(id, func, overload, args, traits, impl, nonStrict);
 }
 
 export class EvalList implements InterpretableConstructor {

@@ -1,5 +1,6 @@
 import { Type } from './types/types';
 /* eslint-disable @typescript-eslint/no-unused-vars */
+import { HashSet } from '@bearclaw/collections';
 import { Expr } from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb';
 import { ErrorListener, RecognitionException, Recognizer, Token } from 'antlr4';
 import { ReferenceInfo } from './ast';
@@ -10,7 +11,7 @@ import { Location } from './location';
 import { Source, TextSource } from './source';
 
 export class Errors {
-  public readonly errors: CELError[] = [];
+  public readonly errors: HashSet<CELError> = new HashSet();
 
   constructor(
     public readonly source: Source = new TextSource(''),
@@ -18,7 +19,7 @@ export class Errors {
   ) {}
 
   public length() {
-    return this.errors.length;
+    return this.errors.size;
   }
 
   public reportError(location: Location, message: string) {
@@ -26,10 +27,10 @@ export class Errors {
   }
 
   public reportErrorAtId(id: bigint, location: Location, message: string) {
-    if (this.errors.length > this.maxErrorsToReport) {
+    if (this.errors.size > this.maxErrorsToReport) {
       return;
     }
-    this.errors.push(new CELError(id, location, message));
+    this.errors.add(new CELError(id, location, message));
   }
 
   public reportInternalError(message: string) {
@@ -222,6 +223,27 @@ export class Errors {
     }
 
     return errors.join('\n ');
+  }
+
+  /**
+   * GetErrors returns the list of observed errors.
+   */
+  getErrors() {
+    return [...this.errors];
+  }
+
+  /**
+   * Append creates a new Errors object with the current and input errors.
+   */
+  append(errs: CELError[]) {
+    const e = new Errors(this.source, this.maxErrorsToReport);
+    for (const err of this.errors) {
+      e.errors.add(err);
+    }
+    for (const err of errs) {
+      e.errors.add(err);
+    }
+    return e;
   }
 }
 

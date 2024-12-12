@@ -62,7 +62,7 @@ environment option:
 import { Env, variable, StringType } from '@bearclaw/cel'
 
 const env = new Env({
-    variables: [
+    declarations: [
         variable('name', StringType),
         variable('group', StringType),
     ]

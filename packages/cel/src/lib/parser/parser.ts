@@ -167,9 +167,9 @@ export interface ParserOptions {
 }
 
 export class Parser extends GeneratedCelVisitor<Expr> {
-  readonly #source!: Source;
-  readonly #helper!: ParserHelper;
-  readonly #errors!: Errors;
+  #source!: Source;
+  #helper!: ParserHelper;
+  #errors!: Errors;
   #macros: Map<string, Macro> = new Map();
   #errorReportingLimit = 100;
   #recursionDepth = 0;
@@ -179,11 +179,8 @@ export class Parser extends GeneratedCelVisitor<Expr> {
   #expressionSizeCodePointLimit = 100_000;
   #enableOptionalSyntax = false;
 
-  constructor(source: Source, private readonly options?: ParserOptions) {
+  constructor(private readonly options?: ParserOptions) {
     super();
-    this.#source = source;
-    this.#helper = new ParserHelper(this.#source);
-    this.#errors = new Errors(this.#source);
     if (this.options?.errorReportingLimit) {
       this.#errorReportingLimit = this.options.errorReportingLimit;
     }
@@ -221,7 +218,11 @@ export class Parser extends GeneratedCelVisitor<Expr> {
     return this.#errors;
   }
 
-  parse() {
+  parse(source: Source) {
+    this.#source = source;
+    this.#helper = new ParserHelper(this.#source);
+    this.#errors = new Errors(this.#source);
+
     const chars = new CharStream(this.#source.content());
     const lexer = new CELLexer(chars);
     lexer.removeErrorListeners();

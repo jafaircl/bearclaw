@@ -147,7 +147,7 @@ describe('interpreter', () => {
               id: 'neg_int',
               argTypes: [IntType],
               resultType: IntType,
-              operandTrait: Trait.NEGATER_TYPE,
+              operandTraits: [Trait.NEGATER_TYPE],
             }),
           ],
           singleton: new Overload({
@@ -170,7 +170,7 @@ describe('interpreter', () => {
               id: 'bytes_concat_bytes',
               argTypes: [BytesType, BytesType],
               resultType: BytesType,
-              operandTrait: Trait.ADDER_TYPE,
+              operandTraits: [Trait.ADDER_TYPE],
             }),
           ],
           singleton: new Overload({
@@ -193,7 +193,7 @@ describe('interpreter', () => {
               id: 'addall_four',
               argTypes: [IntType, IntType, IntType, IntType],
               resultType: IntType,
-              operandTrait: Trait.ADDER_TYPE,
+              operandTraits: [Trait.ADDER_TYPE],
             }),
           ],
           singleton: new Overload({
@@ -1672,12 +1672,12 @@ function program(
 
   // Parse the expression.
   const s = new TextSource(tst.expr);
-  const p = new Parser(s, {
+  const p = new Parser({
     macros: [...AllMacros],
     enableOptionalSyntax: true,
     enableVariadicOperatorASTs: true,
   });
-  const parsed = p.parse();
+  const parsed = p.parse(s);
   if (p.errors.length() > 0) {
     return [null, null, new Error(p.errors.toDisplayString())];
   }
@@ -1690,8 +1690,8 @@ function program(
     return [prg, vars, null];
   }
   // Check the expression.
-  const checker = new Checker(parsed, env);
-  const checked = checker.check();
+  const checker = new Checker(env);
+  const checked = checker.check(parsed);
   if (checker.errors.length() > 0) {
     return [null, null, new Error(checker.errors.toDisplayString())];
   }

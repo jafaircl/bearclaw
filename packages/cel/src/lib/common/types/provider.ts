@@ -113,7 +113,7 @@ export const protoCELPrimitives = new Map<ScalarType, Type>([
   [ScalarType.UINT64, UintType],
 ]);
 
-function fieldDescToCELType(field: DescField): Type | null {
+export function fieldDescToCELType(field: DescField): Type | null {
   switch (field.fieldKind) {
     case 'message':
       return newObjectType(field.message.typeName);

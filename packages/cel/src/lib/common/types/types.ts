@@ -223,6 +223,15 @@ export class Type implements RefType, RefVal {
     return this._traitMask.has(trait);
   }
 
+  hasTraits(traits: Trait[]): boolean {
+    for (const t of traits) {
+      if (!this.hasTrait(t)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   typeName(): string {
     return this._runtimeTypeName;
   }

@@ -4,16 +4,20 @@
 import { isNil } from '@bearclaw/is';
 import {
   Decl,
+  DeclSchema,
   Type as ProtoType,
 } from '@buf/google_cel-spec.bufbuild_es/cel/expr/checked_pb.js';
+import { isMessage } from '@bufbuild/protobuf';
 import {
   DeclarationState,
   FunctionDecl,
   newConstantDecl,
   newVariableDecl,
   OverloadDecl,
+  VariableDecl,
 } from '../common/decls';
 import { BinaryOp, FunctionOp, UnaryOp } from '../common/functions';
+import { protoConstantToRefVal } from '../common/pb/constants';
 import { isRefVal } from '../common/ref/reference';
 import { defaultTypeAdapter } from '../common/types/provider';
 import { Trait } from '../common/types/traits/trait';
@@ -307,7 +311,7 @@ interface SingletonUnaryBinding {
    */
   singletonUnaryBinding?: {
     function: UnaryOp;
-    trait?: Trait;
+    traits?: Trait[];
     nonStrict?: boolean;
   };
   singletonBinaryBinding?: undefined;
@@ -326,7 +330,7 @@ interface SingletonBinaryBinding {
    */
   singletonBinaryBinding?: {
     function: BinaryOp;
-    trait?: Trait;
+    traits?: Trait[];
     nonStrict?: boolean;
   };
   singletonFunctionBinding?: undefined;
@@ -345,7 +349,7 @@ interface SingletonFunctionBinding {
    */
   singletonFunctionBinding?: {
     function: FunctionOp;
-    trait?: Trait;
+    traits?: Trait[];
     nonStrict?: boolean;
   };
 }
@@ -404,7 +408,7 @@ export function func(
     singleton = new Overload({
       operator: name,
       unary: options.singletonUnaryBinding.function,
-      operandTrait: options.singletonUnaryBinding.trait,
+      operandTraits: options.singletonUnaryBinding.traits,
       nonStrict: options.singletonUnaryBinding.nonStrict,
     });
   }
@@ -412,7 +416,7 @@ export function func(
     singleton = new Overload({
       operator: name,
       binary: options.singletonBinaryBinding.function,
-      operandTrait: options.singletonBinaryBinding.trait,
+      operandTraits: options.singletonBinaryBinding.traits,
       nonStrict: options.singletonBinaryBinding.nonStrict,
     });
   }
@@ -420,7 +424,7 @@ export function func(
     singleton = new Overload({
       operator: name,
       function: options.singletonFunctionBinding.function,
-      operandTrait: options.singletonFunctionBinding.trait,
+      operandTraits: options.singletonFunctionBinding.traits,
       nonStrict: options.singletonFunctionBinding.nonStrict,
     });
   }
@@ -448,7 +452,7 @@ interface OverloadOptionsBase {
    * OverloadOperandTrait configures a set of traits which the first argument
    * to the overload must implement in order to be successfully invoked.
    */
-  operandTrait?: Trait;
+  operandTraits?: Trait[];
 }
 
 interface OverloadUnaryBinding {
@@ -506,7 +510,7 @@ export function overload(
     resultType,
     isMemberFunction: false,
     nonStrict: options?.isNonStrict,
-    operandTrait: options?.operandTrait,
+    operandTraits: options?.operandTraits,
     unaryOp: options?.unaryBinding,
     binaryOp: options?.binaryBinding,
     functionOp: options?.functionBinding,
@@ -534,7 +538,7 @@ export function memberOverload(
     resultType,
     isMemberFunction: true,
     nonStrict: options?.isNonStrict,
-    operandTrait: options?.operandTrait,
+    operandTraits: options?.operandTraits,
     unaryOp: options?.unaryBinding,
     binaryOp: options?.binaryBinding,
     functionOp: options?.functionBinding,
@@ -602,9 +606,36 @@ export function exprDeclToDeclaration(decl: Decl) {
       return constant(
         decl.name,
         t,
-        decl.declKind.value.value.constantKind.value
+        protoConstantToRefVal(decl.declKind.value.value)
       );
     default:
       return new Error(`unsupported decl: ${decl.declKind.case}`);
   }
+}
+
+/**
+ * Declaration represents a union of all possible declaration types. This type
+ * is used to extend the set of declarations available in the environment. A
+ * Declaration can be a proto-based declaration, a CEL-native VariableDecl, or a
+ * CEL-native FunctionDecl.
+ */
+export type Declaration = Decl | VariableDecl | FunctionDecl;
+
+export function unwrapDeclaration(
+  decl: Declaration
+): VariableDecl | FunctionDecl {
+  if (decl instanceof VariableDecl) {
+    return decl;
+  }
+  if (decl instanceof FunctionDecl) {
+    return decl;
+  }
+  if (isMessage(decl, DeclSchema)) {
+    const parsed = exprDeclToDeclaration(decl);
+    if (parsed instanceof Error) {
+      throw parsed;
+    }
+    return parsed;
+  }
+  throw new Error(`unsupported declaration type: ${decl}`);
 }

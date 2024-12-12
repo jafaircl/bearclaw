@@ -385,7 +385,7 @@ export const stdFunctions = [
         }
         return (v as RefVal & Negater).negate();
       },
-      operandTrait: Trait.NEGATER_TYPE,
+      operandTraits: [Trait.NEGATER_TYPE],
     }),
   }),
 
@@ -502,7 +502,7 @@ export const stdFunctions = [
       binary: (lhs, rhs) => {
         return (lhs as RefVal & Adder).add(rhs);
       },
-      operandTrait: Trait.ADDER_TYPE,
+      operandTraits: [Trait.ADDER_TYPE],
     }),
   }),
   new FunctionDecl({
@@ -529,7 +529,7 @@ export const stdFunctions = [
       binary: (lhs, rhs) => {
         return (lhs as RefVal & Divider).divide(rhs);
       },
-      operandTrait: Trait.DIVIDER_TYPE,
+      operandTraits: [Trait.DIVIDER_TYPE],
     }),
   }),
 
@@ -552,7 +552,7 @@ export const stdFunctions = [
       binary: (lhs, rhs) => {
         return (lhs as RefVal & Modder).modulo(rhs);
       },
-      operandTrait: Trait.MODDER_TYPE,
+      operandTraits: [Trait.MODDER_TYPE],
     }),
   }),
 
@@ -580,7 +580,7 @@ export const stdFunctions = [
       binary: (lhs, rhs) => {
         return (lhs as RefVal & Multiplier).multiply(rhs);
       },
-      operandTrait: Trait.MULTIPLIER_TYPE,
+      operandTraits: [Trait.MULTIPLIER_TYPE],
     }),
   }),
 
@@ -603,7 +603,7 @@ export const stdFunctions = [
       unary: (v) => {
         return (v as RefVal & Negater).negate();
       },
-      operandTrait: Trait.NEGATER_TYPE,
+      operandTraits: [Trait.NEGATER_TYPE],
     }),
   }),
 
@@ -646,7 +646,7 @@ export const stdFunctions = [
       binary: (lhs, rhs) => {
         return (lhs as RefVal & Subtractor).subtract(rhs);
       },
-      operandTrait: Trait.SUBTRACTOR_TYPE,
+      operandTraits: [Trait.SUBTRACTOR_TYPE],
     }),
   }),
 
@@ -741,7 +741,7 @@ export const stdFunctions = [
         }
         return cmp;
       },
-      operandTrait: Trait.COMPARER_TYPE,
+      operandTraits: [Trait.COMPARER_TYPE],
     }),
   }),
 
@@ -834,7 +834,7 @@ export const stdFunctions = [
         }
         return cmp;
       },
-      operandTrait: Trait.COMPARER_TYPE,
+      operandTraits: [Trait.COMPARER_TYPE],
     }),
   }),
 
@@ -927,7 +927,7 @@ export const stdFunctions = [
         }
         return cmp;
       },
-      operandTrait: Trait.COMPARER_TYPE,
+      operandTraits: [Trait.COMPARER_TYPE],
     }),
   }),
 
@@ -1020,7 +1020,7 @@ export const stdFunctions = [
         }
         return cmp;
       },
-      operandTrait: Trait.COMPARER_TYPE,
+      operandTraits: [Trait.COMPARER_TYPE],
     }),
   }),
 
@@ -1042,7 +1042,7 @@ export const stdFunctions = [
     singleton: new Overload({
       operator: INDEX_OPERATOR,
       binary: (lhs, rhs) => (lhs as RefVal & Indexer).get(rhs),
-      operandTrait: Trait.INDEXER_TYPE,
+      operandTraits: [Trait.INDEXER_TYPE],
     }),
   }),
 
@@ -1069,7 +1069,7 @@ export const stdFunctions = [
         }
         return ErrorRefVal.maybeNoSuchOverload(rhs);
       },
-      operandTrait: Trait.CONTAINER_TYPE,
+      operandTraits: [Trait.CONTAINER_TYPE],
     }),
   }),
   new FunctionDecl({
@@ -1123,7 +1123,7 @@ export const stdFunctions = [
     singleton: new Overload({
       operator: SIZE_OVERLOAD,
       unary: (v) => (v as RefVal & Sizer).size(),
-      operandTrait: Trait.SIZER_TYPE,
+      operandTraits: [Trait.SIZER_TYPE],
     }),
   }),
 
@@ -1464,7 +1464,7 @@ export const stdFunctions = [
     singleton: new Overload({
       operator: MATCHES_OVERLOAD,
       binary: (str, pat) => (str as RefVal & Matcher).match(pat),
-      operandTrait: Trait.MATCHER_TYPE,
+      operandTraits: [Trait.MATCHER_TYPE],
     }),
   }),
 

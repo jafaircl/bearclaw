@@ -233,7 +233,7 @@ export class FunctionDecl {
       if (o.hasBinding()) {
         const overload = new Overload({
           operator: o.id(),
-          operandTrait: o.operandTrait,
+          operandTraits: o.operandTraits,
           unary: o.guardedUnaryOp(this.name(), this.disableTypeGuards),
           binary: o.guardedBinaryOp(this.name(), this.disableTypeGuards),
           function: o.guardedFunctionOp(this.name(), this.disableTypeGuards),
@@ -252,7 +252,7 @@ export class FunctionDecl {
       overloads = [
         new Overload({
           operator: this.name(),
-          operandTrait: this.singleton.operandTrait,
+          operandTraits: this.singleton.operandTraits,
           unary: this.singleton.unary,
           binary: this.singleton.binary,
           function: this.singleton.function,
@@ -275,7 +275,7 @@ export class FunctionDecl {
         overload,
         new Overload({
           operator: this.name(),
-          operandTrait: overload.operandTrait,
+          operandTraits: overload.operandTraits,
           unary: overload.unary,
           binary: overload.binary,
           function: overload.function,
@@ -367,10 +367,7 @@ export function disableDeclaration(val: boolean) {
  * trait which it implements, e.g. traits.ContainerType. Otherwise, prefer
  * per-overload function bindings.
  */
-export function singletonUnaryBinding(
-  fn: UnaryOp,
-  trait: Trait = Trait.UNSPECIFIED
-) {
+export function singletonUnaryBinding(fn: UnaryOp, traits: Trait[] = []) {
   return (f: FunctionDecl) => {
     if (f.singleton) {
       throw new Error(`function already has a singleton binding: ${f.name()}`);
@@ -378,7 +375,7 @@ export function singletonUnaryBinding(
     f.singleton = new Overload({
       operator: f.name(),
       unary: fn,
-      operandTrait: trait,
+      operandTraits: traits,
     });
     return f;
   };
@@ -392,10 +389,7 @@ export function singletonUnaryBinding(
  * trait which it implements, e.g. traits.ContainerType. Otherwise, prefer
  * per-overload function bindings.
  */
-export function singletonBinaryBinding(
-  fn: BinaryOp,
-  trait: Trait = Trait.UNSPECIFIED
-) {
+export function singletonBinaryBinding(fn: BinaryOp, traits: Trait[] = []) {
   return (f: FunctionDecl) => {
     if (f.singleton) {
       throw new Error(`function already has a singleton binding: ${f.name()}`);
@@ -403,7 +397,7 @@ export function singletonBinaryBinding(
     f.singleton = new Overload({
       operator: f.name(),
       binary: fn,
-      operandTrait: trait,
+      operandTraits: traits,
     });
     return f;
   };
@@ -417,10 +411,7 @@ export function singletonBinaryBinding(
  * trait which it implements, e.g. traits.ContainerType. Otherwise, prefer
  * per-overload function bindings.
  */
-export function singletonFunctionBinding(
-  fn: FunctionOp,
-  trait: Trait = Trait.UNSPECIFIED
-) {
+export function singletonFunctionBinding(fn: FunctionOp, traits: Trait[] = []) {
   return (f: FunctionDecl) => {
     if (f.singleton) {
       throw new Error(`function already has a singleton binding: ${f.name()}`);
@@ -428,7 +419,7 @@ export function singletonFunctionBinding(
     f.singleton = new Overload({
       operator: f.name(),
       function: fn,
-      operandTrait: trait,
+      operandTraits: traits,
     });
     return f;
   };
@@ -451,7 +442,7 @@ interface OverloadDeclInput {
    * This is useful for creating overloads which operate on a type-interface
    * rather than a concrete type.
    */
-  operandTrait?: Trait;
+  operandTraits?: Trait[];
 
   // Function implementation options. Optional, but encouraged.
 
@@ -479,7 +470,7 @@ export class OverloadDecl {
   private readonly _resultType: Type;
   private readonly _isMemberFunction: boolean;
   nonStrict: boolean;
-  operandTrait: Trait;
+  operandTraits: Trait[];
   unaryOp?: UnaryOp;
   binaryOp?: BinaryOp;
   functionOp?: FunctionOp;
@@ -490,7 +481,7 @@ export class OverloadDecl {
     this._resultType = input.resultType;
     this._isMemberFunction = input.isMemberFunction ?? false;
     this.nonStrict = input.nonStrict ?? true;
-    this.operandTrait = input.operandTrait ?? Trait.UNSPECIFIED;
+    this.operandTraits = input.operandTraits ?? [];
     this.unaryOp = input.unaryOp;
     this.binaryOp = input.binaryOp;
     this.functionOp = input.functionOp;
@@ -666,7 +657,7 @@ export class OverloadDecl {
         disableTypeGuards,
         this.argTypes()[0],
         arg
-      ) && matchOperandTrait(this.operandTrait, arg)
+      ) && matchOperandTraits(this.operandTraits, arg)
     );
   }
 
@@ -692,7 +683,7 @@ export class OverloadDecl {
         this.argTypes()[1],
         arg2
       ) &&
-      matchOperandTrait(this.operandTrait, arg1)
+      matchOperandTraits(this.operandTraits, arg1)
     );
   }
 
@@ -719,7 +710,7 @@ export class OverloadDecl {
         return false;
       }
     }
-    return matchOperandTrait(this.operandTrait, args[0]);
+    return matchOperandTraits(this.operandTraits, args[0]);
   }
 }
 
@@ -738,12 +729,18 @@ function matchRuntimeArgType(
   return disableTypeGuards || argType.isAssignableRuntimeType(arg);
 }
 
-function matchOperandTrait(trait: Trait, arg: RefVal) {
-  return (
-    trait === Trait.UNSPECIFIED ||
-    arg.type().hasTrait(trait) ||
-    isUnknownOrError(arg)
-  );
+function matchOperandTraits(traits: Trait[], arg: RefVal) {
+  for (const trait of traits) {
+    if (
+      trait === Trait.UNSPECIFIED ||
+      arg.type().hasTrait(trait) ||
+      isUnknownOrError(arg)
+    ) {
+      continue;
+    }
+    return false;
+  }
+  return true;
 }
 
 /**
@@ -817,9 +814,9 @@ export function overloadIsNonStrict() {
  * OverloadOperandTrait configures a set of traits which the first argument to
  * the overload must implement in order to be successfully invoked.
  */
-export function overloadOperandTrait(trait: Trait) {
+export function overloadOperandTrait(traits: Trait[]) {
   return (o: OverloadDecl) => {
-    o.operandTrait = trait;
+    o.operandTraits = traits;
     return o;
   };
 }

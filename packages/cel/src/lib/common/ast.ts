@@ -204,7 +204,7 @@ export class CheckedAST extends AST {
 
 export class SourceInfo {
   private _source: Source;
-  private _syntax: string | null;
+  private _syntax: string;
   private _desc: string;
   private _lines: number[];
   private _baseLine: number;
@@ -214,7 +214,7 @@ export class SourceInfo {
 
   constructor(
     source: Source,
-    syntax: string | null,
+    syntax: string,
     desc: string,
     lines: number[],
     baseLine: number,
@@ -434,7 +434,7 @@ export function newSourceInfo(src: Source) {
   }
   return new SourceInfo(
     src,
-    null,
+    '',
     desc ?? '',
     lineOffsets ?? [],
     baseLine,
@@ -500,7 +500,7 @@ export class ReferenceInfo {
  * optional constant value.
  */
 export function newIdentReference(name: string, value?: RefVal) {
-  return new ReferenceInfo(name, undefined, value);
+  return new ReferenceInfo(name, [], value);
 }
 
 /**
@@ -508,5 +508,5 @@ export function newIdentReference(name: string, value?: RefVal) {
  * overloads.
  */
 export function newFunctionReference(...overloads: string[]) {
-  return new ReferenceInfo(undefined, overloads);
+  return new ReferenceInfo('', overloads);
 }

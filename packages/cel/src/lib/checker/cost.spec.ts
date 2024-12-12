@@ -620,11 +620,11 @@ describe('cost', () => {
   for (const testCase of testCases) {
     it(testCase.name, () => {
       const source = new TextSource(testCase.expr);
-      const parser = new Parser(source);
+      const parser = new Parser();
+      const parsed = parser.parse(source);
       if (parser.errors.length() > 0) {
         throw new Error(parser.errors.toDisplayString());
       }
-      const parsed = parser.parse();
       const registry = new Registry();
       registry.registerDescriptor(TestAllTypesSchemaProto3);
       registry.registerDescriptor(TestAllTypes_NestedEnumSchemaProto3);
@@ -632,11 +632,11 @@ describe('cost', () => {
       const env = new Env(new Container(), registry);
       env.addFunctions(...stdFunctions);
       env.addIdents(...stdTypes, ...(testCase.vars ?? []));
-      const checker = new Checker(parsed, env);
+      const checker = new Checker(env);
+      const checked = checker.check(parsed);
       if (checker.errors.length() > 0) {
         throw new Error(checker.errors.toDisplayString());
       }
-      const checked = checker.check();
       const coster = new Coster(
         checked,
         new TestEstimator(testCase.hints ?? new Map()),

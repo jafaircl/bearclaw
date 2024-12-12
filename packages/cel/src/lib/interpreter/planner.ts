@@ -368,14 +368,14 @@ export class Planner implements InterpretablePlanner {
     args: Interpretable[]
   ): Interpretable | Error {
     let fn: UnaryOp | null = null;
-    let trait = Trait.UNSPECIFIED;
+    let traits: Trait[] = [];
     let nonStrict = false;
     if (!isNil(impl)) {
       if (isNil(impl.unary)) {
         return new Error(`no such overload: ${_function}(arg)`);
       }
       fn = impl.unary;
-      trait = impl.operandTrait;
+      traits = impl.operandTraits;
       nonStrict = impl.nonStrict ?? nonStrict;
     }
     return new EvalUnary(
@@ -383,7 +383,7 @@ export class Planner implements InterpretablePlanner {
       _function,
       overload,
       args[0],
-      trait,
+      traits,
       fn,
       nonStrict
     );
@@ -400,14 +400,14 @@ export class Planner implements InterpretablePlanner {
     args: Interpretable[]
   ): Interpretable | Error {
     let fn: BinaryOp | null = null;
-    let trait = Trait.UNSPECIFIED;
+    let traits: Trait[] = [];
     let nonStrict = false;
     if (!isNil(impl)) {
       if (isNil(impl.binary)) {
         return new Error(`no such overload: ${_function}(lhs, rhs)`);
       }
       fn = impl.binary;
-      trait = impl.operandTrait;
+      traits = impl.operandTraits;
       nonStrict = impl.nonStrict ?? nonStrict;
     }
     return new EvalBinary(
@@ -416,7 +416,7 @@ export class Planner implements InterpretablePlanner {
       overload,
       args[0],
       args[1],
-      trait,
+      traits,
       fn,
       nonStrict
     );
@@ -433,14 +433,14 @@ export class Planner implements InterpretablePlanner {
     args: Interpretable[]
   ): Interpretable | Error {
     let fn: FunctionOp | null = null;
-    let trait = Trait.UNSPECIFIED;
+    let traits: Trait[] = [];
     let nonStrict = false;
     if (!isNil(impl)) {
       if (isNil(impl.function)) {
         return new Error(`no such overload: ${_function}(...)`);
       }
       fn = impl.function;
-      trait = impl.operandTrait;
+      traits = impl.operandTraits;
       nonStrict = impl.nonStrict ?? nonStrict;
     }
     return new EvalVarArgs(
@@ -448,7 +448,7 @@ export class Planner implements InterpretablePlanner {
       _function,
       overload,
       args,
-      trait,
+      traits,
       fn,
       nonStrict
     );

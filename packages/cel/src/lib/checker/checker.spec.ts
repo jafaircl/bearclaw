@@ -2516,18 +2516,15 @@ ERROR: <input>:1:5: undeclared reference to 'x' (in container '')
   for (const testCase of testCases) {
     it(`should check ${testCase.in}`, () => {
       const source = new TextSource(testCase.in);
-      const parser = new Parser(
-        source,
-        testCase.options ?? { maxRecursionDepth: 32 }
-      );
-      const parsed = parser.parse();
+      const parser = new Parser(testCase.options ?? { maxRecursionDepth: 32 });
+      const parsed = parser.parse(source);
       const env = testCase.env
         ? testCase.env(testCase.container, testCase.options)
         : getDefaultEnvironment(testCase.container, testCase.options);
 
-      const checker = new Checker(parsed, env);
-      checker.check();
-      if (!testCase.err && checker.errors.errors.length > 0) {
+      const checker = new Checker(env);
+      checker.check(parsed);
+      if (!testCase.err && checker.errors.getErrors().length > 0) {
         throw new Error(
           `Unexpected error for case "${
             testCase.in

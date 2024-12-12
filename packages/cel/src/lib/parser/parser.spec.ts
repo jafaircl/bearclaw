@@ -2572,13 +2572,10 @@ describe('Parser', () => {
   for (const testCase of testCases) {
     it(`should parse ${testCase.I}`, () => {
       // Arrange
-      const parser = new Parser(
-        new TextSource(testCase.I),
-        testCase.Opts ?? { maxRecursionDepth: 32 }
-      );
+      const parser = new Parser(testCase.Opts ?? { maxRecursionDepth: 32 });
 
       // Act
-      const expr = parser.parse();
+      const expr = parser.parse(new TextSource(testCase.I));
 
       // Assert
       if (testCase.P) {

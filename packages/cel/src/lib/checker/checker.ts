@@ -65,18 +65,16 @@ import {
 } from './types';
 
 export class Checker {
-  #ast: AST;
+  #ast!: AST;
   #env: Env;
-  #errors: Errors;
+  #errors!: Errors;
   #mapping: Mapping;
   #typeMap = new Map<bigint, Type>();
   #refMap = new Map<bigint, ReferenceInfo>();
   #freeTypeVarCounter = 0;
 
-  constructor(ast: AST, env: Env) {
-    this.#ast = ast;
+  constructor(env: Env) {
     this.#env = env;
-    this.#errors = new Errors(ast.sourceInfo().source());
     this.#mapping = new Mapping();
   }
 
@@ -84,7 +82,9 @@ export class Checker {
     return this.#errors;
   }
 
-  check(): CheckedAST {
+  check(ast: AST): CheckedAST {
+    this.#ast = ast;
+    this.#errors = new Errors(ast.sourceInfo().source());
     this.checkExpr(this.#ast.expr());
 
     // Walk over the final type map substituting any type parameters either by

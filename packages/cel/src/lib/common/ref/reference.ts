@@ -15,6 +15,11 @@ export interface RefType extends RefVal {
   hasTrait(trait: Trait): boolean;
 
   /**
+   * Helper function to check for multiple traits.
+   */
+  hasTraits(traits: Trait[]): boolean;
+
+  /**
    * TypeName returns the qualified type name of the type.
    *
    * The type name is also used as the type's identifier name at type-check and
@@ -27,6 +32,7 @@ export function isRefType(value: any): value is RefType {
   return (
     value &&
     isFunction(value?.hasTrait) &&
+    isFunction(value?.hasTraits) &&
     isFunction(value?.typeName) &&
     isRefVal(value)
   );
