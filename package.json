@@ -4,14 +4,16 @@
   "license": "MIT",
   "scripts": {
     "cz": "cz",
-    "nx": "nx"
+    "nx": "nx",
+    "generate-cel-parser": "antlr4 -Dlanguage=TypeScript packages/cel/src/lib/gen/CEL.g4 -visitor",
+    "generate-timezoone-offset-map": "npx ts-node scripts/generate-timezone-offset-map.ts"
   },
   "private": true,
   "devDependencies": {
     "@commitlint/cli": "^14.1.0",
     "@commitlint/config-angular": "^14.1.0",
     "@commitlint/config-conventional": "^14.1.0",
-    "@jscutlery/semver": "^2.27.1",
+    "@jscutlery/semver": "^5.3.1",
     "@nrwl/cli": "15.0.0",
     "@nrwl/eslint-plugin-nx": "19.8.0",
     "@nrwl/jest": "19.8.0",
@@ -19,11 +21,19 @@
     "@nrwl/linter": "19.8.0",
     "@nrwl/node": "19.8.0",
     "@nrwl/workspace": "19.8.0",
+    "@nx/js": "19.8.0",
+    "@nx/vite": "19.8.0",
+    "@nx/web": "19.8.0",
+    "@swc-node/register": "~1.9.1",
+    "@swc/core": "~1.5.7",
+    "@swc/helpers": "~0.5.11",
     "@types/deep-freeze-strict": "^1.1.0",
     "@types/jest": "29.5.13",
     "@types/node": "18.19.9",
     "@typescript-eslint/eslint-plugin": "7.18.0",
     "@typescript-eslint/parser": "7.18.0",
+    "@vitest/coverage-v8": "^1.0.4",
+    "@vitest/ui": "^1.3.1",
     "commitizen": "^4.2.4",
     "cz-conventional-changelog": "^3.3.0",
     "eslint": "8.57.1",
@@ -33,21 +43,36 @@
     "nx": "19.8.0",
     "prettier": "2.7.1",
     "reflect-metadata": "^0.1.13",
-    "ts-jest": "28.0.8",
+    "ts-jest": "^29.2.5",
     "ts-node": "10.9.1",
-    "typescript": "4.8.4"
+    "typescript": "~5.5.2",
+    "verdaccio": "^5.0.4",
+    "vite": "^5.0.0",
+    "vite-plugin-dts": "~3.8.1",
+    "vitest": "^1.3.1"
   },
   "dependencies": {
+    "@buf/cel_spec.bufbuild_es": "^2.1.0-20230602032904-0583f28ce7d3.1",
+    "@buf/google_cel-spec.bufbuild_es": "^2.1.0-20240829202630-b69910e4e9bc.1",
+    "@bufbuild/protobuf": "^2.1.0",
+    "@vvo/tzdb": "^6.149.0",
+    "antlr4": "^4.13.2",
     "class-transformer": "^0.5.1",
     "deep-freeze-strict": "^1.1.1",
+    "dequal": "^2.0.3",
     "fast-json-stable-stringify": "^2.1.0",
     "immer": "^9.0.15",
+    "iso8601-duration": "^2.1.2",
     "just-extend": "^6.1.1",
+    "safe-stable-stringify": "^2.5.0",
     "tslib": "^2.0.0"
   },
   "config": {
     "commitizen": {
       "path": "cz-conventional-changelog"
     }
+  },
+  "nx": {
+    "includedScripts": []
   }
 }

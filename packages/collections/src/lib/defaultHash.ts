@@ -1,4 +1,4 @@
-import stringify from 'fast-json-stable-stringify';
+import stringify from 'safe-stable-stringify';
 import { HashFn } from './types';
 
 /**
@@ -10,6 +10,9 @@ import { HashFn } from './types';
  */
 export const defaultHash: HashFn = (value: unknown) => {
   const string = stringify(value);
+  if (string === undefined) {
+    return 0;
+  }
   // Algorithim is the same as the Java implementation
   let hash = 0;
   for (let i = 0; i < string.length; i++) {
