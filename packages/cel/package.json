@@ -1,6 +1,6 @@
 {
   "name": "@bearclaw/cel",
-  "version": "0.0.1",
+  "version": "0.1.0-alpha.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/jafaircl/bearclaw.git",
@@ -8,8 +8,8 @@
   },
   "homepage": "https://github.com/jafaircl/bearclaw/tree/main/packages/cel/README.md",
   "dependencies": {
-    "@bearclaw/collections": "*",
-    "@bearclaw/is": "*",
+    "@bearclaw/collections": "^0.1.1",
+    "@bearclaw/is": "^0.3.1",
     "@buf/cel_spec.bufbuild_es": "^2.1.0-20230602032904-0583f28ce7d3.1",
     "@buf/google_cel-spec.bufbuild_es": "^2.1.0-20240829202630-b69910e4e9bc.1",
     "@bufbuild/protobuf": "^2.1.0",

@@ -1,17 +1,9 @@
 export * from './decls';
-export { Ast, CustomEnv, Env, Issues, Source, formatCELType } from './env';
+export { Ast, CustomEnv, Env, Issues, formatCELType } from './env';
+export type { Source } from './env';
+export { Feature, StdLib, isLibrary, isSingletonLibrary, lib } from './library';
+export type { Library, SingletonLibrary } from './library';
 export {
-  Feature,
-  Library,
-  SingletonLibrary,
-  StdLib,
-  isLibrary,
-  isSingletonLibrary,
-  lib,
-} from './library';
-export {
-  EvalOption,
-  ProgramOption,
   abbrevs,
   clearMacros,
   container,
@@ -27,4 +19,6 @@ export {
   //  homogeneousAggregateLiterals,
   variadicLogicalOperatorASTs,
 } from './options';
-export { EvalDetails, Program } from './program';
+export type { EnvOption, EvalOption, ProgramOption } from './options';
+export { EvalDetails } from './program';
+export type { Program } from './program';

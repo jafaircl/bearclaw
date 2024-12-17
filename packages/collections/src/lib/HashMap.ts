@@ -73,7 +73,7 @@ export class HashMap<K, V> implements Map<K, V> {
    * @param key the key to get the value for
    * @returns the value corresponding to the key (or undefined)
    */
-  get(key: K): V {
+  get(key: K): V | undefined {
     const hashedKey = this._hasherFn(key);
     return this._valueMap.get(hashedKey);
   }
@@ -108,7 +108,7 @@ export class HashMap<K, V> implements Map<K, V> {
    */
   *entries(): IterableIterator<[K, V]> {
     for (const [hashedKey, key] of this._keyMap.entries()) {
-      yield [key, this._valueMap.get(hashedKey)];
+      yield [key, this._valueMap.get(hashedKey) as V];
     }
   }
 
