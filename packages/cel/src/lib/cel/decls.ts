@@ -9,12 +9,20 @@ import {
 } from '@buf/google_cel-spec.bufbuild_es/cel/expr/checked_pb.js';
 import { isMessage } from '@bufbuild/protobuf';
 import {
-  DeclarationState,
   FunctionDecl,
+  FunctionOpt,
   newConstantDecl,
+  newFunction,
   newVariableDecl,
   OverloadDecl,
+  OverloadOpt,
   VariableDecl,
+  disableDeclaration as œdisableDeclaration,
+  memberOverload as œmemberOverload,
+  overload as œoverload,
+  singletonBinaryBinding as œsingletonBinaryBinding,
+  singletonFunctionBinding as œsingletonFunctionBinding,
+  singletonUnaryBinding as œsingletonUnaryBinding,
 } from '../common/decls';
 import { BinaryOp, FunctionOp, UnaryOp } from '../common/functions';
 import { protoConstantToRefVal } from '../common/pb/constants';
@@ -46,7 +54,7 @@ import {
   TypeType as œTypeType,
   UintType as œUintType,
 } from '../common/types/types';
-import { Overload } from './../common/functions';
+import { EnvOption } from './options';
 
 /**
  * Kind indicates a CEL type's kind which is used to differentiate quickly
@@ -267,95 +275,26 @@ export { Type };
  * Constant creates an instances of an identifier declaration with a variable
  * name, type, and value.
  */
-export function constant(name: string, type: Type, value: any) {
+export function constant(name: string, type: Type, value: any): EnvOption {
   if (!isRefVal(value)) {
     value = defaultTypeAdapter.nativeToValue(value);
   }
-  return newConstantDecl(name, type, value);
+  return (e) => {
+    e.variables.push(newConstantDecl(name, type, value));
+    return e;
+  };
 }
 
 /**
  * Variable creates an instance of a variable declaration with a variable name
  * and type.
  */
-export function variable(name: string, type: Type) {
-  return newVariableDecl(name, type);
-}
-
-interface FuncOptionsBase {
-  /**
-   * DisableTypeGuards disables automatically generated function invocation
-   * guards on direct overload calls.
-   *
-   * Type guards remain on during dynamic dispatch for parsed-only expressions.
-   */
-  disableTypeGuards?: boolean;
-  /**
-   * DisableDeclaration indicates that the function declaration should be
-   * disabled, but the runtime function binding should be provided. Marking a
-   * function as runtime-only is a safe way to manage deprecations of function
-   * declarations while still preserving the runtime behavior for previously
-   * compiled expressions.
-   */
-  disableDeclaration?: boolean;
-}
-
-interface SingletonUnaryBinding {
-  /**
-   * SingletonUnaryBinding creates a singleton function definition to be used
-   * for all function overloads.
-   *
-   * Note, this approach works well if operand is expected to have a specific
-   * trait which it implements, e.g. traits.ContainerType. Otherwise, prefer
-   * per-overload function bindings.
-   */
-  singletonUnaryBinding?: {
-    function: UnaryOp;
-    traits?: Trait[];
-    nonStrict?: boolean;
-  };
-  singletonBinaryBinding?: undefined;
-  singletonFunctionBinding?: undefined;
-}
-
-interface SingletonBinaryBinding {
-  singletonUnaryBinding?: undefined;
-  /**
-   * SingletonBinaryBinding creates a singleton function definition to be used
-   * with all function overloads.
-   *
-   * Note, this approach works well if operand is expected to have a specific
-   * trait which it implements, e.g. traits.ContainerType. Otherwise, prefer
-   * per-overload function bindings.
-   */
-  singletonBinaryBinding?: {
-    function: BinaryOp;
-    traits?: Trait[];
-    nonStrict?: boolean;
-  };
-  singletonFunctionBinding?: undefined;
-}
-
-interface SingletonFunctionBinding {
-  singletonUnaryBinding?: undefined;
-  singletonBinaryBinding?: undefined;
-  /**
-   * SingletonFunctionBinding creates a singleton function definition to be
-   * used with all function overloads.
-   *
-   * Note, this approach works well if operand is expected to have a specific
-   * trait which it implements, e.g. traits.ContainerType. Otherwise, prefer
-   * per-overload function bindings.
-   */
-  singletonFunctionBinding?: {
-    function: FunctionOp;
-    traits?: Trait[];
-    nonStrict?: boolean;
+export function variable(name: string, type: Type): EnvOption {
+  return (e) => {
+    e.variables.push(newVariableDecl(name, type));
+    return e;
   };
 }
-
-export type FuncOptions = FuncOptionsBase &
-  (SingletonUnaryBinding | SingletonBinaryBinding | SingletonFunctionBinding);
 
 /**
  * Func defines a function and overloads with optional singleton or
@@ -389,109 +328,64 @@ export type FuncOptions = FuncOptionsBase &
  * resolving the appropriate overload as CEL can only make inferences by
  * type-name regarding such types.
  */
-export function func(
-  name: string,
-  overloads: OverloadDecl[],
-  options?: FuncOptions
-) {
-  // A user should not be able to declare multiple singleton bindings.
-  const bindings = [
-    options?.singletonUnaryBinding,
-    options?.singletonBinaryBinding,
-    options?.singletonFunctionBinding,
-  ];
-  if (bindings.filter((b) => !isNil(b)).length > 1) {
-    throw new Error('multiple singleton bindings are not allowed');
-  }
-  let singleton: Overload | undefined = undefined;
-  if (!isNil(options?.singletonUnaryBinding)) {
-    singleton = new Overload({
-      operator: name,
-      unary: options.singletonUnaryBinding.function,
-      operandTraits: options.singletonUnaryBinding.traits,
-      nonStrict: options.singletonUnaryBinding.nonStrict,
-    });
-  }
-  if (!isNil(options?.singletonBinaryBinding)) {
-    singleton = new Overload({
-      operator: name,
-      binary: options.singletonBinaryBinding.function,
-      operandTraits: options.singletonBinaryBinding.traits,
-      nonStrict: options.singletonBinaryBinding.nonStrict,
-    });
-  }
-  if (!isNil(options?.singletonFunctionBinding)) {
-    singleton = new Overload({
-      operator: name,
-      function: options.singletonFunctionBinding.function,
-      operandTraits: options.singletonFunctionBinding.traits,
-      nonStrict: options.singletonFunctionBinding.nonStrict,
-    });
-  }
-  return new FunctionDecl({
-    name,
-    overloads,
-    disableTypeGuards: options?.disableTypeGuards,
-    state: options?.disableDeclaration
-      ? DeclarationState.DISABLED
-      : DeclarationState.ENABLED,
-    singleton,
-  });
+export function func(name: string, ...opts: FunctionOpt[]): EnvOption {
+  return (e) => {
+    let fn = newFunction(name, ...opts);
+    if (fn instanceof Error) {
+      throw fn;
+    }
+    const existing = e.functions.get(name);
+    if (!isNil(existing)) {
+      fn = existing.merge(fn);
+    }
+    e.functions.set(name, fn);
+    return e;
+  };
 }
 
-interface OverloadOptionsBase {
-  /**
-   * OverloadIsNonStrict enables the function to be called with error and
-   * unknown argument values.
-   *
-   * Note: do not use this option unless absoluately necessary as it should be
-   * an uncommon feature.
-   */
-  isNonStrict?: boolean;
-  /**
-   * OverloadOperandTrait configures a set of traits which the first argument
-   * to the overload must implement in order to be successfully invoked.
-   */
-  operandTraits?: Trait[];
+/**
+ * SingletonUnaryBinding creates a singleton function definition to be used for
+ * all function overloads.
+ *
+ * Note, this approach works well if operand is expected to have a specific
+ * trait which it implements, e.g. traits.ContainerType. Otherwise, prefer
+ * per-overload function bindings.
+ */
+export function singletonUnaryBinding(fn: UnaryOp, ...traits: Trait[]) {
+  return œsingletonUnaryBinding(fn, traits);
 }
 
-interface OverloadUnaryBinding {
-  /**
-   * UnaryBinding provides the implementation of a unary overload. The provided
-   * function is protected by a runtime type-guard which ensures runtime type
-   * agreement between the overload signature and runtime argument types.
-   */
-  unaryBinding?: UnaryOp;
-  binaryBinding?: undefined;
-  functionBinding?: undefined;
+/**
+ * SingletonBinaryBinding creates a singleton function definition to be used
+ * with all function overloads.
+ *
+ * Note, this approach works well if operand is expected to have a specific
+ * trait which it implements, e.g. traits.ContainerType. Otherwise, prefer
+ * per-overload function bindings.
+ */
+export function singletonBinaryBinding(fn: BinaryOp, ...traits: Trait[]) {
+  return œsingletonBinaryBinding(fn, traits);
 }
 
-interface OverloadBinaryBinding {
-  unaryBinding?: undefined;
-  /**
-   * BinaryBinding provides the implementation of a binary overload. The
-   * provided function is protected by a runtime type-guard which ensures
-   * runtime type agreement between the overload signature and runtime argument
-   * types.
-   */
-  binaryBinding?: BinaryOp;
-  functionBinding?: undefined;
+/**
+ * SingletonFunctionBinding creates a singleton function definition to be used
+ * with all function overloads.
+ *
+ * Note, this approach works well if operand is expected to have a specific
+ * trait which it implements, e.g. traits.ContainerType. Otherwise, prefer
+ * per-overload function bindings.
+ */
+export function singletonFunctionBinding(fn: FunctionOp, ...traits: Trait[]) {
+  return œsingletonFunctionBinding(fn, traits);
 }
 
-interface OverloadFunctionBinding {
-  unaryBinding?: undefined;
-  binaryBinding?: undefined;
-  /**
-   * FunctionBinding provides the implementation of a variadic overload. The
-   * provided function is protected by a runtime type-guard which ensures
-   * runtime type agreement between the overload signature and runtime argument
-   * types.
-   */
-  functionBinding?: FunctionOp;
+/**
+ * DisableDeclaration disables the function signatures, effectively removing
+ * them from the type-check environment while preserving the runtime bindings.
+ */
+export function disableDeclaration(value: boolean) {
+  return œdisableDeclaration(value);
 }
-
-export type OverloadOptions = OverloadOptionsBase &
-  (OverloadUnaryBinding | OverloadBinaryBinding | OverloadFunctionBinding);
 
 /**
  * Overload defines a new global overload with an overload id, argument types, and result type. Through the use of OverloadOpt options, the overload may also be configured with a binding, an operand trait, and to be non-strict.
@@ -502,19 +396,9 @@ export function overload(
   overloadID: string,
   args: Type[],
   resultType: Type,
-  options?: OverloadOptions
+  ...opts: OverloadOpt[]
 ) {
-  return new OverloadDecl({
-    id: overloadID,
-    argTypes: args,
-    resultType,
-    isMemberFunction: false,
-    nonStrict: options?.isNonStrict,
-    operandTraits: options?.operandTraits,
-    unaryOp: options?.unaryBinding,
-    binaryOp: options?.binaryBinding,
-    functionOp: options?.functionBinding,
-  });
+  return œoverload(overloadID, args, resultType, ...opts);
 }
 
 /**
@@ -530,19 +414,9 @@ export function memberOverload(
   overloadID: string,
   args: Type[],
   resultType: Type,
-  options?: OverloadOptions
+  ...opts: OverloadOpt[]
 ) {
-  return new OverloadDecl({
-    id: overloadID,
-    argTypes: args,
-    resultType,
-    isMemberFunction: true,
-    nonStrict: options?.isNonStrict,
-    operandTraits: options?.operandTraits,
-    unaryOp: options?.unaryBinding,
-    binaryOp: options?.binaryBinding,
-    functionOp: options?.functionBinding,
-  });
+  return œmemberOverload(overloadID, args, resultType, ...opts);
 }
 
 /**
@@ -568,7 +442,7 @@ export function exprTypeToType(exprType: ProtoType) {
 export function exprDeclToDeclaration(decl: Decl) {
   switch (decl.declKind.case) {
     case 'function':
-      const overloads: OverloadDecl[] = [];
+      const opts: FunctionOpt[] = [];
       for (const o of decl.declKind.value.overloads) {
         const args: Type[] = [];
         for (const arg of o.params) {
@@ -586,12 +460,12 @@ export function exprDeclToDeclaration(decl: Decl) {
           return resultType;
         }
         if (o.isInstanceFunction === true) {
-          overloads.push(memberOverload(o.overloadId, args, resultType));
+          opts.push(memberOverload(o.overloadId, args, resultType));
         } else {
-          overloads.push(overload(o.overloadId, args, resultType));
+          opts.push(overload(o.overloadId, args, resultType));
         }
       }
-      return func(decl.name, overloads);
+      return func(decl.name, ...opts);
     case 'ident':
       if (isNil(decl.declKind.value.type)) {
         return variable(decl.name, DynType);
@@ -621,7 +495,83 @@ export function exprDeclToDeclaration(decl: Decl) {
  */
 export type Declaration = Decl | VariableDecl | FunctionDecl;
 
-export function unwrapDeclaration(
+/**
+ * ProtoDeclToDecl converts a protobuf CEL declaration to a CEL-native
+ * VariableDecl or FunctionDecl.
+ */
+export function protoDeclToDecl(
+  decl: Decl
+): VariableDecl | FunctionDecl | Error {
+  switch (decl.declKind.case) {
+    case 'function':
+      const overloads: OverloadDecl[] = [];
+      for (const o of decl.declKind.value.overloads) {
+        const args: Type[] = [];
+        for (const arg of o.params) {
+          const a = exprTypeToType(arg);
+          if (a instanceof Error) {
+            return a;
+          }
+          args.push(a);
+        }
+        let resultType: Type | Error = DynType;
+        if (!isNil(o.resultType)) {
+          resultType = exprTypeToType(o.resultType);
+        }
+        if (resultType instanceof Error) {
+          return resultType;
+        }
+        if (o.isInstanceFunction === true) {
+          overloads.push(
+            new OverloadDecl({
+              id: o.overloadId,
+              argTypes: args,
+              resultType: resultType,
+              isMemberFunction: true,
+            })
+          );
+        } else {
+          overloads.push(
+            new OverloadDecl({
+              id: o.overloadId,
+              argTypes: args,
+              resultType: resultType,
+              isMemberFunction: false,
+            })
+          );
+        }
+      }
+      return new FunctionDecl({
+        name: decl.name,
+        overloads: overloads,
+      });
+    case 'ident':
+      if (isNil(decl.declKind.value.type)) {
+        return newVariableDecl(decl.name, DynType);
+      }
+      const t = exprTypeToType(decl.declKind.value.type);
+      if (t instanceof Error) {
+        return t;
+      }
+      if (isNil(decl.declKind.value.value)) {
+        return newVariableDecl(decl.name, t);
+      }
+      return newConstantDecl(
+        decl.name,
+        t,
+        protoConstantToRefVal(decl.declKind.value.value)
+      );
+    default:
+      return new Error(`unsupported decl: ${decl.declKind.case}`);
+  }
+}
+
+/**
+ * MaybeUnwrapDeclaration attempts to unwrap a declaration from a proto-based
+ * declaration to a CEL-native VariableDecl or FunctionDecl. If the declaration
+ * is already a CEL-native declaration, it is returned as-is.
+ */
+export function maybeUnwrapDeclaration(
   decl: Declaration
 ): VariableDecl | FunctionDecl {
   if (decl instanceof VariableDecl) {
@@ -631,11 +581,10 @@ export function unwrapDeclaration(
     return decl;
   }
   if (isMessage(decl, DeclSchema)) {
-    const parsed = exprDeclToDeclaration(decl);
+    const parsed = protoDeclToDecl(decl);
     if (parsed instanceof Error) {
       throw parsed;
     }
-    return parsed;
   }
   throw new Error(`unsupported declaration type: ${decl}`);
 }

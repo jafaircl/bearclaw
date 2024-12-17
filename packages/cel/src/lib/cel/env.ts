@@ -1,9 +1,11 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-empty-interface */
 import { isNil } from '@bearclaw/is';
 import { Checker } from '../checker/checker';
 import { Coster, CosterOptions, CostEstimator } from '../checker/cost';
 import { Env as CheckerEnv, CheckerEnvOptions } from '../checker/env';
-import { SourceInfo, AST as œAST } from '../common/ast';
+import { AST, SourceInfo, AST as œAST } from '../common/ast';
 import { Container } from '../common/container';
 import { sourceInfoToProto } from '../common/conversion';
 import { FunctionDecl, VariableDecl } from '../common/decls';
@@ -15,9 +17,14 @@ import { TextSource, Source as œSource } from '../common/source';
 import { Registry } from '../common/types/provider';
 import { Macro } from '../parser/macro';
 import { Parser, ParserOptions } from '../parser/parser';
-import { Type, unwrapDeclaration } from './decls';
-import { isSingletonLibrary, StdLibrary } from './library';
-import { EnvOptions, fieldToVariable, ProgramOptions } from './options';
+import { Type } from './decls';
+import { Feature, StdLib } from './library';
+import {
+  eagerlyValidateDeclarations,
+  EnvOption,
+  ProgramOption,
+} from './options';
+import { newProgram, Program } from './program';
 
 /**
  * Source interface representing a user-provided expression.
@@ -87,122 +94,114 @@ export function formatCELType(t: Type) {
 }
 
 interface EnvBaseOptions {
+  container?: Container;
+  variables?: VariableDecl[];
+  functions?: Map<string, FunctionDecl>;
+  macros?: Macro[];
+  adapter?: Adapter;
+  provider?: Provider;
+  features?: Map<number, boolean>;
+  appliedFeatures?: Map<number, boolean>;
+  libraries?: Map<string, boolean>;
+  // validators?      []ASTValidator
+  costOptions?: CosterOptions;
+
+  // Internal parser representation
+  prsrOpts?: ParserOptions;
+
+  // Internal checker representation
+  // #chkMutex sync.Mutex
+  // #chkOnce  sync.Once
+  chkOpts?: CheckerEnvOptions;
+
+  // Program options tied to the environment
+  progOpts?: ProgramOption[];
+}
+
+export class EnvBase {
   container: Container;
   variables: VariableDecl[];
+  /**
+   * Functions returns map of Functions, keyed by function name, that have been
+   * configured in the environment.
+   */
   functions: Map<string, FunctionDecl>;
   macros: Macro[];
   adapter: Adapter;
   provider: Provider;
-  features: Map<number, boolean>;
-  appliedFeatures: Map<number, boolean>;
+  features: Map<Feature, boolean>;
+  appliedFeatures: Map<Feature, boolean>;
+  /**
+   * Libraries returns a map of SingletonLibrary that have been configured in
+   * the environment.
+   */
   libraries: Map<string, boolean>;
-  // #validators      []ASTValidator
+  // validators      []ASTValidator
   costOptions: CosterOptions;
 
   // Internal parser representation
-  prsrOpts: ParserOptions;
+  prsr!: Parser;
+  prsrOpts!: ParserOptions;
 
   // Internal checker representation
-  // #chkMutex sync.Mutex
-  // #chkOnce  sync.Once
-  chkOpts: CheckerEnvOptions;
+  // chkMutex sync.Mutex
+  chk: CheckerEnv | null = null;
+  chkErr: Error | null = null;
+  // chkOnce  sync.Once
+  chkOpts!: CheckerEnvOptions;
 
   // Program options tied to the environment
-  progOpts: ProgramOptions;
-}
-
-class EnvBase {
-  #container: Container;
-  #variables: VariableDecl[];
-  #functions: Map<string, FunctionDecl>;
-  #macros: Macro[];
-  #adapter: Adapter;
-  #provider: Provider;
-  #features: Map<number, boolean>;
-  #appliedFeatures: Map<number, boolean>;
-  #libraries: Map<string, boolean>;
-  // #validators      []ASTValidator
-  #costOptions: CosterOptions;
-
-  // Internal parser representation
-  #prsr!: Parser;
-  #prsrOpts!: ParserOptions;
-
-  // Internal checker representation
-  // #chkMutex sync.Mutex
-  #chk!: CheckerEnv | Error;
-  // #chkOnce  sync.Once
-  #chkOpts!: CheckerEnvOptions;
-
-  // Program options tied to the environment
-  #progOpts!: ProgramOptions;
+  progOpts!: ProgramOption[];
 
   constructor(opts: EnvBaseOptions) {
-    this.#container = opts.container;
-    this.#variables = opts.variables;
-    this.#functions = opts.functions;
-    this.#macros = opts.macros;
-    this.#adapter = opts.adapter;
-    this.#provider = opts.provider;
-    this.#features = opts.features;
-    this.#appliedFeatures = opts.appliedFeatures;
-    this.#libraries = opts.libraries;
+    this.container = opts.container ?? new Container();
+    this.variables = opts.variables ?? [];
+    this.functions = opts.functions ?? new Map();
+    this.macros = opts.macros ?? [];
+    const reg = new Registry();
+    this.adapter = opts.adapter ?? reg;
+    this.provider = opts.provider ?? reg;
+    this.features = opts.features ?? new Map();
+    this.appliedFeatures = opts.appliedFeatures ?? new Map();
+    this.libraries = opts.libraries ?? new Map();
     // validators:      []ASTValidator{},
-    this.#costOptions = opts.costOptions;
-    this.#prsrOpts = opts.prsrOpts;
-    this.#chkOpts = opts.chkOpts;
-    this.#progOpts = opts.progOpts;
+    this.costOptions = opts.costOptions ?? {};
+    this.prsrOpts = opts.prsrOpts ?? {};
+    this.chkOpts = opts.chkOpts ?? {};
+    this.progOpts = opts.progOpts ?? [];
   }
 
-  configure(opts?: EnvOptions) {
-    this.#variables = [];
-    this.#functions = new Map();
-    if (opts?.declarations) {
-      for (let decl of opts.declarations) {
-        decl = unwrapDeclaration(decl);
-        if (decl instanceof VariableDecl) {
-          this.#variables.push(decl);
-        } else if (decl instanceof FunctionDecl) {
-          this.#functions.set(decl.name(), decl);
-        }
-      }
+  /**
+   * configure applies a series of EnvOptions to the current environment.
+   */
+  configure(...opts: EnvOption[]) {
+    // Customized the environment using the provided EnvOption values. If an
+    // error is generated at any step this, it will be thrown
+    for (const opt of opts) {
+      opt(this);
     }
-    if (opts?.declareContextProto) {
-      for (const field of opts.declareContextProto.fields) {
-        const decl = fieldToVariable(field);
-        if (decl) {
-          this.#variables.push(decl);
-        }
-      }
-    }
-    this.#macros = [];
-    if (!opts?.clearMacros) {
-      this.#macros = opts?.macros || [];
-    }
-    this.#container = new Container(opts?.container);
-    if (!isNil(opts?.abbrevs)) {
-      this.#container.addAbbrevs(...opts.abbrevs);
-    }
-    const registry = new Registry();
-    this.#adapter = opts?.customTypeAdapter ?? registry;
-    this.#provider = opts?.customTypeProvider ?? registry;
-    // TODO: features
-    this.#features = new Map();
-    this.#appliedFeatures = new Map();
-    this.#libraries = new Map();
-    // validators:      []ASTValidator{},
-    this.#progOpts = {};
-    this.#costOptions = opts?.costEstimatorOptions || {};
+
+    // TODO: time-zoned timestamps
+    // // If the default UTC timezone fix has been enabled, make sure the library is configured
+    // e, err = e.maybeApplyFeature(featureDefaultUTCTimeZone, Lib(timeUTCLibrary{}))
+    // if err != nil {
+    // 	return nil, err
+    // }
 
     // Configure the parser.
-    this._initParser(opts);
+    const prsrOpts = { ...this.prsrOpts };
+    prsrOpts.macros = this.macros;
+    if (this.hasFeature(Feature.EnableMacroCallTracking)) {
+      prsrOpts.populateMacroCalls = true;
+    }
+    if (this.hasFeature(Feature.VariadicLogicalASTs)) {
+      prsrOpts.enableVariadicOperatorASTs = true;
+    }
+    this.prsr = new Parser(prsrOpts);
 
     // Ensure that the checker init happens eagerly rather than lazily.
-    if (opts?.eagerlyValidateDeclarations === true) {
-      this._initChecker(opts);
-      if (this.#chk instanceof Error) {
-        throw this.#chk;
-      }
+    if (this.hasFeature(Feature.EagerlyValidateDeclarations)) {
+      this._initChecker();
     }
   }
 
@@ -225,12 +224,12 @@ class EnvBase {
     // Construct the internal checker env, erroring if there is an issue adding
     // the declarations.
     this._initChecker();
-    if (this.#chk instanceof Error) {
+    if (!isNil(this.chkErr)) {
       const errs = new Errors(ast.source());
-      errs.reportError(NoLocation, this.#chk.message);
+      errs.reportError(NoLocation, this.chkErr.message);
       return new Issues(errs, ast.nativeRep().sourceInfo());
     }
-    const checker = new Checker(this.#chk);
+    const checker = new Checker(this.chk!);
     const checked = checker.check(ast.nativeRep());
     if (checker.errors.length() > 0) {
       return new Issues(checker.errors, ast.nativeRep().sourceInfo());
@@ -313,33 +312,34 @@ class EnvBase {
    * based on the ref.TypeRegistry which provides a Copy method which will be
    * invoked by this method.
    */
-  extend(opts: EnvOptions) {
-    if (this.#chk instanceof Error) {
-      return this.#chk;
+  extend(...opts: EnvOption[]) {
+    if (!isNil(this.chkErr)) {
+      throw this.chkErr;
     }
 
-    const prsrOptsCopy = { ...this.#prsrOpts };
+    const prsrOptsCopy = { ...this.prsrOpts };
 
-    // The type-checker is configured with Declarations. The declarations may either be provided
-    // as options which have not yet been validated, or may come from a previous checker instance
-    // whose types have already been validated.
-    const chkOptsCopy = { ...this.#chkOpts };
+    // The type-checker is configured with Declarations. The declarations may
+    // either be provided as options which have not yet been validated, or may
+    // come from a previous checker instance whose types have already been
+    // validated.
+    const chkOptsCopy = { ...this.chkOpts };
 
     // Copy the declarations if needed.
-    if (!isNil(this.#chk)) {
-      // If the type-checker has already been instantiated, then the e.declarations have been
-      // validated within the chk instance.
-      chkOptsCopy.validatedDeclarations = this.#chk.validatedDeclarations();
+    if (!isNil(this.chk)) {
+      // If the type-checker has already been instantiated, then the e
+      // declarations have been validated within the chk instance.
+      chkOptsCopy.validatedDeclarations = this.chk.validatedDeclarations();
     }
-    const varsCopy = [...this.#variables];
+    const varsCopy = [...this.variables];
 
     // Copy macros and program options
-    const macsCopy = [...this.#macros];
-    const progOptsCopy = { ...this.#progOpts };
+    const macsCopy = [...this.macros];
+    const progOptsCopy = [...this.progOpts];
 
     // Copy the adapter / provider if they appear to be mutable.
-    let adapter = this.#adapter;
-    let provider = this.#provider;
+    let adapter = this.adapter;
+    let provider = this.provider;
     // In most cases the provider and adapter will be a ref.TypeRegistry;
     // however, in the rare cases where they are not, they are assumed to
     // be immutable. Since it is possible to set the TypeProvider separately
@@ -362,16 +362,16 @@ class EnvBase {
       adapter = adapter.copy();
     }
 
-    const featuresCopy = new Map(this.#features);
-    const appliedFeaturesCopy = new Map(this.#appliedFeatures);
-    const funcsCopy = new Map(this.#functions);
-    const libsCopy = new Map(this.#libraries);
+    const featuresCopy = new Map(this.features);
+    const appliedFeaturesCopy = new Map(this.appliedFeatures);
+    const funcsCopy = new Map(this.functions);
+    const libsCopy = new Map(this.libraries);
     // validatorsCopy := make([]ASTValidator, len(e.validators))
     // copy(validatorsCopy, e.validators)
-    const costOptsCopy = { ...this.#costOptions };
+    const costOptsCopy = { ...this.costOptions };
 
     const ext = new EnvBase({
-      container: this.#container,
+      container: this.container,
       variables: varsCopy,
       functions: funcsCopy,
       macros: macsCopy,
@@ -386,8 +386,24 @@ class EnvBase {
       prsrOpts: prsrOptsCopy,
       costOptions: costOptsCopy,
     });
-    ext.configure(opts);
+    ext.configure(...opts);
     return ext;
+  }
+
+  /**
+   * HasFeature checks whether the environment enables the given feature
+   * flag, as enumerated in options.go.
+   */
+  hasFeature(feature: Feature) {
+    return this.features.has(feature);
+  }
+
+  /**
+   * HasLibrary returns whether a specific SingletonLibrary has been configured
+   * in the environment.
+   */
+  hasLibrary(name: string) {
+    return this.libraries.has(name);
   }
 
   /**
@@ -395,15 +411,7 @@ class EnvBase {
    * environment
    */
   hasFunction(name: string) {
-    return this.#functions.has(name);
-  }
-
-  /**
-   * Functions returns map of Functions, keyed by function name, that have been
-   * configured in the environment.
-   */
-  functions() {
-    return this.#functions;
+    return this.functions.has(name);
   }
 
   /**
@@ -430,18 +438,34 @@ class EnvBase {
    * valid for use.
    */
   parseSource(src: Source): Ast | Issues {
-    const parsed = this.#prsr.parse(src);
-    if (this.#prsr.errors.length() > 0) {
-      return new Issues(this.#prsr.errors);
+    const parsed = this.prsr.parse(src);
+    if (this.prsr.errors.length() > 0) {
+      return new Issues(this.prsr.errors);
     }
     return new Ast(src, parsed);
+  }
+  /**
+   * Program generates an evaluable instance of the Ast within the environment
+   * (Env).
+   */
+  program(a: Ast, ...opts: ProgramOption[]): Program | Error {
+    return this.planProgram(a.nativeRep(), ...opts);
+  }
+
+  /**
+   * PlanProgram generates an evaluable instance of the AST in the go-native
+   * representation within the environment (Env).
+   */
+  planProgram(a: AST, ...opts: ProgramOption[]): Program | Error {
+    const optSet = [...this.progOpts, ...opts];
+    return newProgram(this, a, optSet);
   }
 
   /**
    * CELTypeAdapter returns the `types.Adapter` configured for the environment.
    */
   CELTypeAdapter() {
-    return this.#adapter;
+    return this.adapter;
   }
 
   /**
@@ -449,7 +473,7 @@ class EnvBase {
    * environment.
    */
   CELTypeProvider() {
-    return this.#provider;
+    return this.provider;
   }
 
   /**
@@ -458,58 +482,44 @@ class EnvBase {
    * estimator.
    */
   estimateCost(ast: Ast, estimator: CostEstimator, opts?: CosterOptions) {
-    const extendedOptions = { ...this.#costOptions, ...opts };
+    const extendedOptions = { ...this.costOptions, ...opts };
     return new Coster(ast.nativeRep(), estimator, extendedOptions).cost();
   }
 
-  private _initParser(opts?: EnvOptions) {
-    if (!isNil(this.#prsr)) {
+  private _initChecker() {
+    if (!isNil(this.chk)) {
       return;
     }
-    this.#prsrOpts = {};
-    if (!isNil(opts?.macros)) {
-      this.#prsrOpts.macros = opts.macros;
-    }
-    if (opts?.enableMacroCallTracking === true) {
-      this.#prsrOpts.populateMacroCalls = true;
-    }
-    if (opts?.variadicLogicalOperatorASTs === true) {
-      this.#prsrOpts.enableVariadicOperatorASTs = true;
-    }
-    this.#prsr = new Parser(this.#prsrOpts);
-  }
-
-  private _initChecker(opts?: EnvOptions) {
-    if (!isNil(this.#chk)) {
-      return;
-    }
-    this.#chkOpts = {};
-    if (opts?.homogeneousAggregateLiterals === true) {
-      this.#chkOpts.homogeneousAggregateLiterals = true;
-    }
-    if (opts?.crossTypeNumericComparisons === true) {
-      this.#chkOpts.crossTypeNumericComparisons = true;
+    const chkOpts = { ...this.chkOpts };
+    if (this.hasFeature(Feature.CrossTypeNumericComparisions)) {
+      chkOpts.crossTypeNumericComparisons = true;
     }
 
-    const chk = new CheckerEnv(this.#container, this.#provider, this.#chkOpts);
+    const chk = new CheckerEnv(this.container, this.provider, chkOpts);
     // Add the statically configured declarations.
-    let err = chk.addIdents(...this.#variables);
+    let err = chk.addIdents(...this.variables);
     if (!isNil(err)) {
-      this.#chk = err;
+      this._setCheckerOrError(null, err);
       return;
     }
     // Add the function declarations which are derived from the FunctionDecl instances.
-    for (const fn of this.#functions.values()) {
+    for (const fn of this.functions.values()) {
       if (fn.isDeclarationDisabled() === true) {
         continue;
       }
       err = chk.addFunctions(fn);
       if (!isNil(err)) {
-        this.#chk = err;
+        this._setCheckerOrError(null, err);
         return;
       }
     }
-    this.#chk = chk;
+    // Add function declarations here separately.
+    this._setCheckerOrError(chk, null);
+  }
+
+  private _setCheckerOrError(chk: CheckerEnv | null, err: Error | null) {
+    this.chk = chk;
+    this.chkErr = err;
   }
 }
 
@@ -528,19 +538,7 @@ class EnvBase {
  * configure the environment.
  */
 export class CustomEnv extends EnvBase {
-  constructor(opts?: EnvOptions) {
-    const libraries = new Map<string, boolean>();
-    if (opts?.libraries) {
-      const libs = [...opts.libraries];
-      for (let i = 0; i < libs.length; i++) {
-        const lib = libs[i];
-        libraries.set(
-          isSingletonLibrary(lib) ? lib.libraryName() : i.toString(),
-          true
-        );
-        opts = lib.compileOptions(opts);
-      }
-    }
+  constructor(...opts: EnvOption[]) {
     const registry = new Registry();
     super({
       container: new Container(),
@@ -551,17 +549,16 @@ export class CustomEnv extends EnvBase {
       provider: registry,
       features: new Map(),
       appliedFeatures: new Map(),
-      libraries,
+      libraries: new Map(),
       costOptions: {},
       prsrOpts: {},
       chkOpts: {},
-      progOpts: {},
+      progOpts: [],
     });
-    this.configure(opts);
+    this.configure(...opts);
   }
 }
 
-const stdLib = new StdLibrary();
 let stdEnv: CustomEnv | null = null;
 
 /**
@@ -569,10 +566,7 @@ let stdEnv: CustomEnv | null = null;
  */
 function getStdEnv() {
   if (isNil(stdEnv)) {
-    stdEnv = new CustomEnv({
-      eagerlyValidateDeclarations: true,
-      libraries: [stdLib],
-    });
+    stdEnv = new CustomEnv(StdLib(), eagerlyValidateDeclarations(true));
   }
   return stdEnv;
 }
@@ -587,20 +581,16 @@ function getStdEnv() {
  * configure the environment.
  */
 export class Env extends CustomEnv {
-  constructor(opts?: EnvOptions) {
+  constructor(...opts: EnvOption[]) {
     super();
     // Extend the statically configured standard environment, disabling eager
     // validation to ensure the cost of setup for the environment is still just
     // as cheap as it is in v0.11.x and earlier releases. The user provided
     // options can easily re-enable the eager validation as they are processed
     // after this default option.
-    const stdOpts: EnvOptions = { eagerlyValidateDeclarations: false, ...opts };
+    const stdOpts: EnvOption[] = [eagerlyValidateDeclarations(false), ...opts];
     const env = getStdEnv();
-    const extended = env.extend(stdOpts);
-    if (extended instanceof Error) {
-      throw extended;
-    }
-    return extended;
+    return env.extend(...stdOpts);
   }
 }
 

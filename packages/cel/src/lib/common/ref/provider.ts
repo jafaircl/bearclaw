@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { isFunction } from '@bearclaw/is';
-import { DescMessage } from '@bufbuild/protobuf';
+import { DescEnum, DescMessage } from '@bufbuild/protobuf';
 import { RefType, RefVal } from '../ref/reference';
 import { isType, Type } from '../types/types';
 
@@ -111,6 +111,12 @@ export interface Registry extends Provider, Adapter {
    * call will result in an error.
    */
   registerType(...types: RefType[]): void;
+
+  /**
+   * RegisterDescriptor registers a protocol buffer descriptor and its
+   * dependencies.
+   */
+  registerDescriptor(desc: DescMessage | DescEnum): void;
 }
 
 export function isRegistry(value: any): value is Registry {

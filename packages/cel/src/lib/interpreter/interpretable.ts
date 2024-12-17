@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { IN_OPERATOR } from './../common/operators';
 import { MutableMap, toFoldableMap } from './../common/types/map';
 /* eslint-disable @typescript-eslint/no-unused-vars */
@@ -36,7 +37,15 @@ import {
 } from '../common/types/unknown';
 import { isUnknownOrError } from '../common/types/utils';
 import { Activation } from './activation';
-import { Attribute, isConstantQualifier, Qualifier } from './attributes';
+import { isQualifierValueEquator } from './attribute-patterns';
+import {
+  Attribute,
+  ConstantQualifier,
+  isAttribute,
+  isConstantQualifier,
+  Qualifier,
+} from './attributes';
+import { EvalObserver } from './interpreter';
 
 /**
  * Interpretable can accept a given Activation and produce a value along with
@@ -344,11 +353,11 @@ export class EvalConst implements InterpretableConst {
 
 export class EvalOr implements Interpretable {
   #id: bigint;
-  #terms: Interpretable[];
+  terms: Interpretable[];
 
   constructor(id: bigint, terms: Interpretable[]) {
     this.#id = id;
-    this.#terms = terms;
+    this.terms = terms;
   }
 
   id() {
@@ -358,7 +367,7 @@ export class EvalOr implements Interpretable {
   eval(ctx: Activation): RefVal {
     let err: RefVal | null = null;
     let unk: UnknownRefVal | null = null;
-    for (const term of this.#terms) {
+    for (const term of this.terms) {
       const val = term.eval(ctx);
       if (val.type() === BoolType) {
         // short-circuit on true.
@@ -390,11 +399,11 @@ export class EvalOr implements Interpretable {
 
 export class EvalAnd implements Interpretable {
   #id: bigint;
-  #terms: Interpretable[];
+  terms: Interpretable[];
 
   constructor(id: bigint, terms: Interpretable[]) {
     this.#id = id;
-    this.#terms = terms;
+    this.terms = terms;
   }
 
   id() {
@@ -404,7 +413,7 @@ export class EvalAnd implements Interpretable {
   eval(ctx: Activation): RefVal {
     let err: RefVal | null = null;
     let unk: UnknownRefVal | null = null;
-    for (const term of this.#terms) {
+    for (const term of this.terms) {
       const val = term.eval(ctx);
       if (val.type() === BoolType) {
         // short-circuit on false.
@@ -1094,6 +1103,378 @@ export class EvalFold implements Interpretable {
 // the core evaluation plan via decorators.
 
 /**
+ * evalWatch is an Interpretable implementation that wraps the execution of a
+ * given expression so that it may observe the computed value and send it to an
+ * observer.
+ */
+export class EvalWatch implements Interpretable {
+  #interpretable: Interpretable;
+  #observer: EvalObserver;
+
+  constructor(interpretable: Interpretable, observer: EvalObserver) {
+    this.#interpretable = interpretable;
+    this.#observer = observer;
+  }
+
+  id() {
+    return this.#interpretable.id();
+  }
+
+  eval(ctx: Activation): RefVal {
+    const val = this.#interpretable.eval(ctx);
+    this.#observer(this.id(), this.#interpretable, val);
+    return val;
+  }
+}
+
+/**
+ * evalWatchAttr describes a watcher of an InterpretableAttribute Interpretable.
+ *
+ * Since the watcher may be selected against at a later stage in program
+ * planning, the watcher must implement the InterpretableAttribute interface by
+ * proxy.
+ */
+export class EvalWatchAttr implements InterpretableAttribute {
+  interpretableAttr: InterpretableAttribute;
+  #observer: EvalObserver;
+
+  constructor(
+    interpretableAttr: InterpretableAttribute,
+    observer: EvalObserver
+  ) {
+    this.interpretableAttr = interpretableAttr;
+    this.#observer = observer;
+  }
+
+  id() {
+    return this.interpretableAttr.id();
+  }
+
+  attr() {
+    return this.interpretableAttr.attr();
+  }
+
+  adapter() {
+    return this.interpretableAttr.adapter();
+  }
+
+  isOptional(): boolean {
+    return this.interpretableAttr.isOptional();
+  }
+
+  qualify(vars: Activation, obj: any) {
+    return this.interpretableAttr.qualify(vars, obj);
+  }
+
+  qualifyIfPresent(
+    vars: Activation,
+    obj: any,
+    presenceOnly: boolean
+  ): [any | null, boolean, Error | null] {
+    return this.interpretableAttr.qualifyIfPresent(vars, obj, presenceOnly);
+  }
+
+  resolve(vars: Activation) {
+    return this.interpretableAttr.resolve(vars);
+  }
+
+  /**
+   * AddQualifier creates a wrapper over the incoming qualifier which observes
+   * the qualification result.
+   */
+  addQualifier(qual: Qualifier): Attribute | Error {
+    let q: Qualifier;
+    // By default, the qualifier is either a constant or an attribute
+    // There may be some custom cases where the attribute is neither.
+    if (isConstantQualifier(qual)) {
+      // Expose a method to test whether the qualifier matches the input
+      // pattern.
+      q = new EvalWatchConstQual(qual, this.#observer, this.adapter());
+    } else if (qual instanceof EvalWatchAttr) {
+      // Unwrap the evalWatchAttr since the observation will be applied during
+      // Qualify or QualifyIfPresent rather than Eval.
+      q = new EvalWatchAttrQual(
+        qual.interpretableAttr,
+        this.#observer,
+        this.adapter()
+      );
+    } else if (isAttribute(qual)) {
+      // Expose methods which intercept the qualification prior to being
+      // applied as a qualifier. Using this interface ensures that the
+      // qualifier is converted to a constant value one time during attribute
+      // pattern matching as the method embeds the Attribute interface needed
+      // to trip the conversion to a constant.
+      q = new EvalWatchAttrQual(qual, this.#observer, this.adapter());
+    } else {
+      // This is likely a custom qualifier type.
+      q = new EvalWatchQual(qual, this.#observer, this.adapter());
+    }
+    return this.interpretableAttr.addQualifier(q);
+  }
+
+  eval(ctx: Activation): RefVal {
+    const val = this.interpretableAttr.eval(ctx);
+    this.#observer(this.id(), this.interpretableAttr, val);
+    return val;
+  }
+}
+
+/**
+ * evalWatchConstQual observes the qualification of an object using a constant boolean, int, string, or uint.
+ */
+export class EvalWatchConstQual implements ConstantQualifier {
+  #constantQualifier: ConstantQualifier;
+  #observer: EvalObserver;
+  #adapter: Adapter;
+
+  constructor(
+    constantQualifier: ConstantQualifier,
+    observer: EvalObserver,
+    adapter: Adapter
+  ) {
+    this.#constantQualifier = constantQualifier;
+    this.#observer = observer;
+    this.#adapter = adapter;
+  }
+
+  value(): RefVal {
+    return this.#constantQualifier.value();
+  }
+
+  id(): bigint {
+    return this.#constantQualifier.id();
+  }
+
+  isOptional(): boolean {
+    return this.#constantQualifier.isOptional();
+  }
+
+  /**
+   * Qualify observes the qualification of a object via a constant boolean, int, string, or uint.
+   */
+  qualify(vars: Activation, obj: any) {
+    const out = this.#constantQualifier.qualify(vars, obj);
+    let val: RefVal;
+    if (out instanceof Error) {
+      val = labelErrorNode(this.id(), wrapError(out));
+    } else {
+      val = this.#adapter.nativeToValue(out);
+    }
+    this.#observer(this.id(), this.#constantQualifier, val);
+    return out;
+  }
+
+  /**
+   * QualifyIfPresent conditionally qualifies the variable and only records a
+   * value if one is present.
+   */
+  qualifyIfPresent(
+    vars: Activation,
+    obj: any,
+    presenceOnly: boolean
+  ): [any | null, boolean, Error | null] {
+    const [out, present, err] = this.#constantQualifier.qualifyIfPresent(
+      vars,
+      obj,
+      presenceOnly
+    );
+    let val: RefVal;
+    if (!isNil(err)) {
+      val = labelErrorNode(this.id(), wrapError(err));
+    } else if (!isNil(out)) {
+      val = this.#adapter.nativeToValue(out);
+    } else if (presenceOnly) {
+      val = new BoolRefVal(present);
+    }
+    if (present || presenceOnly) {
+      this.#observer(this.id(), this.#constantQualifier, val!);
+    }
+    return [out, present, err];
+  }
+
+  /**
+   * QualifierValueEquals tests whether the incoming value is equal to the
+   * qualifying constant.
+   */
+  qualifierValueEquals(val: any): boolean {
+    if (isQualifierValueEquator(this.#constantQualifier)) {
+      return this.#constantQualifier.qualifierValueEquals(val);
+    }
+    return false;
+  }
+}
+
+/**
+ * evalWatchAttrQual observes the qualification of an object by a value
+ * computed at runtime.
+ */
+export class EvalWatchAttrQual implements Attribute {
+  #attr: Attribute;
+  #observer: EvalObserver;
+  #adapter: Adapter;
+
+  constructor(attr: Attribute, observer: EvalObserver, adapter: Adapter) {
+    this.#attr = attr;
+    this.#observer = observer;
+    this.#adapter = adapter;
+  }
+
+  addQualifier(qualifier: Qualifier): Attribute | Error {
+    return this.#attr.addQualifier(qualifier);
+  }
+
+  resolve(vars: Activation) {
+    return this.#attr.resolve(vars);
+  }
+
+  id(): bigint {
+    return this.#attr.id();
+  }
+
+  isOptional(): boolean {
+    return this.#attr.isOptional();
+  }
+
+  /**
+   * Qualify observes the qualification of a object via a value computed at
+   * runtime.
+   */
+  qualify(vars: Activation, obj: any) {
+    const out = this.#attr.qualify(vars, obj);
+    let val: RefVal;
+    if (out instanceof Error) {
+      val = labelErrorNode(this.id(), wrapError(out));
+    } else {
+      val = this.#adapter.nativeToValue(out);
+    }
+    this.#observer(this.id(), this.#attr, val);
+    return out;
+  }
+
+  /**
+   * QualifyIfPresent conditionally qualifies the variable and only records a
+   * value if one is present.
+   */
+  qualifyIfPresent(
+    vars: Activation,
+    obj: any,
+    presenceOnly: boolean
+  ): [any | null, boolean, Error | null] {
+    const [out, present, err] = this.#attr.qualifyIfPresent(
+      vars,
+      obj,
+      presenceOnly
+    );
+    let val: RefVal;
+    if (!isNil(err)) {
+      val = labelErrorNode(this.id(), wrapError(err));
+    } else if (!isNil(out)) {
+      val = this.#adapter.nativeToValue(out);
+    } else if (presenceOnly) {
+      val = new BoolRefVal(present);
+    }
+    if (present || presenceOnly) {
+      this.#observer(this.id(), this.#attr, val!);
+    }
+    return [out, present, err];
+  }
+}
+
+/**
+ * evalWatchQual observes the qualification of an object by a value computed at
+ * runtime.
+ */
+export class EvalWatchQual implements Qualifier {
+  #qual: Qualifier;
+  #observer: EvalObserver;
+  #adapter: Adapter;
+
+  constructor(qual: Qualifier, observer: EvalObserver, adapter: Adapter) {
+    this.#qual = qual;
+    this.#observer = observer;
+    this.#adapter = adapter;
+  }
+
+  id(): bigint {
+    return this.#qual.id();
+  }
+
+  isOptional(): boolean {
+    return this.#qual.isOptional();
+  }
+
+  /**
+   * Qualify observes the qualification of a object via a value computed at
+   * runtime.
+   */
+  qualify(vars: Activation, obj: any) {
+    const out = this.#qual.qualify(vars, obj);
+    let val: RefVal;
+    if (out instanceof Error) {
+      val = labelErrorNode(this.id(), wrapError(out));
+    } else {
+      val = this.#adapter.nativeToValue(out);
+    }
+    this.#observer(this.id(), this.#qual, val);
+    return out;
+  }
+
+  /**
+   * QualifyIfPresent conditionally qualifies the variable and only records a
+   * value if one is present.
+   */
+  qualifyIfPresent(
+    vars: Activation,
+    obj: any,
+    presenceOnly: boolean
+  ): [any | null, boolean, Error | null] {
+    const [out, present, err] = this.#qual.qualifyIfPresent(
+      vars,
+      obj,
+      presenceOnly
+    );
+    let val: RefVal;
+    if (!isNil(err)) {
+      val = labelErrorNode(this.id(), wrapError(err));
+    } else if (!isNil(out)) {
+      val = this.#adapter.nativeToValue(out);
+    } else if (presenceOnly) {
+      val = new BoolRefVal(present);
+    }
+    if (present || presenceOnly) {
+      this.#observer(this.id(), this.#qual, val!);
+    }
+    return [out, present, err];
+  }
+}
+
+/**
+ * evalWatchConst describes a watcher of an instConst Interpretable.
+ */
+export class EvalWatchConst implements InterpretableConst {
+  #const: InterpretableConst;
+  #observer: EvalObserver;
+
+  constructor(instConst: InterpretableConst, observer: EvalObserver) {
+    this.#const = instConst;
+    this.#observer = observer;
+  }
+  value(): RefVal {
+    return this.#const.value();
+  }
+
+  id() {
+    return this.#const.id();
+  }
+
+  eval(ctx: Activation) {
+    const val = this.value();
+    this.#observer(this.id(), this.#const, val);
+    return val;
+  }
+}
+
+/**
  * evalAttr evaluates an Attribute value.
  */
 export class EvalAttr implements InterpretableAttribute {
@@ -1154,6 +1535,34 @@ export class EvalAttr implements InterpretableAttribute {
       return labelErrorNode(this.#attr.id(), wrapError(v));
     }
     return this.#adapter.nativeToValue(v);
+  }
+}
+
+export class EvalWatchConstructor implements InterpretableConstructor {
+  #ctor: InterpretableConstructor;
+  #observer: EvalObserver;
+
+  constructor(ctor: InterpretableConstructor, observer: EvalObserver) {
+    this.#ctor = ctor;
+    this.#observer = observer;
+  }
+
+  initVals(): Interpretable[] {
+    return this.#ctor.initVals();
+  }
+
+  type(): Type {
+    return this.#ctor.type();
+  }
+
+  id(): bigint {
+    return this.#ctor.id();
+  }
+
+  eval(activation: Activation): RefVal {
+    const val = this.#ctor.eval(activation);
+    this.#observer(this.#ctor.id(), this.#ctor, val);
+    return val;
   }
 }
 

@@ -21,6 +21,30 @@ import {
 import { isUnknownRefVal, mergeUnknowns, UnknownRefVal } from './types/unknown';
 import { isUnknownOrError } from './types/utils';
 
+/**
+ * NewFunction creates a new function declaration with a set of function
+ * options to configure overloads and function definitions (implementations).
+ *
+ * Functions are checked for name collisions and singleton redefinition.
+ */
+export function newFunction(
+  name: string,
+  ...opts: FunctionOpt[]
+): FunctionDecl | Error {
+  let fn = new FunctionDecl({
+    name,
+    overloads: [],
+    overloadOrdinals: [],
+  });
+  for (const opt of opts) {
+    fn = opt(fn);
+  }
+  if (fn.overloads.size === 0) {
+    return new Error(`function ${name} must have at least one overload`);
+  }
+  return fn;
+}
+
 export enum DeclarationState {
   UNSPECIFIED,
   DISABLED,
@@ -334,11 +358,16 @@ export class FunctionDecl {
 }
 
 /**
+ * FunctionOpt defines a functional option for mutating a function declaration.
+ */
+export type FunctionOpt = (f: FunctionDecl) => FunctionDecl;
+
+/**
  * DisableTypeGuards disables automatically generated function invocation
  * guards on direct overload calls. Type guards remain on during dynamic
  * dispatch for parsed-only expressions.
  */
-export function disableTypeGuards(val: boolean) {
+export function disableTypeGuards(val: boolean): FunctionOpt {
   return (f: FunctionDecl) => {
     f.disableTypeGuards = val;
     return f;
@@ -352,7 +381,7 @@ export function disableTypeGuards(val: boolean) {
  * declarations while still preserving the runtime behavior for previously
  * compiled expressions.
  */
-export function disableDeclaration(val: boolean) {
+export function disableDeclaration(val: boolean): FunctionOpt {
   return (f: FunctionDecl) => {
     f.state = val ? DeclarationState.DISABLED : DeclarationState.ENABLED;
     return f;
@@ -367,7 +396,10 @@ export function disableDeclaration(val: boolean) {
  * trait which it implements, e.g. traits.ContainerType. Otherwise, prefer
  * per-overload function bindings.
  */
-export function singletonUnaryBinding(fn: UnaryOp, traits: Trait[] = []) {
+export function singletonUnaryBinding(
+  fn: UnaryOp,
+  traits: Trait[] = []
+): FunctionOpt {
   return (f: FunctionDecl) => {
     if (f.singleton) {
       throw new Error(`function already has a singleton binding: ${f.name()}`);
@@ -389,7 +421,10 @@ export function singletonUnaryBinding(fn: UnaryOp, traits: Trait[] = []) {
  * trait which it implements, e.g. traits.ContainerType. Otherwise, prefer
  * per-overload function bindings.
  */
-export function singletonBinaryBinding(fn: BinaryOp, traits: Trait[] = []) {
+export function singletonBinaryBinding(
+  fn: BinaryOp,
+  traits: Trait[] = []
+): FunctionOpt {
   return (f: FunctionDecl) => {
     if (f.singleton) {
       throw new Error(`function already has a singleton binding: ${f.name()}`);
@@ -411,7 +446,10 @@ export function singletonBinaryBinding(fn: BinaryOp, traits: Trait[] = []) {
  * trait which it implements, e.g. traits.ContainerType. Otherwise, prefer
  * per-overload function bindings.
  */
-export function singletonFunctionBinding(fn: FunctionOp, traits: Trait[] = []) {
+export function singletonFunctionBinding(
+  fn: FunctionOp,
+  traits: Trait[] = []
+): FunctionOpt {
   return (f: FunctionDecl) => {
     if (f.singleton) {
       throw new Error(`function already has a singleton binding: ${f.name()}`);
@@ -423,6 +461,80 @@ export function singletonFunctionBinding(fn: FunctionOp, traits: Trait[] = []) {
     });
     return f;
   };
+}
+
+/**
+ * Overload defines a new global overload with an overload id, argument types,
+ * and result type. Through the use of OverloadOpt options, the overload may
+ * also be configured with a binding, an operand trait, and to be non-strict.
+ *
+ * Note: function bindings should be commonly configured with Overload
+ * instances whereas operand traits and strict-ness should be rare occurrences.
+ */
+export function overload(
+  overloadID: string,
+  args: Type[],
+  resultType: Type,
+  ...opts: OverloadOpt[]
+) {
+  return newOverload(overloadID, false, args, resultType, ...opts);
+}
+
+/**
+ * MemberOverload defines a new receiver-style overload (or member function)
+ * with an overload id, argument types, and result type. Through the use of
+ * OverloadOpt options, the overload may also be configured with a binding, an
+ * operand trait, and to be non-strict.
+ *
+ * Note: function bindings should be commonly configured with Overload
+ * instances whereas operand traits and strict-ness should be rare occurrences.
+ */
+export function memberOverload(
+  overloadID: string,
+  args: Type[],
+  resultType: Type,
+  ...opts: OverloadOpt[]
+) {
+  return newOverload(overloadID, true, args, resultType, ...opts);
+}
+
+function newOverload(
+  overloadID: string,
+  memberFunction: boolean,
+  args: Type[],
+  resultType: Type,
+  ...opts: OverloadOpt[]
+): FunctionOpt {
+  return (f) => {
+    const overload = newOverloadInternal(
+      overloadID,
+      memberFunction,
+      args,
+      resultType,
+      ...opts
+    );
+    f.addOverload(overload);
+    return f;
+  };
+}
+
+function newOverloadInternal(
+  overloadID: string,
+  memberFunction: boolean,
+  args: Type[],
+  resultType: Type,
+  ...opts: OverloadOpt[]
+) {
+  let overload = new OverloadDecl({
+    id: overloadID,
+    argTypes: args,
+    resultType: resultType,
+    isMemberFunction: memberFunction,
+  });
+  for (const opt of opts) {
+    overload = opt(overload);
+  }
+  return overload;
 }
 
 interface OverloadDeclInput {
@@ -744,11 +856,16 @@ function matchOperandTraits(traits: Trait[], arg: RefVal) {
 }
 
 /**
+ * OverloadOpt is a functional option for configuring a function overload.
+ */
+export type OverloadOpt = (o: OverloadDecl) => OverloadDecl;
+
+/**
  * UnaryBinding provides the implementation of a unary overload. The provided
  * function is protected by a runtime type-guard which ensures runtime type
  * agreement between the overload signature and runtime argument types.
  */
-export function unaryBinding(op: UnaryOp) {
+export function unaryBinding(op: UnaryOp): OverloadOpt {
   return (o: OverloadDecl) => {
     if (o.hasBinding()) {
       throw new Error(`overload already has a binding: ${o.id()}`);
@@ -766,7 +883,7 @@ export function unaryBinding(op: UnaryOp) {
  * function is protected by a runtime type-guard which ensures runtime type
  * agreement between the overload signature and runtime argument types.
  */
-export function binaryBinding(op: BinaryOp) {
+export function binaryBinding(op: BinaryOp): OverloadOpt {
   return (o: OverloadDecl) => {
     if (o.hasBinding()) {
       throw new Error(`overload already has a binding: ${o.id()}`);
@@ -786,7 +903,7 @@ export function binaryBinding(op: BinaryOp) {
  * provided function is protected by a runtime type-guard which ensures runtime
  * type agreement between the overload signature and runtime argument types.
  */
-export function functionBinding(op: FunctionOp) {
+export function functionBinding(op: FunctionOp): OverloadOpt {
   return (o: OverloadDecl) => {
     if (o.hasBinding()) {
       throw new Error(`overload already has a binding: ${o.id()}`);
@@ -803,7 +920,7 @@ export function functionBinding(op: FunctionOp) {
  * Note: do not use this option unless absoluately necessary as it should be an
  * uncommon feature.
  */
-export function overloadIsNonStrict() {
+export function overloadIsNonStrict(): OverloadOpt {
   return (o: OverloadDecl) => {
     o.nonStrict = true;
     return o;
@@ -814,7 +931,7 @@ export function overloadIsNonStrict() {
  * OverloadOperandTrait configures a set of traits which the first argument to
  * the overload must implement in order to be successfully invoked.
  */
-export function overloadOperandTrait(traits: Trait[]) {
+export function overloadOperandTrait(traits: Trait[]): OverloadOpt {
   return (o: OverloadDecl) => {
     o.operandTraits = traits;
     return o;

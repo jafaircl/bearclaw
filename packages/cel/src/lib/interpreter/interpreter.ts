@@ -1,8 +1,10 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { AST } from '../common/ast';
 import { Container } from '../common/container';
 import { Adapter, Provider } from '../common/ref/provider';
+import { RefVal } from '../common/ref/reference';
 import { AttributeFactory } from './attributes';
-import { InterpretableDecorator } from './decorators';
+import { decObserveEval, InterpretableDecorator } from './decorators';
 import { Dispatcher } from './dispatcher';
 import { Interpretable } from './interpretable';
 import { Planner } from './planner';
@@ -19,6 +21,34 @@ export interface Interpreter {
     exprAST: AST,
     ...decorators: InterpretableDecorator[]
   ): Interpretable | Error;
+}
+
+/**
+ * EvalObserver is a functional interface that accepts an expression id and an
+ * observed value. The id identifies the expression that was evaluated, the
+ * programStep is the Interpretable or Qualifier that was evaluated and value
+ * is the result of the evaluation.
+ */
+export type EvalObserver = (
+  id: bigint,
+  programStep: any,
+  value: RefVal
+) => void;
+
+/**
+ * Observe constructs a decorator that calls all the provided observers in
+ * order after evaluating each Interpretable or Qualifier during program
+ * evaluation.
+ */
+export function observe(...observers: EvalObserver[]): InterpretableDecorator {
+  if (observers.length === 1) {
+    return decObserveEval(observers[0]);
+  }
+  return decObserveEval((id, programStep, value) => {
+    for (const observer of observers) {
+      observer(id, programStep, value);
+    }
+  });
 }
 
 // TODO: observers and regex optimization

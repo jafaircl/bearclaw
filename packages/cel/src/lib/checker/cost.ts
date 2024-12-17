@@ -320,7 +320,7 @@ export class CostEstimate {
  * addUint64NoOverflow adds non-negative ints. If the result is exceeds math
  * MaxUint64, math.MaxUint64 is returned.
  */
-function addUint64NoOverflow(x: bigint, y: bigint): bigint {
+export function addUint64NoOverflow(x: bigint, y: bigint): bigint {
   if (x > MAX_UINT64 - y) {
     return MAX_UINT64;
   }
@@ -331,7 +331,7 @@ function addUint64NoOverflow(x: bigint, y: bigint): bigint {
  * multiplyUint64NoOverflow multiplies non-negative ints. If the result is
  * exceeds math.MaxUint64, math.MaxUint64 is returned.
  */
-function multiplyUint64NoOverflow(x: bigint, y: bigint): bigint {
+export function multiplyUint64NoOverflow(x: bigint, y: bigint): bigint {
   if (x > 0 && y > 0 && x > MAX_UINT64 / y) {
     return MAX_UINT64;
   }
@@ -342,7 +342,7 @@ function multiplyUint64NoOverflow(x: bigint, y: bigint): bigint {
  * multiplyByFactor multiplies an integer by a cost factor float and returns
  * the nearest integer value, rounded up.
  */
-function multiplyByCostFactor(x: bigint, y: number): bigint {
+export function multiplyByCostFactor(x: bigint, y: number): bigint {
   // Handle edge cases with very large numbers using BigInt
   if (x === BigInt(0) || y === 0) {
     return BigInt(0);

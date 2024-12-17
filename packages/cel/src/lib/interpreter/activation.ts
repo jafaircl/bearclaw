@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { isFunction, isMap, isNil } from '@bearclaw/is';
+import { isFunction, isMap, isNil, isPlainObject } from '@bearclaw/is';
 import { objectToMap } from '../common/utils';
 import { AttributePattern } from './attribute-patterns';
 
@@ -115,7 +115,9 @@ export class HierarchicalActivation implements Activation {
  * Values which are not represented as ref.Val types on input may be adapted to
  * a ref.Val using the ref.TypeAdapter configured in the environment.
  */
-export function newActivation(bindings: Map<string, any> | Activation) {
+export function newActivation(
+  bindings: Map<string, any> | Record<string, any> | Activation
+) {
   if (isNil(bindings)) {
     throw new Error('bindings must be non-nil');
   }
@@ -125,7 +127,7 @@ export function newActivation(bindings: Map<string, any> | Activation) {
   ) {
     return bindings;
   }
-  if (isMap<string, any>(bindings)) {
+  if (isMap<string, any>(bindings) || isPlainObject(bindings)) {
     return new MapActivation(bindings);
   }
   throw new Error(

@@ -1,4 +1,5 @@
 import { Errors } from '../common/errors';
+import { func, overload, StringType } from './decls';
 import { Env, Issues } from './env';
 describe('env', () => {
   it('TestIssuesEmpty', () => {
@@ -35,4 +36,18 @@ describe('env', () => {
 `.trim()
     );
   });
+
+  it('TestLibraries', () => {
+    // TODO: optional library
+    const e = new Env();
+    expect(e.hasLibrary('cel.lib.std')).toEqual(true);
+    expect(e.libraries.size).toEqual(1);
+  });
+
+  it('TestFunctions', () => {
+    const e = new Env(func('a', overload('a_b', [StringType], StringType)));
+    expect(e.hasFunction('a')).toEqual(true);
+  });
+
+  // TODO: add missing tests for formatting, extend race conditions, partial vars, functions and benchmarking
 });

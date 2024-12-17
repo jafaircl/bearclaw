@@ -456,9 +456,9 @@ class AbsoluteAttribute implements NamespacedAttribute {
 
 class ConditionalAttribute implements Attribute {
   #id: bigint;
-  #expr: Interpretable;
-  #truthy: Attribute;
-  #falsy: Attribute;
+  expr: Interpretable;
+  truthy: Attribute;
+  falsy: Attribute;
   #adapter: Adapter;
   #fac: AttributeFactory;
 
@@ -471,9 +471,9 @@ class ConditionalAttribute implements Attribute {
     fac: AttributeFactory
   ) {
     this.#id = id;
-    this.#expr = expr;
-    this.#truthy = truthy;
-    this.#falsy = falsy;
+    this.expr = expr;
+    this.truthy = truthy;
+    this.falsy = falsy;
     this.#adapter = adapter;
     this.#fac = fac;
   }
@@ -483,11 +483,11 @@ class ConditionalAttribute implements Attribute {
    * in effect managing the qualification of alternate attributes.
    */
   addQualifier(qualifier: Qualifier): Attribute | Error {
-    const truthy = this.#truthy.addQualifier(qualifier);
+    const truthy = this.truthy.addQualifier(qualifier);
     if (truthy instanceof Error) {
       return truthy;
     }
-    const falsy = this.#falsy.addQualifier(qualifier);
+    const falsy = this.falsy.addQualifier(qualifier);
     if (falsy instanceof Error) {
       return falsy;
     }
@@ -495,12 +495,12 @@ class ConditionalAttribute implements Attribute {
   }
 
   resolve(vars: Activation): any | Error {
-    const val = this.#expr.eval(vars);
+    const val = this.expr.eval(vars);
     if (val.value() === true) {
-      return this.#truthy.resolve(vars);
+      return this.truthy.resolve(vars);
     }
     if (val.value() === false) {
-      return this.#falsy.resolve(vars);
+      return this.falsy.resolve(vars);
     }
     if (isUnknownRefVal(val)) {
       return val;
@@ -510,8 +510,8 @@ class ConditionalAttribute implements Attribute {
 
   id(): bigint {
     // There's a field access after the conditional.
-    if (this.#truthy.id() == this.#falsy.id()) {
-      return this.#truthy.id();
+    if (this.truthy.id() == this.falsy.id()) {
+      return this.truthy.id();
     }
     // Otherwise return the conditional id he consistent id being tracked.
     return this.#id;
@@ -541,11 +541,16 @@ class ConditionalAttribute implements Attribute {
 
   toString() {
     return `id: ${this.#id}, truthy attribute: ${
-      this.#truthy
-    }, falsy attribute: ${this.#falsy}`;
+      this.truthy
+    }, falsy attribute: ${this.falsy}`;
   }
 }
 
+export function isConditionalAttribute(
+  value: any
+): value is ConditionalAttribute {
+  return value && isAttribute(value) && value instanceof ConditionalAttribute;
+}
 class MaybeAttribute implements Attribute {
   #id: bigint;
   #attrs: NamespacedAttribute[];
@@ -1335,7 +1340,7 @@ class FieldQualifier implements ConstantQualifier {
   }
 
   value(): RefVal {
-    throw new Error('Method not implemented.');
+    return new StringRefVal(this.#name);
   }
 
   id(): bigint {

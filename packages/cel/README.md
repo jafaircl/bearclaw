@@ -61,12 +61,10 @@ environment option:
 ```ts
 import { Env, variable, StringType } from '@bearclaw/cel'
 
-const env = new Env({
-    declarations: [
-        variable('name', StringType),
-        variable('group', StringType),
-    ]
-})
+const env = new Env(
+    variable('name', StringType),
+    variable('group', StringType),
+)
 ```
 
 That's it. The environment is ready to be used for parsing and type-checking.
