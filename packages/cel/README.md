@@ -83,9 +83,18 @@ expressions be parsed and checked ahead of time.
 The parse and check phases are combined for convenience into the `Compile`
 step:
 
-```go
+```ts
 const ast = env.compile(`name.startsWith("/groups/" + ${group})`)
+// `ast` will be a union type of `Ast | Issues`
+if (ast instanceof Issues) {
+    // toString produces an annotated error message
+    throw new Error(ast.toString())
+}
 const prg = env.program(ast)
+// `prg` will be a union type of `Program | Error`
+if (prg instanceof Error) {
+    throw prg
+}
 ```
 
 The `cel.Program` generated at the end of parse and check is stateless,
@@ -133,7 +142,7 @@ free. Many different inputs can be sent to the same `cel.Program` and if fields
 are present in the input, but not referenced in the expression, they are
 ignored.
 
-```go
+```ts
 // The `out` var contains the output of a successful evaluation.
 // The `details' var would contain intermediate evaluation state if enabled as
 // a cel.ProgramOption. This can be useful for visualizing how the `out` value
@@ -214,7 +223,14 @@ to determine error locations at evaluation time as well.
 
 ## Install
 
-Install from npm using `npm install @bearclaw/cel`
+This package has dependencies which require adding Buf as a registry in your package manager.
+ - For npm, the command is `npm config set @buf:registry https://buf.build/gen/npm/v1/` or you can add this line to your .npmrc file: `@buf:registry=https://buf.build/gen/npm/v1/`
+ - For pnpm, the command is `pnpm config set @buf:registry https://buf.build/gen/npm/v1/`
+ - For yarn, the command is `yarn config set npmScopes.buf.npmRegistryServer https://buf.build/gen/npm/v1/`
+
+See [here](https://buf.build/docs/bsr/generated-sdks/npm/) for more information.
+
+After adding Buf as a registry, use your configured package manager to install the `@bearclaw/cel` package. i.e. install from npm using `npm install @bearclaw/cel`.
 
 ## Common Questions
 
