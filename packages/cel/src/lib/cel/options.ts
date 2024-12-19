@@ -6,6 +6,10 @@ import { DescEnum, DescField, DescMessage, Message } from '@bufbuild/protobuf';
 import { reflect } from '@bufbuild/protobuf/reflect';
 import extend from 'just-extend';
 import { CosterOptions } from '../checker/cost';
+import {
+  abbrevs as containerAbbrevs,
+  name as containerName,
+} from '../common/container';
 import { FunctionDecl, VariableDecl } from '../common/decls';
 import { Adapter, isRegistry, Provider } from '../common/ref/provider';
 import { fieldDescToCELType } from '../common/types/provider';
@@ -154,7 +158,7 @@ export function macros(...macros: Macro[]): EnvOption {
  */
 export function container(name: string): EnvOption {
   return (e) => {
-    const cont = e.container.extend(name, new Map());
+    const cont = e.container.extend(containerName(name));
     e.container = cont;
     return e;
   };
@@ -211,8 +215,7 @@ export function container(name: string): EnvOption {
  */
 export function abbrevs(...qualifiedNames: string[]): EnvOption {
   return (e) => {
-    const cont = e.container;
-    cont.addAbbrevs(...qualifiedNames);
+    const cont = e.container.extend(containerAbbrevs(...qualifiedNames));
     e.container = cont;
     return e;
   };
@@ -363,6 +366,38 @@ function fieldToVariable(field: DescField) {
 }
 
 /**
+ * EnableMacroCallTracking ensures that call expressions which are replaced by
+ * macros are tracked in the `SourceInfo` of parsed and checked expressions.
+ */
+export function enableMacroCallTracking(): EnvOption {
+  return features(Feature.EnableMacroCallTracking, true);
+}
+
+/**
+ * EnableIdentifierEscapeSyntax enables identifier escaping (`) syntax for
+ * fields.
+ */
+export function enableIdentifierEscapeSyntax(): EnvOption {
+  return features(Feature.IdentEscapeSyntax, true);
+}
+
+/**
+ * CrossTypeNumericComparisons makes it possible to compare across numeric
+ * types, e.g. double < int
+ */
+export function crossTypeNumericComparisons(enabled: boolean): EnvOption {
+  return features(Feature.CrossTypeNumericComparisions, enabled);
+}
+
+/**
+ * DefaultUTCTimeZone ensures that time-based operations use the UTC timezone
+ * rather than the input time's local timezone.
+ */
+export function defaultUTCTimeZone(enabled: boolean): EnvOption {
+  return features(Feature.DefaultUTCTimeZone, enabled);
+}
+
+/**
  * features sets the given feature flags.  See list of Feature constants above.
  */
 function features(flag: Feature, enabled: boolean): EnvOption {
@@ -372,4 +407,4 @@ function features(flag: Feature, enabled: boolean): EnvOption {
   };
 }
 
-// TODO: program options
+// TODO: make parser options functional so we can add ParserExpressionSizeLimit & ParserRecursionLimit

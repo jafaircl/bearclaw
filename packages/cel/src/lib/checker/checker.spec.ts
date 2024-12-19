@@ -10,7 +10,7 @@ import {
   TestAllTypesSchema as TestAllTypesSchemaProto3,
 } from '@buf/cel_spec.bufbuild_es/proto/test/v1/proto3/test_all_types_pb.js';
 import { createRegistry } from '@bufbuild/protobuf';
-import { Container } from '../common/container';
+import { Container, name } from '../common/container';
 import {
   FunctionDecl,
   newVariableDecl,
@@ -1171,16 +1171,15 @@ ERROR: <input>:1:10: expected type 'bool' but found 'int'
         return env;
       },
     },
-    // TODO: undeclared reference to '.google' in container
-    //     {
-    //       in: `.google.api.expr.test.v1.proto3.TestAllTypes`,
-    //       out: `google.api.expr.test.v1.proto3.TestAllTypes
-    // ~type(google.api.expr.test.v1.proto3.TestAllTypes)
-    // ^google.api.expr.test.v1.proto3.TestAllTypes`,
-    //       outType: newTypeTypeWithParam(
-    //         newObjectType('google.api.expr.test.v1.proto3.TestAllTypes')
-    //       ),
-    //     },
+    {
+      in: `.google.api.expr.test.v1.proto3.TestAllTypes`,
+      out: `google.api.expr.test.v1.proto3.TestAllTypes
+    ~type(google.api.expr.test.v1.proto3.TestAllTypes)
+    ^google.api.expr.test.v1.proto3.TestAllTypes`,
+      outType: newTypeTypeWithParam(
+        newObjectType('google.api.expr.test.v1.proto3.TestAllTypes')
+      ),
+    },
     {
       in: `proto3.TestAllTypes`,
       container: 'google.api.expr.test.v1',
@@ -2287,7 +2286,6 @@ ERROR: <input>:1:5: undeclared reference to 'x' (in container '')
         "b"
       )~optional_type(string)^select_optional_field`,
     },
-    // TODO: optional types
     {
       in: `type(a.?b) == optional_type`,
       options: { enableOptionalSyntax: true },
@@ -2562,7 +2560,7 @@ function getDefaultEnvironment(
   containerName?: string,
   options?: ParserOptions & CheckerEnvOptions
 ) {
-  const container = new Container(containerName);
+  const container = new Container(name(containerName ?? ''));
   const registry = new Registry(
     undefined,
     createRegistry(

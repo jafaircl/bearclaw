@@ -1603,8 +1603,8 @@ const testCases: TestInfo[] = [
       ]),
     ]),
   },
+  // TODO: the error message points at the wrong characters
   // {
-  //   // TODO: the error message points at the wrong characters
   //   I: `      '😁' in ['😁', '😑', '😦']
   // 	 && in.😁`,
   //   E: `ERROR: <input>:2:7: Syntax error: extraneous input 'in' expecting {'[', '{', '(', '.', '-', '!', 'true', 'false', 'null', NUM_FLOAT, NUM_INT, NUM_UINT, STRING, BYTES, IDENTIFIER}
@@ -1728,7 +1728,6 @@ const testCases: TestInfo[] = [
 		| while
 		| ^`,
   },
-  // TODO: "argument is not an identifier" is out of order
   {
     I: '[1, 2, 3].map(var, var * var)',
     E: `ERROR: <input>:1:15: reserved identifier: var

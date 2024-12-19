@@ -8,24 +8,34 @@ import { isNil } from '@bearclaw/is';
  * namespace. See resolveCandidateNames for more details.
  */
 export class Container {
-  constructor(
-    public readonly name = '',
-    public readonly aliases = new Map<string, string>()
-  ) {}
+  public name = '';
+  public aliases = new Map<string, string>();
+
+  constructor(...options: ContainerOption[]) {
+    for (const option of options) {
+      option(this);
+    }
+  }
 
   /**
-   * Extends the current container with another name or additional aliases.
-   *
-   * @param name the name of the container
-   * @param aliases the aliases to add to the container
-   * @returns a new container with the extended name and aliases
+   * Extend creates a new Container with the existing settings and applies a
+   * series of ContainerOptions to further configure the new container.
    */
-  extend(name: string, aliases: Map<string, string>) {
-    const newAliases = new Map(this.aliases);
-    for (const [key, value] of aliases) {
-      newAliases.set(key, value);
+  extend(...opts: ContainerOption[]): Container {
+    // Copy the name and aliases of the existing container.
+    let ext = new Container(name(this.name));
+    if (this.aliasSet().size > 0) {
+      const aliasSet = new Map<string, string>();
+      for (const [k, v] of this.aliasSet()) {
+        aliasSet.set(k, v);
+      }
+      ext.aliases = aliasSet;
     }
-    return new Container(name, newAliases);
+    // Apply the new options to the container.
+    for (const opt of opts) {
+      ext = opt(ext);
+    }
+    return ext;
   }
 
   /**
@@ -119,59 +129,69 @@ export class Container {
     }
     return alias + qualifier;
   }
+}
 
-  /**
-   * Abbrevs configures a set of simple names as abbreviations for
-   * fully-qualified names.
-   *
-   * An abbreviation (abbrev for short) is a simple name that expands to a
-   * fully-qualified name. Abbreviations can be useful when working with
-   * variables, functions, and especially types from multiple namespaces:
-   *
-   * ```ts
-   * // CEL object construction
-   * qual.pkg.version.ObjTypeName{
-   *    field: alt.container.ver.FieldTypeName{value: ...}
-   * }
-   * ```
-   *
-   * Only one the qualified names above may be used as the CEL container, so at
-   * least one of these references must be a long qualified name within an
-   * otherwise short CEL program. Using the following abbreviations, the
-   * program becomes much simpler:
-   *
-   * ```ts
-   * // CEL Go option
-   * Abbrevs("qual.pkg.version.ObjTypeName", "alt.container.ver.FieldTypeName")
-   * // Simplified Object construction
-   * ObjTypeName{field: FieldTypeName{value: ...}}
-   * ```
-   *
-   * There are a few rules for the qualified names and the simple abbreviations
-   * generated from them:
-   * - Qualified names must be dot-delimited, e.g. `package.subpkg.name`.
-   * - The last element in the qualified name is the abbreviation.
-   * - Abbreviations must not collide with each other.
-   * - The abbreviation must not collide with unqualified names in use.
-   *
-   * Abbreviations are distinct from container-based references in the
-   * following important ways:
-   * - Abbreviations must expand to a fully-qualified name.
-   * - Expanded abbreviations do not participate in namespace resolution.
-   * - Abbreviation expansion is done instead of the container search for a
-   * matching identifier.
-   * - Containers follow C++ namespace resolution rules with searches from the
-   * most qualified name to the least qualified name.
-   * - Container references within the CEL program may be relative, and are
-   * resolved to fully qualified names at either type-check time or program
-   * plan time, whichever comes first.
-   *
-   * If there is ever a case where an identifier could be in both the container
-   * and as an abbreviation, the abbreviation wins as this will ensure that the
-   * meaning of a program is preserved between compilations even as the
-   * container evolves.
-   */
-  addAbbrevs(...qualifiedNames: string[]) {
+/**
+ * ContainerOption specifies a functional configuration option for a Container.
+ *
+ * Note, ContainerOption implementations must be able to handle nil container
+ * inputs.
+ */
+export type ContainerOption = (container: Container) => Container;
+
+/**
+ * Abbrevs configures a set of simple names as abbreviations for
+ * fully-qualified names.
+ *
+ * An abbreviation (abbrev for short) is a simple name that expands to a
+ * fully-qualified name. Abbreviations can be useful when working with
+ * variables, functions, and especially types from multiple namespaces:
+ *
+ * ```ts
+ * // CEL object construction
+ * qual.pkg.version.ObjTypeName{
+ *    field: alt.container.ver.FieldTypeName{value: ...}
+ * }
+ * ```
+ *
+ * Only one the qualified names above may be used as the CEL container, so at
+ * least one of these references must be a long qualified name within an
+ * otherwise short CEL program. Using the following abbreviations, the
+ * program becomes much simpler:
+ *
+ * ```ts
+ * // CEL Go option
+ * Abbrevs("qual.pkg.version.ObjTypeName", "alt.container.ver.FieldTypeName")
+ * // Simplified Object construction
+ * ObjTypeName{field: FieldTypeName{value: ...}}
+ * ```
+ *
+ * There are a few rules for the qualified names and the simple abbreviations
+ * generated from them:
+ * - Qualified names must be dot-delimited, e.g. `package.subpkg.name`.
+ * - The last element in the qualified name is the abbreviation.
+ * - Abbreviations must not collide with each other.
+ * - The abbreviation must not collide with unqualified names in use.
+ *
+ * Abbreviations are distinct from container-based references in the
+ * following important ways:
+ * - Abbreviations must expand to a fully-qualified name.
+ * - Expanded abbreviations do not participate in namespace resolution.
+ * - Abbreviation expansion is done instead of the container search for a
+ * matching identifier.
+ * - Containers follow C++ namespace resolution rules with searches from the
+ * most qualified name to the least qualified name.
+ * - Container references within the CEL program may be relative, and are
+ * resolved to fully qualified names at either type-check time or program
+ * plan time, whichever comes first.
+ *
+ * If there is ever a case where an identifier could be in both the container
+ * and as an abbreviation, the abbreviation wins as this will ensure that the
+ * meaning of a program is preserved between compilations even as the
+ * container evolves.
+ */
+export function abbrevs(...qualifiedNames: string[]): ContainerOption {
+  return (c) => {
     for (const qualifiedName of qualifiedNames) {
       const qn = qualifiedName.trim();
       for (const rune of qn) {
@@ -188,27 +208,34 @@ export class Container {
         );
       }
       const alias = qn.substring(ind + 1);
-      this._aliasAs('abbreviation', qn, alias);
+      c = aliasAs('abbreviation', qn, alias)(c);
     }
-  }
+    return c;
+  };
+}
 
-  /**
-   * Alias associates a fully-qualified name with a user-defined alias.
-   *
-   * In general, Abbrevs is preferred to Alias since the names generated from
-   * the Abbrevs option are more easily traced back to source code. The Alias
-   * option is useful for propagating alias configuration from one Container
-   * instance to another, and may also be useful for remapping poorly chosen
-   * protobuf message / package names.
-   *
-   * Note: all of the rules that apply to Abbrevs also apply to Alias.
-   */
-  addAlias(qualifiedName: string, alias: string) {
-    this._aliasAs('alias', qualifiedName, alias);
-  }
+/**
+ * Alias associates a fully-qualified name with a user-defined alias.
+ *
+ * In general, Abbrevs is preferred to Alias since the names generated from
+ * the Abbrevs option are more easily traced back to source code. The Alias
+ * option is useful for propagating alias configuration from one Container
+ * instance to another, and may also be useful for remapping poorly chosen
+ * protobuf message / package names.
+ *
+ * Note: all of the rules that apply to Abbrevs also apply to Alias.
+ */
+export function alias(qualifiedName: string, alias: string): ContainerOption {
+  return aliasAs('alias', qualifiedName, alias);
+}
 
-  private _aliasAs(kind: string, qualifiedName: string, alias: string) {
-    if (alias.length === 0 || alias.includes('.')) {
+function aliasAs(
+  kind: string,
+  qualifiedName: string,
+  alias: string
+): ContainerOption {
+  return (c) => {
+    if (alias.length === 0 || alias.indexOf('.') > -1) {
       throw new Error(
         `${kind} must be non-empty and simple (not qualified): ${kind}=${alias}`
       );
@@ -221,20 +248,37 @@ export class Container {
     const ind = qualifiedName.lastIndexOf('.');
     if (ind <= 0 || ind === qualifiedName.length - 1) {
       throw new Error(
-        `qualified name must be of the form 'qualified.name': ${qualifiedName}`
+        `${kind} must refer to a valid qualified name: ${qualifiedName}`
       );
     }
-    const aliasRef = this.findAlias(alias);
+    const aliasRef = c.aliasSet().get(alias);
     if (!isNil(aliasRef) && aliasRef !== '') {
       throw new Error(
         `${kind} collides with existing reference: name=${qualifiedName}, ${kind}=${alias}, existing=${aliasRef}`
       );
     }
-    if (this.name.startsWith(alias + '.') || this.name === alias) {
+    if (c.name.startsWith(alias + '.') || c.name === alias) {
       throw new Error(
-        `${kind} collides with container name: name=${qualifiedName}, ${kind}=${alias}, container=${this.name}`
+        `${kind} collides with container name: name=${qualifiedName}, ${kind}=${alias}, container=${c.name}`
       );
     }
-    this.aliases.set(alias, qualifiedName);
-  }
+    c.aliases.set(alias, qualifiedName);
+    return c;
+  };
+}
+
+/**
+ * Name sets the fully-qualified name of the Container.
+ */
+export function name(name: string): ContainerOption {
+  return (c) => {
+    if (name.length > 0 && name[0] === '.') {
+      throw new Error(`container name must not contain a leading '.': ${name}`);
+    }
+    if (c.name === name) {
+      return c;
+    }
+    c.name = name;
+    return c;
+  };
 }

@@ -16,7 +16,7 @@ import { ExprSchema } from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb.
 import { create, DescMessage } from '@bufbuild/protobuf';
 import { Checker } from '../checker/checker';
 import { Env } from '../checker/env';
-import { Container } from '../common/container';
+import { abbrevs, Container, name as containerName } from '../common/container';
 import {
   FunctionDecl,
   newVariableDecl,
@@ -1577,23 +1577,17 @@ describe('interpreter', () => {
       name: 'invalid_presence_test_on_int_literal',
       expr: `has(dyn(1).invalid)`,
       err: 'no such key: invalid',
-      attrs: new AttrFactory(
-        new Container(''),
-        new Registry(),
-        new Registry(),
-        { enableErrorOnBadPresenceTest: true }
-      ),
+      attrs: new AttrFactory(new Container(), new Registry(), new Registry(), {
+        enableErrorOnBadPresenceTest: true,
+      }),
     },
     {
       name: 'invalid_presence_test_on_list_literal',
       expr: `has(dyn([]).invalid)`,
       err: "unsupported index type 'string' in list",
-      attrs: new AttrFactory(
-        new Container(''),
-        new Registry(),
-        new Registry(),
-        { enableErrorOnBadPresenceTest: true }
-      ),
+      attrs: new AttrFactory(new Container(), new Registry(), new Registry(), {
+        enableErrorOnBadPresenceTest: true,
+      }),
     },
     {
       name: 'optional_select_on_undefined',
@@ -1635,9 +1629,9 @@ function program(
   ...opts: InterpretableDecorator[]
 ): [Interpretable | null, Activation | null, Error | null] {
   // Configure the package.
-  const cont = new Container(tst.container);
+  let cont = new Container(containerName(tst.container ?? ''));
   if (!isNil(tst.abbrevs)) {
-    cont.addAbbrevs(...tst.abbrevs);
+    cont = cont.extend(abbrevs(...tst.abbrevs));
   }
   const reg = new Registry();
   if (!isNil(tst.types)) {

@@ -46,6 +46,11 @@ export enum Feature {
    * is performed on a primitive type.
    */
   EnableErrorOnBadPresenceTest,
+
+  /**
+   * Enable escape syntax for field identifiers (`).
+   */
+  IdentEscapeSyntax,
 }
 
 /**
