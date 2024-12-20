@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { ExprSchema } from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb';
 import { create } from '@bufbuild/protobuf';
 import { RefVal } from '../common/ref/reference';

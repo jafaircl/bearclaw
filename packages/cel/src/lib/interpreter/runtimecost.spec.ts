@@ -9,6 +9,7 @@ import {
   AstNode,
   CallEstimate,
   Coster,
+  presenceTestHasCost as costerPresenceTestHasCost,
   CostEstimate,
   CostEstimator,
   SizeEstimate,
@@ -512,9 +513,11 @@ function computeCost(
   );
   const checker = new Checker(env);
   const checked = checker.check(parsed);
-  const est = new Coster(checked, new TestCostEstimator(), {
-    presenceTestHasCost: costTracker.presenceTestHasCost,
-  }).cost();
+  const est = new Coster(
+    checked,
+    new TestCostEstimator(),
+    costerPresenceTestHasCost(costTracker.presenceTestHasCost)
+  ).cost();
   const disp = new DefaultDispatcher();
   for (const fn of stdFunctions) {
     disp.add(...fn.bindings());

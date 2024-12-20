@@ -3,7 +3,7 @@
 /* eslint-disable @typescript-eslint/no-empty-interface */
 import { isNil } from '@bearclaw/is';
 import { Checker } from '../checker/checker';
-import { Coster, CosterOptions, CostEstimator } from '../checker/cost';
+import { Coster, CostEstimator, CostOption } from '../checker/cost';
 import { Env as CheckerEnv, CheckerEnvOptions } from '../checker/env';
 import { AST, SourceInfo, AST as œAST } from '../common/ast';
 import { Container } from '../common/container';
@@ -104,7 +104,7 @@ interface EnvBaseOptions {
   appliedFeatures?: Map<number, boolean>;
   libraries?: Map<string, boolean>;
   // validators?      []ASTValidator
-  costOptions?: CosterOptions;
+  costOptions?: CostOption[];
 
   // Internal parser representation
   prsrOpts?: ParserOptions;
@@ -137,7 +137,7 @@ export class EnvBase {
    */
   libraries: Map<string, boolean>;
   // validators      []ASTValidator
-  costOptions: CosterOptions;
+  costOptions: CostOption[];
 
   // Internal parser representation
   prsr!: Parser;
@@ -165,7 +165,7 @@ export class EnvBase {
     this.appliedFeatures = opts.appliedFeatures ?? new Map();
     this.libraries = opts.libraries ?? new Map();
     // validators:      []ASTValidator{},
-    this.costOptions = opts.costOptions ?? {};
+    this.costOptions = opts.costOptions ?? [];
     this.prsrOpts = opts.prsrOpts ?? {};
     this.chkOpts = opts.chkOpts ?? {};
     this.progOpts = opts.progOpts ?? [];
@@ -481,9 +481,9 @@ export class EnvBase {
    * length estimates of input data and extension functions provided by
    * estimator.
    */
-  estimateCost(ast: Ast, estimator: CostEstimator, opts?: CosterOptions) {
-    const extendedOptions = { ...this.costOptions, ...opts };
-    return new Coster(ast.nativeRep(), estimator, extendedOptions).cost();
+  estimateCost(ast: Ast, estimator: CostEstimator, ...opts: CostOption[]) {
+    const extendedOptions = [...this.costOptions, ...opts];
+    return new Coster(ast.nativeRep(), estimator, ...extendedOptions).cost();
   }
 
   private _initChecker() {
@@ -550,7 +550,7 @@ export class CustomEnv extends EnvBase {
       features: new Map(),
       appliedFeatures: new Map(),
       libraries: new Map(),
-      costOptions: {},
+      costOptions: [],
       prsrOpts: {},
       chkOpts: {},
       progOpts: [],

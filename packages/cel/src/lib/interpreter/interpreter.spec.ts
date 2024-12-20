@@ -54,7 +54,11 @@ import { objectToMap } from '../common/utils';
 import { AllMacros } from '../parser/macro';
 import { Parser } from '../parser/parser';
 import { Activation, EmptyActivation, newActivation } from './activation';
-import { AttrFactory, AttributeFactory } from './attributes';
+import {
+  AttrFactory,
+  AttributeFactory,
+  enableErrorOnBadPresenceTest,
+} from './attributes';
 import { InterpretableDecorator } from './decorators';
 import { Interpretable } from './interpretable';
 
@@ -1577,17 +1581,23 @@ describe('interpreter', () => {
       name: 'invalid_presence_test_on_int_literal',
       expr: `has(dyn(1).invalid)`,
       err: 'no such key: invalid',
-      attrs: new AttrFactory(new Container(), new Registry(), new Registry(), {
-        enableErrorOnBadPresenceTest: true,
-      }),
+      attrs: new AttrFactory(
+        new Container(),
+        new Registry(),
+        new Registry(),
+        enableErrorOnBadPresenceTest(true)
+      ),
     },
     {
       name: 'invalid_presence_test_on_list_literal',
       expr: `has(dyn([]).invalid)`,
       err: "unsupported index type 'string' in list",
-      attrs: new AttrFactory(new Container(), new Registry(), new Registry(), {
-        enableErrorOnBadPresenceTest: true,
-      }),
+      attrs: new AttrFactory(
+        new Container(),
+        new Registry(),
+        new Registry(),
+        enableErrorOnBadPresenceTest(true)
+      ),
     },
     {
       name: 'optional_select_on_undefined',

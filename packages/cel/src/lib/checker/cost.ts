@@ -417,23 +417,43 @@ export const createMessageBaseCost = new CostEstimate(
   BigInt(StructCreateBaseCost)
 );
 
-export interface CosterOptions {
-  /**
-   * PresenceTestHasCost determines whether presence testing has a cost of one
-   * or zero.
-   *
-   * Defaults to presence test has a cost of one.
-   */
-  presenceTestHasCost?: boolean;
+/**
+ * CostOption configures flags which affect cost computations.
+ */
+export type CostOption = (coster: Coster) => Coster;
 
-  /**
-   * OverloadCostEstimate binds a FunctionCoster to a specific function
-   * overload ID.
-   *
-   * When a OverloadCostEstimate is provided, it will override the cost
-   * calculation of the CostEstimator provided to the Cost() call.
-   */
-  overloadCostEstimates?: Map<string, FunctionEstimator>;
+/**
+ * PresenceTestHasCost determines whether presence testing has a cost of one or
+ * zero.
+ *
+ * Defaults to presence test has a cost of one.
+ */
+export function presenceTestHasCost(hasCost: boolean): CostOption {
+  return (c) => {
+    if (hasCost) {
+      c.presenceTestCost = selectAndIdentCost;
+      return c;
+    }
+    c.presenceTestCost = new CostEstimate(BigInt(0), BigInt(0));
+    return c;
+  };
+}
+
+/**
+ * OverloadCostEstimate binds a FunctionCoster to a specific function overload
+ * ID.
+ *
+ * When a OverloadCostEstimate is provided, it will override the cost
+ * calculation of the CostEstimator provided to the Cost() call.
+ */
+export function overloadCostEstimate(
+  overloadID: string,
+  functionCoster: FunctionEstimator
+): CostOption {
+  return (c) => {
+    c.overloadEstimators.set(overloadID, functionCoster);
+    return c;
+  };
 }
 
 /**
@@ -443,42 +463,35 @@ export class Coster {
   /**
    * exprPath maps from Expr Id to field path.
    */
-  #exprPath: Map<bigint, string[]>;
+  #exprPath: Map<bigint, string[]> = new Map();
   /**
    * iterRanges tracks the iterRange of each iterVar.
    */
-  #iterRanges: IterRangeScopes;
+  #iterRanges: IterRangeScopes = new IterRangeScopes();
   /**
    * computedSizes tracks the computed sizes of call results.
    */
-  #computedSizes: Map<bigint, SizeEstimate>;
+  #computedSizes: Map<bigint, SizeEstimate> = new Map();
   #checkedAst: AST;
   #estimator: CostEstimator;
-  #overloadEstimators: Map<string, FunctionEstimator>;
+  overloadEstimators: Map<string, FunctionEstimator> = new Map();
   /**
    * presenceTestCost will either be a zero or one based on whether has()
    * macros count against cost computations.
    */
-  #presenceTestCost: CostEstimate;
+  presenceTestCost: CostEstimate = new CostEstimate(BigInt(1), BigInt(1));
   #cachedCost?: CostEstimate;
 
-  constructor(checked: AST, estimator: CostEstimator, options?: CosterOptions) {
+  constructor(
+    checked: AST,
+    estimator: CostEstimator,
+    ...options: CostOption[]
+  ) {
     this.#checkedAst = checked;
     this.#estimator = estimator;
-    this.#overloadEstimators = new Map();
-    this.#exprPath = new Map();
-    this.#iterRanges = new IterRangeScopes();
-    this.#computedSizes = new Map();
 
-    if (options?.presenceTestHasCost === false) {
-      this.#presenceTestCost = new CostEstimate(BigInt(0), BigInt(0));
-    } else {
-      this.#presenceTestCost = new CostEstimate(BigInt(1), BigInt(1));
-    }
-
-    const overloadCostEstimates = options?.overloadCostEstimates ?? new Map();
-    for (const [overloadID, estimator] of overloadCostEstimates) {
-      this.#overloadEstimators.set(overloadID, estimator);
+    for (const opt of options) {
+      opt(this);
     }
   }
 
@@ -568,7 +581,7 @@ export class Coster {
       // this is equivalent to how evalTestOnly increments the runtime cost
       // counter but does not add any additional cost for the qualifier, except
       // here we do the reverse (ident adds cost)
-      sum = sum.add(this.#presenceTestCost);
+      sum = sum.add(this.presenceTestCost);
       sum = sum.add(this.#costExpr(sel.operand!));
       return sum;
     }
@@ -759,8 +772,8 @@ export class Coster {
       }
       return sum;
     }
-    if (this.#overloadEstimators.size !== 0) {
-      const estimator = this.#overloadEstimators.get(overloadID);
+    if (this.overloadEstimators.size !== 0) {
+      const estimator = this.overloadEstimators.get(overloadID);
       if (!isNil(estimator)) {
         const callEst = estimator(this.#estimator, target, args);
         return new CallEstimate(

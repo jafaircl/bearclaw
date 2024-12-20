@@ -19,8 +19,8 @@ import { reflectNativeType } from '../common/types/native';
 import { EmptyActivation } from '../interpreter/activation';
 import {
   AttrFactory,
-  AttrFactoryOptions,
   AttributeFactory,
+  enableErrorOnBadPresenceTest,
 } from '../interpreter/attributes';
 import { InterpretableDecorator } from '../interpreter/decorators';
 import { DefaultDispatcher, Dispatcher } from '../interpreter/dispatcher';
@@ -224,11 +224,6 @@ export function newProgram(
 
   // Set the attribute factory after the options have been set.
   let attrFactory: AttributeFactory;
-  const attrFactorOpts: AttrFactoryOptions = {
-    enableErrorOnBadPresenceTest: p.env.hasFeature(
-      Feature.EnableErrorOnBadPresenceTest
-    ),
-  };
   // TODO: partial eval
   // if p.evalOpts&OptPartialEval == OptPartialEval {
   // 	attrFactory = interpreter.NewPartialAttributeFactory(e.Container, e.adapter, e.provider, attrFactorOpts...)
@@ -240,7 +235,9 @@ export function newProgram(
     e.container,
     e.adapter,
     e.provider,
-    attrFactorOpts
+    enableErrorOnBadPresenceTest(
+      p.env.hasFeature(Feature.EnableErrorOnBadPresenceTest)
+    )
   );
   const interp = new ExprInterpreter(
     disp,

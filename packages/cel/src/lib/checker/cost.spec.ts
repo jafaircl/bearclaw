@@ -25,18 +25,20 @@ import {
   TimestampType,
 } from '../common/types/types';
 import { MAX_UINT64 } from '../common/types/uint';
-import { Parser, ParserOptions } from '../parser/parser';
+import { Parser } from '../parser/parser';
 import { Checker } from './checker';
 import {
   AstNode,
   CallEstimate,
   Coster,
-  CosterOptions,
   CostEstimate,
   CostEstimator,
+  CostOption,
+  overloadCostEstimate,
+  presenceTestHasCost,
   SizeEstimate,
 } from './cost';
-import { CheckerEnvOptions, Env } from './env';
+import { Env } from './env';
 
 describe('cost', () => {
   const allTypes = newObjectType('google.api.expr.test.v1.proto3.TestAllTypes');
@@ -56,7 +58,7 @@ describe('cost', () => {
     wanted: CostEstimate;
     vars?: VariableDecl[];
     hints?: Map<string, bigint>;
-    options?: ParserOptions & CheckerEnvOptions & CosterOptions;
+    options?: CostOption[];
   }
 
   const testCases: TestCase[] = [
@@ -93,7 +95,7 @@ describe('cost', () => {
         ),
       ],
       wanted: new CostEstimate(BigInt(1), BigInt(1)),
-      options: { presenceTestHasCost: false },
+      options: [presenceTestHasCost(false)],
     },
     {
       name: 'select: field test only',
@@ -111,14 +113,14 @@ describe('cost', () => {
       expr: `has(input.testAttr.nestedAttr)`,
       vars: [newVariableDecl('input', nestedMap)],
       wanted: new CostEstimate(BigInt(3), BigInt(3)),
-      options: { presenceTestHasCost: true },
+      options: [presenceTestHasCost(true)],
     },
     {
       name: 'select: non-proto field test no has() cost',
       expr: `has(input.testAttr.nestedAttr)`,
       vars: [newVariableDecl('input', nestedMap)],
       wanted: new CostEstimate(BigInt(2), BigInt(2)),
-      options: { presenceTestHasCost: false },
+      options: [presenceTestHasCost(false)],
     },
     {
       name: 'select: non-proto field test',
@@ -466,27 +468,25 @@ describe('cost', () => {
         ['str1', BigInt(10)],
         ['str2', BigInt(10)],
       ]),
-      options: {
-        overloadCostEstimates: new Map([
-          [
-            CONTAINS_STRING_OVERLOAD,
-            (estimator, target, args) => {
-              if (!isNil(target) && args.length === 1) {
-                const strSize = estimateSize(
-                  estimator,
-                  target
-                ).multiplyByCostFactor(0.2);
-                const subSize = estimateSize(
-                  estimator,
-                  args[0]
-                ).multiplyByCostFactor(0.2);
-                return new CallEstimate(strSize.multiply(subSize));
-              }
-              return new CallEstimate(zeroCost);
-            },
-          ],
-        ]),
-      },
+      options: [
+        overloadCostEstimate(
+          CONTAINS_STRING_OVERLOAD,
+          (estimator, target, args) => {
+            if (!isNil(target) && args.length === 1) {
+              const strSize = estimateSize(
+                estimator,
+                target
+              ).multiplyByCostFactor(0.2);
+              const subSize = estimateSize(
+                estimator,
+                args[0]
+              ).multiplyByCostFactor(0.2);
+              return new CallEstimate(strSize.multiply(subSize));
+            }
+            return new CallEstimate(zeroCost);
+          }
+        ),
+      ],
       wanted: new CostEstimate(BigInt(2), BigInt(12)),
     },
     {
@@ -640,7 +640,7 @@ describe('cost', () => {
       const coster = new Coster(
         checked,
         new TestEstimator(testCase.hints ?? new Map()),
-        testCase.options
+        ...(testCase.options || [])
       );
       expect(coster.cost()).toEqual(testCase.wanted);
     });

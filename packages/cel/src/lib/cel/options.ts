@@ -4,8 +4,7 @@
 import { isNil } from '@bearclaw/is';
 import { DescEnum, DescField, DescMessage, Message } from '@bufbuild/protobuf';
 import { reflect } from '@bufbuild/protobuf/reflect';
-import extend from 'just-extend';
-import { CosterOptions } from '../checker/cost';
+import { CostOption } from '../checker/cost';
 import {
   abbrevs as containerAbbrevs,
   name as containerName,
@@ -306,9 +305,9 @@ export enum EvalOption {
  * CostEstimatorOptions configure type-check time options for estimating
  * expression cost.
  */
-export function costEstimatorOptions(costOpts: CosterOptions): EnvOption {
+export function costEstimatorOptions(costOpts: CostOption[]): EnvOption {
   return (e) => {
-    e.costOptions = extend(e.costOptions, costOpts);
+    e.costOptions.push(...costOpts);
     return e;
   };
 }
