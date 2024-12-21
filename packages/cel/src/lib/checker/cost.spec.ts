@@ -25,7 +25,8 @@ import {
   TimestampType,
 } from '../common/types/types';
 import { MAX_UINT64 } from '../common/types/uint';
-import { Parser } from '../parser/parser';
+import { AllMacros } from '../parser/macro';
+import { macros, Parser } from '../parser/parser';
 import { Checker } from './checker';
 import {
   AstNode,
@@ -620,7 +621,7 @@ describe('cost', () => {
   for (const testCase of testCases) {
     it(testCase.name, () => {
       const source = new TextSource(testCase.expr);
-      const parser = new Parser();
+      const parser = new Parser(macros(...AllMacros));
       const parsed = parser.parse(source);
       if (parser.errors.length() > 0) {
         throw new Error(parser.errors.toDisplayString());

@@ -131,23 +131,22 @@ describe('cel', () => {
       out?: RefVal;
     }
     const testCases: TestCase[] = [
-      // TODO: crossTypeNumericComparisons is currently always enabled
       // Statically typed expressions need to opt in to cross-type numeric comparisons
-      // {
-      //   name: 'double_less_than_int_err',
-      //   expr: `1.0 < 2`,
-      //   opt: [crossTypeNumericComparisons(false)],
-      //   iss: `
-      // ERROR: <input>:1:5: found no matching overload for '_<_' applied to '(double, int)'
-      //        | 1.0 < 2
-      //        | ....^`,
-      // },
-      // {
-      //   name: 'double_less_than_int_success',
-      //   expr: `1.0 < 2`,
-      //   opt: [crossTypeNumericComparisons(true)],
-      //   out: BoolRefVal.True,
-      // },
+      {
+        name: 'double_less_than_int_err',
+        expr: `1.0 < 2`,
+        opt: [crossTypeNumericComparisons(false)],
+        iss: `
+      ERROR: <input>:1:5: found no matching overload for '_<_' applied to '(double, int)'
+             | 1.0 < 2
+             | ....^`,
+      },
+      {
+        name: 'double_less_than_int_success',
+        expr: `1.0 < 2`,
+        opt: [crossTypeNumericComparisons(true)],
+        out: BoolRefVal.True,
+      },
       // Dynamic data already benefits from cross-type numeric comparisons
       {
         name: 'dyn_less_than_int_success',

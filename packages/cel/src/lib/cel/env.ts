@@ -16,7 +16,13 @@ import { Adapter, isRegistry, Provider } from '../common/ref/provider';
 import { TextSource, Source as œSource } from '../common/source';
 import { Registry } from '../common/types/provider';
 import { Macro } from '../parser/macro';
-import { Parser, ParserOptions } from '../parser/parser';
+import {
+  enableVariadicOperatorASTs,
+  macros,
+  Parser,
+  ParserOption,
+  populateMacroCalls,
+} from '../parser/parser';
 import { Type } from './decls';
 import { Feature, StdLib } from './library';
 import {
@@ -107,7 +113,7 @@ interface EnvBaseOptions {
   costOptions?: CostOption[];
 
   // Internal parser representation
-  prsrOpts?: ParserOptions;
+  prsrOpts?: ParserOption[];
 
   // Internal checker representation
   // #chkMutex sync.Mutex
@@ -141,7 +147,7 @@ export class EnvBase {
 
   // Internal parser representation
   prsr!: Parser;
-  prsrOpts!: ParserOptions;
+  prsrOpts!: ParserOption[];
 
   // Internal checker representation
   // chkMutex sync.Mutex
@@ -166,7 +172,7 @@ export class EnvBase {
     this.libraries = opts.libraries ?? new Map();
     // validators:      []ASTValidator{},
     this.costOptions = opts.costOptions ?? [];
-    this.prsrOpts = opts.prsrOpts ?? {};
+    this.prsrOpts = opts.prsrOpts ?? [];
     this.chkOpts = opts.chkOpts ?? {};
     this.progOpts = opts.progOpts ?? [];
   }
@@ -189,15 +195,15 @@ export class EnvBase {
     // }
 
     // Configure the parser.
-    const prsrOpts = { ...this.prsrOpts };
-    prsrOpts.macros = this.macros;
+    const prsrOpts = this.prsrOpts || [];
+    prsrOpts.push(macros(...this.macros));
     if (this.hasFeature(Feature.EnableMacroCallTracking)) {
-      prsrOpts.populateMacroCalls = true;
+      prsrOpts.push(populateMacroCalls(true));
     }
     if (this.hasFeature(Feature.VariadicLogicalASTs)) {
-      prsrOpts.enableVariadicOperatorASTs = true;
+      prsrOpts.push(enableVariadicOperatorASTs(true));
     }
-    this.prsr = new Parser(prsrOpts);
+    this.prsr = new Parser(...prsrOpts);
 
     // Ensure that the checker init happens eagerly rather than lazily.
     if (this.hasFeature(Feature.EagerlyValidateDeclarations)) {
@@ -317,7 +323,7 @@ export class EnvBase {
       throw this.chkErr;
     }
 
-    const prsrOptsCopy = { ...this.prsrOpts };
+    const prsrOptsCopy = [...this.prsrOpts];
 
     // The type-checker is configured with Declarations. The declarations may
     // either be provided as options which have not yet been validated, or may
@@ -395,7 +401,7 @@ export class EnvBase {
    * flag, as enumerated in options.go.
    */
   hasFeature(feature: Feature) {
-    return this.features.has(feature);
+    return this.features.get(feature) === true;
   }
 
   /**
@@ -490,10 +496,12 @@ export class EnvBase {
     if (!isNil(this.chk)) {
       return;
     }
-    const chkOpts = { ...this.chkOpts };
-    if (this.hasFeature(Feature.CrossTypeNumericComparisions)) {
-      chkOpts.crossTypeNumericComparisons = true;
-    }
+    const chkOpts: CheckerEnvOptions = {
+      ...this.chkOpts,
+      crossTypeNumericComparisons: this.hasFeature(
+        Feature.CrossTypeNumericComparisions
+      ),
+    };
 
     const chk = new CheckerEnv(this.container, this.provider, chkOpts);
     // Add the statically configured declarations.
@@ -551,7 +559,7 @@ export class CustomEnv extends EnvBase {
       appliedFeatures: new Map(),
       libraries: new Map(),
       costOptions: [],
-      prsrOpts: {},
+      prsrOpts: [],
       chkOpts: {},
       progOpts: [],
     });

@@ -52,7 +52,12 @@ import {
 } from '../common/types/types';
 import { objectToMap } from '../common/utils';
 import { AllMacros } from '../parser/macro';
-import { Parser } from '../parser/parser';
+import {
+  enableOptionalSyntax,
+  enableVariadicOperatorASTs,
+  macros,
+  Parser,
+} from '../parser/parser';
 import { Activation, EmptyActivation, newActivation } from './activation';
 import {
   AttrFactory,
@@ -1676,11 +1681,11 @@ function program(
 
   // Parse the expression.
   const s = new TextSource(tst.expr);
-  const p = new Parser({
-    macros: [...AllMacros],
-    enableOptionalSyntax: true,
-    enableVariadicOperatorASTs: true,
-  });
+  const p = new Parser(
+    macros(...AllMacros),
+    enableOptionalSyntax(true),
+    enableVariadicOperatorASTs(true)
+  );
   const parsed = p.parse(s);
   if (p.errors.length() > 0) {
     return [null, null, new Error(p.errors.toDisplayString())];

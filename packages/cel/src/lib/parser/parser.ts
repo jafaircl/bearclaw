@@ -81,7 +81,7 @@ import {
 } from '../gen/CELParser';
 import { default as GeneratedCelVisitor } from '../gen/CELVisitor';
 import { ExprHelper, LogicManager, ParserHelper } from './helper';
-import { AllMacros, Macro, makeMacroKey, makeVarArgMacroKey } from './macro';
+import { Macro, makeMacroKey, makeVarArgMacroKey } from './macro';
 
 export const reservedIds = new Set([
   'as',
@@ -107,110 +107,181 @@ export const reservedIds = new Set([
   'while',
 ]);
 
-export interface ParserOptions {
-  /**
-   * MaxRecursionDepth limits the maximum depth the parser will attempt to
-   * parse the expression before giving up.
-   */
-  maxRecursionDepth?: number;
-  /**
-   * ErrorRecoveryLookaheadTokenLimit limits the number of lexer tokens that may be considered during error recovery.
-   *
-   * Error recovery often involves looking ahead in the input to determine if
-   * there's a point at which parsing may successfully resume. In some
-   * pathological cases, the parser can look through quite a large set of input
-   * which in turn generates a lot of back-tracking and performance degredation.
-   *
-   * The limit must be >= 1, and is recommended to be less than the default of
-   * 256.
-   */
-  errorRecoveryTokenLookaheadLimit?: number;
-  /**
-   * ErrorRecoveryLimit limits the number of attempts the parser will perform
-   * to recover from an error.
-   */
-  errorRecoveryLimit?: number;
-  /**
-   * ErrorReportingLimit limits the number of syntax error reports before
-   * terminating parsing.
-   *
-   * The limit must be at least 1. If unset, the limit will be 100.
-   */
-  errorReportingLimit?: number;
-  /**
-   * ExpressionSizeCodePointLimit is an option which limits the maximum code
-   * point count of an expression.
-   */
-  expressionSizeCodePointLimit?: number;
-  /**
-   * Macros adds the given macros to the parser.
-   */
-  macros?: Macro[];
-  /**
-   * PopulateMacroCalls ensures that the original call signatures replaced by
-   * expanded macros are preserved in the `SourceInfo` of parse result.
-   */
-  populateMacroCalls?: boolean;
-  /**
-   * EnableOptionalSyntax enables syntax for optional field and index selection.
-   */
-  enableOptionalSyntax?: boolean;
-  /**
-   * EnableVariadicOperatorASTs enables a compact representation of chained
-   * like-kind commutative operators. e.g. `a || b || c || d` -> `call(op='||',
-   * args=[a, b, c, d])`
-   *
-   * The benefit of enabling variadic operators ASTs is a more compact
-   * representation deeply nested logic graphs.
-   */
-  enableVariadicOperatorASTs?: boolean;
+/**
+ * ParserOption configures the behavior of the parser.
+ */
+export type ParserOption = (parser: Parser) => Parser;
+
+/**
+ * MaxRecursionDepth limits the maximum depth the parser will attempt to parse
+ * the expression before giving up.
+ */
+export function maxRecursionDepth(limit: number): ParserOption {
+  return (parser) => {
+    if (limit < -1) {
+      throw new Error(
+        `max recursion depth must be greater than or equal to -1: ${limit}`
+      );
+    }
+    parser.maxRecursionDepth = limit;
+    return parser;
+  };
+}
+
+/**
+ * ErrorRecoveryLookaheadTokenLimit limits the number of lexer tokens that may
+ * be considered during error recovery.
+ *
+ * Error recovery often involves looking ahead in the input to determine if
+ * there's a point at which parsing may successfully resume. In some
+ * pathological cases, the parser can look through quite a large set of input
+ * which in turn generates a lot of back-tracking and performance degredation.
+ *
+ * The limit must be >= 1, and is recommended to be less than the default of
+ * 256.
+ */
+export function errorRecoveryLookaheadTokenLimit(limit: number): ParserOption {
+  return (parser) => {
+    if (limit < 1) {
+      throw new Error(
+        `error recovery lookahead token limit must be at least 1: ${limit}`
+      );
+    }
+    parser.errorRecoveryTokenLookaheadLimit = limit;
+    return parser;
+  };
+}
+
+/**
+ * ErrorRecoveryLimit limits the number of attempts the parser will perform to
+ * recover from an error.
+ */
+export function errorRecoveryLimit(limit: number): ParserOption {
+  return (parser) => {
+    if (limit < -1) {
+      throw new Error(
+        `error recovery limit must be greater than or equal to -1: ${limit}`
+      );
+    }
+    parser.errorRecoveryLimit = limit;
+    return parser;
+  };
+}
+
+/**
+ * ErrorReportingLimit limits the number of syntax error reports before
+ * terminating parsing.
+ *
+ * The limit must be at least 1. If unset, the limit will be 100.
+ */
+export function errorReportingLimit(limit: number): ParserOption {
+  return (parser) => {
+    if (limit < 1) {
+      throw new Error(`error reporting limit must be at least 1: ${limit}`);
+    }
+    parser.errorReportingLimit = limit;
+    return parser;
+  };
+}
+
+/**
+ * ExpressionSizeCodePointLimit is an option which limits the maximum code
+ * point count of an expression.
+ */
+export function expressionSizeCodePointLimit(limit: number): ParserOption {
+  return (parser) => {
+    if (limit < -1) {
+      throw new Error(
+        `expression size code point limit must be greater than or equal to -1: ${limit}`
+      );
+    }
+    parser.expressionSizeCodePointLimit = limit;
+    return parser;
+  };
+}
+
+/**
+ * Macros adds the given macros to the parser.
+ */
+export function macros(...macros: Macro[]): ParserOption {
+  return (parser) => {
+    if (isNil(parser.macros)) {
+      parser.macros = new Map();
+    }
+    for (const m of macros) {
+      parser.macros.set(m.macroKey(), m);
+    }
+    return parser;
+  };
+}
+
+/**
+ * PopulateMacroCalls ensures that the original call signatures replaced by
+ * expanded macros are preserved in the `SourceInfo` of parse result.
+ */
+export function populateMacroCalls(flag: boolean): ParserOption {
+  return (parser) => {
+    parser.populateMacroCalls = flag;
+    return parser;
+  };
+}
+
+/**
+ * EnableOptionalSyntax enables syntax for optional field and index selection.
+ */
+export function enableOptionalSyntax(flag: boolean): ParserOption {
+  return (parser) => {
+    parser.enableOptionalSyntax = flag;
+    return parser;
+  };
+}
+
+/**
+ * EnableIdentEscapeSyntax enables backtick (`) escaped field identifiers. This
+ * supports extended types of characters in identifiers, e.g. foo.`baz-bar`.
+ */
+export function enableIdentEscapeSyntax(flag: boolean): ParserOption {
+  return (parser) => {
+    parser.enableIdentEscapeSyntax = flag;
+    return parser;
+  };
+}
+
+/**
+ * EnableVariadicOperatorASTs enables a compact representation of chained
+ * like-kind commutative operators. e.g.
+ * `a || b || c || d` -> `call(op='||', args=[a, b, c, d])`
+ *
+ * The benefit of enabling variadic operators ASTs is a more compact
+ * representation deeply nested logic graphs.
+ */
+export function enableVariadicOperatorASTs(flag: boolean): ParserOption {
+  return (parser) => {
+    parser.enableVariadicOperatorASTs = flag;
+    return parser;
+  };
 }
 
 export class Parser extends GeneratedCelVisitor<Expr> {
   #source!: Source;
   #helper!: ParserHelper;
   #errors!: Errors;
-  #macros: Map<string, Macro> = new Map();
-  #errorReportingLimit = 100;
   #recursionDepth = 0;
-  #maxRecursionDepth = 250;
-  #errorRecoveryTokenLookaheadLimit = 256;
-  #errorRecoveryLimit = 30;
-  #expressionSizeCodePointLimit = 100_000;
-  #enableOptionalSyntax = false;
+  maxRecursionDepth = 250;
+  errorReportingLimit = 100;
+  errorRecoveryTokenLookaheadLimit = 256;
+  errorRecoveryLimit = 30;
+  expressionSizeCodePointLimit = 100_000;
+  macros: Map<string, Macro> = new Map();
+  populateMacroCalls = false;
+  enableOptionalSyntax = false;
+  enableVariadicOperatorASTs = false;
+  enableIdentEscapeSyntax = false;
 
-  constructor(private readonly options?: ParserOptions) {
+  constructor(...options: ParserOption[]) {
     super();
-    if (this.options?.errorReportingLimit) {
-      this.#errorReportingLimit = this.options.errorReportingLimit;
-    }
-    if (this.options?.maxRecursionDepth) {
-      this.#maxRecursionDepth = this.options.maxRecursionDepth;
-    }
-    if (this.options?.errorRecoveryTokenLookaheadLimit) {
-      this.#errorRecoveryTokenLookaheadLimit =
-        this.options.errorRecoveryTokenLookaheadLimit;
-    }
-    if (this.options?.errorRecoveryLimit) {
-      this.#errorRecoveryLimit = this.options.errorRecoveryLimit;
-    }
-    if (this.options?.expressionSizeCodePointLimit) {
-      this.#expressionSizeCodePointLimit =
-        this.options.expressionSizeCodePointLimit;
-    }
-    if (!isNil(this.options?.enableOptionalSyntax)) {
-      this.#enableOptionalSyntax = this.options.enableOptionalSyntax;
-    }
-    // If the parser options include macros, add them to the parser. Otherwise,
-    // add the default set of macros.
-    if (this.options?.macros) {
-      for (const macro of this.options.macros) {
-        this.#macros.set(macro.macroKey(), macro);
-      }
-    } else {
-      for (const macro of AllMacros) {
-        this.#macros.set(macro.macroKey(), macro);
-      }
+    for (const option of options) {
+      option(this);
     }
   }
 
@@ -232,7 +303,7 @@ export class Parser extends GeneratedCelVisitor<Expr> {
     const parser = new GenCELParser(tokens);
     parser.removeErrorListeners();
     parser.addErrorListener(new ParserErrorListener(this.#errors));
-    parser.addParseListener(new RecursionListener(this.#maxRecursionDepth));
+    parser.addParseListener(new RecursionListener(this.maxRecursionDepth));
 
     const expr = this.visit(parser.start());
     return new AST(expr, this.#helper.getSourceInfo());
@@ -386,7 +457,7 @@ export class Parser extends GeneratedCelVisitor<Expr> {
     }
     const id = ctx._id.text;
     if (!isNil(ctx._opt)) {
-      if (!this.#enableOptionalSyntax) {
+      if (!this.enableOptionalSyntax) {
         return this._reportError(ctx._op, "unsupported syntax '.?'");
       }
       return this.#helper.newGlobalCall(
@@ -413,7 +484,7 @@ export class Parser extends GeneratedCelVisitor<Expr> {
     const index = this.visit(ctx._index);
     let operator = INDEX_OPERATOR;
     if (!isNil(ctx._opt)) {
-      if (this.#enableOptionalSyntax === false) {
+      if (this.enableOptionalSyntax === false) {
         return this._reportError(ctx._op, "unsupported syntax '[?'");
       }
       operator = OPT_INDEX_OPERATOR;
@@ -518,7 +589,7 @@ export class Parser extends GeneratedCelVisitor<Expr> {
       }
       result.push(ex);
       if (elements[i]._opt != null) {
-        if (this.#enableOptionalSyntax === false) {
+        if (this.enableOptionalSyntax === false) {
           this._reportError(elements[i], "unsupported syntax '?'");
           continue;
         }
@@ -546,7 +617,7 @@ export class Parser extends GeneratedCelVisitor<Expr> {
       const initID = this.#helper.id(cols[i]);
       const optField = ctx._fields[i];
       const optional = !isNil(optField._opt);
-      if (this.#enableOptionalSyntax === false && optional) {
+      if (this.enableOptionalSyntax === false && optional) {
         this._reportError(optField, "unsupported syntax '?'");
         continue;
       }
@@ -590,7 +661,7 @@ export class Parser extends GeneratedCelVisitor<Expr> {
       }
       const optKey = keys[i];
       const optional = !isNil(optKey._opt);
-      if (this.#enableOptionalSyntax === false && optional) {
+      if (this.enableOptionalSyntax === false && optional) {
         this._reportError(optKey, "unsupported syntax '?'");
         continue;
       }
@@ -768,9 +839,9 @@ export class Parser extends GeneratedCelVisitor<Expr> {
     target: Expr | null,
     args: Expr[]
   ) {
-    let macro = this.#macros.get(makeMacroKey(fn, args.length, !isNil(target)));
+    let macro = this.macros.get(makeMacroKey(fn, args.length, !isNil(target)));
     if (isNil(macro)) {
-      macro = this.#macros.get(makeVarArgMacroKey(fn, !isNil(target)));
+      macro = this.macros.get(makeVarArgMacroKey(fn, !isNil(target)));
       if (isNil(macro)) {
         return null;
       }
@@ -792,7 +863,7 @@ export class Parser extends GeneratedCelVisitor<Expr> {
     if (isNil(expr)) {
       return null;
     }
-    if (this.options?.populateMacroCalls) {
+    if (this.populateMacroCalls) {
       this.#helper.addMacroCall(exprID, fn, target, ...args);
     }
     this.#helper.deleteId(exprID);
@@ -827,7 +898,7 @@ export class Parser extends GeneratedCelVisitor<Expr> {
 
   private _checkAndIncrementRecusionDepth() {
     this.#recursionDepth++;
-    if (this.#recursionDepth > this.#maxRecursionDepth) {
+    if (this.#recursionDepth > this.maxRecursionDepth) {
       return this.errors.reportInternalError('max recursion depth exceeded');
     }
   }

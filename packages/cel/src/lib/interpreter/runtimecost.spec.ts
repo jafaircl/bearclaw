@@ -35,7 +35,7 @@ import {
 } from '../common/types/types';
 import { objectToMap } from '../common/utils';
 import { AllMacros } from '../parser/macro';
-import { Parser } from '../parser/parser';
+import { macros, Parser } from '../parser/parser';
 import { Activation, EmptyActivation, newActivation } from './activation';
 import { AttrFactory } from './attributes';
 import { DefaultDispatcher } from './dispatcher';
@@ -498,7 +498,7 @@ function computeCost(
   options: CostTrackerOption[]
 ): [bigint | null, CostEstimate | null] {
   const s = new TextSource(expr);
-  const p = new Parser({ macros: [...AllMacros] });
+  const p = new Parser(macros(...AllMacros));
   const parsed = p.parse(s);
 
   const cont = new Container();

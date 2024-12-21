@@ -16,8 +16,11 @@ import { isType } from '../common/types/types';
 import {
   Activation,
   EmptyActivation,
+  HierarchicalActivation,
   MapActivation,
+  newActivation,
 } from '../interpreter/activation';
+import { InterpretableDecorator } from '../interpreter/decorators';
 import { Macro } from '../parser/macro';
 import { Declaration, maybeUnwrapDeclaration, Type, variable } from './decls';
 import { EnvBase } from './env';
@@ -256,6 +259,43 @@ export function types(...types: (DescMessage | DescEnum | Type)[]): EnvOption {
  * and behaviors.
  */
 export type ProgramOption = (p: prog) => prog;
+
+/**
+ * CustomDecorator appends an InterpreterDecorator to the program.
+ *
+ * InterpretableDecorators can be used to inspect, alter, or replace the
+ * Program plan.
+ */
+export function customDecorator(dec: InterpretableDecorator): ProgramOption {
+  return (p) => {
+    p.decorators.push(dec);
+    return p;
+  };
+}
+
+/**
+ * Globals sets the global variable values for a given program. These values
+ * may be shadowed by variables with the same name provided to the Eval() call.
+ * If Globals is used in a Library with a Lib EnvOption, vars may shadow
+ * variables provided by previously added libraries.
+ *
+ * The vars value may either be an `interpreter.Activation` instance or a
+ * `map[string]any`.
+ */
+export function globals(
+  vars: Activation | Record<string, any> | Map<string, any>
+): ProgramOption {
+  return (p) => {
+    let defaultVars = newActivation(vars);
+    if (!isNil(p.defaultVars)) {
+      defaultVars = new HierarchicalActivation(p.defaultVars, defaultVars);
+    }
+    p.defaultVars = defaultVars;
+    return p;
+  };
+}
+
+// TODO: optimizeregex
 
 /**
  * EvalOption indicates an evaluation option that may affect the evaluation
