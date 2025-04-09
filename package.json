@@ -54,6 +54,7 @@
   "dependencies": {
     "@buf/cel_spec.bufbuild_es": "^2.1.0-20230602032904-0583f28ce7d3.1",
     "@buf/google_cel-spec.bufbuild_es": "^2.1.0-20240829202630-b69910e4e9bc.1",
+    "@buf/googleapis_googleapis.bufbuild_es": "^2.2.5-20250303202749-751cbe31638d.1",
     "@bufbuild/protobuf": "^2.1.0",
     "@vvo/tzdb": "^6.149.0",
     "antlr4": "^4.13.2",

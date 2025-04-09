@@ -1,0 +1,12 @@
+{
+  "name": "@bearclaw/aip",
+  "version": "0.0.1",
+  "dependencies": {
+    "@bearclaw/is": "^0.3.1",
+    "@buf/googleapis_googleapis.bufbuild_es": "^2.2.5-20250303202749-751cbe31638d.1",
+    "@bufbuild/protobuf": "^2.1.0"
+  },
+  "main": "./index.js",
+  "module": "./index.mjs",
+  "typings": "./index.d.ts"
+}

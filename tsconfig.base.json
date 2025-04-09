@@ -16,6 +16,7 @@
     "skipDefaultLibCheck": true,
     "baseUrl": ".",
     "paths": {
+      "@bearclaw/aip": ["packages/aip/src/index.ts"],
       "@bearclaw/cel": ["packages/cel/src/index.ts"],
       "@bearclaw/collections": ["packages/collections/src/index.ts"],
       "@bearclaw/immutable-class": ["packages/immutable-class/src/index.ts"],
