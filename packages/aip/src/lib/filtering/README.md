@@ -1,6 +1,8 @@
-# AIP Filtering
+# AIP-160: Filtering
 
-This package provides a way to parse and type-check the filtering grammar described by [AIP-160](https://google.aip.dev/160). You can parse filter strings into [protobuf-es](https://github.com/bufbuild/protobuf-es) `ParsedExpr` message objects like so:
+This package provides a way to parse and type-check the filtering grammar described by [AIP-160](https://google.aip.dev/160).
+
+You can parse filter strings into [protobuf-es](https://github.com/bufbuild/protobuf-es) `ParsedExpr` message objects like so:
 
 ```ts
 import { parseFilter } from '@bearclaw/aip';

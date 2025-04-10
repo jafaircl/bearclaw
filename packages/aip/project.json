@@ -43,6 +43,13 @@
     },
     "lint": {
       "executor": "@nx/eslint:lint"
+    },
+    "genproto": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "npx buf generate",
+        "cwd": "packages/aip"
+      }
     }
   }
 }

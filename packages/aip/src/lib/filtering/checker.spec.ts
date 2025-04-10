@@ -428,6 +428,15 @@ describe('Checker', () => {
       descriptors: [TestAllTypesSchema],
     },
     {
+      filter: 'a.abc',
+      declarations: [
+        ...standardFunctionDeclarations(),
+        newIdentDeclaration('a', typeMessage(TestAllTypesSchema.typeName)),
+      ],
+      descriptors: [TestAllTypesSchema],
+      errorContains: `unknown field 'abc' for message type`,
+    },
+    {
       filter: 'a.single_int64',
       declarations: [
         ...standardFunctionDeclarations(),

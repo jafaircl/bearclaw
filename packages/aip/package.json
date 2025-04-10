@@ -4,7 +4,8 @@
   "dependencies": {
     "@bearclaw/is": "^0.3.1",
     "@buf/googleapis_googleapis.bufbuild_es": "^2.2.5-20250303202749-751cbe31638d.1",
-    "@bufbuild/protobuf": "^2.1.0"
+    "@bufbuild/protobuf": "^2.2.5",
+    "crc": "^4.3.2"
   },
   "main": "./index.js",
   "module": "./index.mjs",
