@@ -1,12 +1,11 @@
 import { isNil } from '@bearclaw/is';
 import {
+  clearField,
   clone,
   DescMessage,
   Message,
-  ScalarType,
   toBinary,
 } from '@bufbuild/protobuf';
-import { isScalarZeroValue, scalarZeroValue } from '@bufbuild/protobuf/reflect';
 import { crc32 } from 'crc';
 
 /**
@@ -44,23 +43,17 @@ export function calculateRequestCheckSum<T extends string = string>(
   request: RequestMessage<T>
 ): number {
   const clonedRequest = clone(schema, request) as RequestMessage<T>;
-  if (
-    !isNil(clonedRequest.pageToken) &&
-    !isScalarZeroValue(ScalarType.STRING, clonedRequest.pageToken)
-  ) {
-    clonedRequest.pageToken = scalarZeroValue(ScalarType.STRING, false);
+  const pageTokenField = schema.fields.find((f) => f.name === 'page_token');
+  if (!isNil(pageTokenField)) {
+    clearField(clonedRequest, pageTokenField);
   }
-  if (
-    !isNil(clonedRequest.pageSize) &&
-    !isScalarZeroValue(ScalarType.INT32, clonedRequest.pageSize)
-  ) {
-    clonedRequest.pageSize = scalarZeroValue(ScalarType.INT32, false);
+  const pageSizeField = schema.fields.find((f) => f.name === 'page_size');
+  if (!isNil(pageSizeField)) {
+    clearField(clonedRequest, pageSizeField);
   }
-  if (
-    !isNil(clonedRequest.skip) &&
-    !isScalarZeroValue(ScalarType.INT32, clonedRequest.skip)
-  ) {
-    clonedRequest.skip = scalarZeroValue(ScalarType.INT32, false);
+  const skipField = schema.fields.find((f) => f.name === 'skip');
+  if (!isNil(skipField)) {
+    clearField(clonedRequest, skipField);
   }
 
   const bin = toBinary(schema, clonedRequest);
