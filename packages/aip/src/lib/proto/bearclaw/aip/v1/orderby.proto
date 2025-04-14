@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package bearclaw.aip.v1;
+
+message TestOrderBy {
+  message TestOrderByChild {
+    string name = 1;
+  }
+
+  string name = 1;
+
+  string description = 2;
+
+  TestOrderByChild child = 3;
+}
