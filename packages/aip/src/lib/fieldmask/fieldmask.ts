@@ -31,7 +31,11 @@ export function fieldMaskIsEmpty(fieldMask: FieldMask) {
  */
 export function fieldMaskHasPath(fieldMask: FieldMask, path: string) {
   for (const p of fieldMask.paths) {
-    if (p === '*' || p === path) {
+    // Wildcards, e.g. "*", match any path.
+    // If the path is equal to the passed path, it matches.
+    // If the path starts with the passed path and a dot, it matches.
+    // i.e. "foo.bar" matches "foo.bar.baz"
+    if (p === '*' || p === path || path.startsWith(p + '.')) {
       return true;
     }
   }

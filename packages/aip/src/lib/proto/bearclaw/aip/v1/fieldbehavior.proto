@@ -1,0 +1,157 @@
+syntax = "proto3";
+
+package bearclaw.aip.v1;
+
+import "google/api/field_behavior.proto";
+
+message TestFieldBehavior {
+  string normal = 1;
+
+  string identifier = 2 [(google.api.field_behavior) = IDENTIFIER];
+
+  string immutable = 3 [(google.api.field_behavior) = IMMUTABLE];
+
+  string input_only = 4 [(google.api.field_behavior) = INPUT_ONLY];
+
+  string optional = 5 [(google.api.field_behavior) = OPTIONAL];
+
+  string output_only = 6 [(google.api.field_behavior) = OUTPUT_ONLY];
+
+  string required = 7 [(google.api.field_behavior) = REQUIRED];
+
+  string unordered_list = 8 [(google.api.field_behavior) = UNORDERED_LIST];
+
+  repeated string repeated_identifier = 9 [(google.api.field_behavior) = IDENTIFIER];
+
+  repeated string repeated_immutable = 10 [(google.api.field_behavior) = IMMUTABLE];
+
+  repeated string repeated_input_only = 11 [(google.api.field_behavior) = INPUT_ONLY];
+
+  repeated string repeated_optional = 12 [(google.api.field_behavior) = OPTIONAL];
+
+  repeated string repeated_output_only = 13 [(google.api.field_behavior) = OUTPUT_ONLY];
+
+  repeated string repeated_required = 14 [(google.api.field_behavior) = REQUIRED];
+
+  repeated string repeated_unordered_list = 15 [(google.api.field_behavior) = UNORDERED_LIST];
+
+  TestFieldBehavior normal_child = 16;
+
+  TestFieldBehavior identifier_child = 17 [(google.api.field_behavior) = IDENTIFIER];
+
+  TestFieldBehavior immutable_child = 18 [(google.api.field_behavior) = IMMUTABLE];
+
+  TestFieldBehavior input_only_child = 19 [(google.api.field_behavior) = INPUT_ONLY];
+
+  TestFieldBehavior optional_child = 20 [(google.api.field_behavior) = OPTIONAL];
+
+  TestFieldBehavior output_only_child = 21 [(google.api.field_behavior) = OUTPUT_ONLY];
+
+  TestFieldBehavior required_child = 22 [(google.api.field_behavior) = REQUIRED];
+
+  TestFieldBehavior unordered_list_child = 23 [(google.api.field_behavior) = UNORDERED_LIST];
+
+  repeated TestFieldBehavior repeated_normal_child = 24;
+
+  repeated TestFieldBehavior repeated_identifier_child = 25 [(google.api.field_behavior) = IDENTIFIER];
+
+  repeated TestFieldBehavior repeated_immutable_child = 26 [(google.api.field_behavior) = IMMUTABLE];
+
+  repeated TestFieldBehavior repeated_input_only_child = 27 [(google.api.field_behavior) = INPUT_ONLY];
+
+  repeated TestFieldBehavior repeated_optional_child = 28 [(google.api.field_behavior) = OPTIONAL];
+
+  repeated TestFieldBehavior repeated_output_only_child = 29 [(google.api.field_behavior) = OUTPUT_ONLY];
+
+  repeated TestFieldBehavior repeated_required_child = 30 [(google.api.field_behavior) = REQUIRED];
+
+  repeated TestFieldBehavior repeated_unordered_list_child = 31 [(google.api.field_behavior) = UNORDERED_LIST];
+
+  map<string, string> map_normal = 32;
+
+  map<string, string> map_identifier = 33 [(google.api.field_behavior) = IDENTIFIER];
+
+  map<string, string> map_immutable = 34 [(google.api.field_behavior) = IMMUTABLE];
+
+  map<string, string> map_input_only = 35 [(google.api.field_behavior) = INPUT_ONLY];
+
+  map<string, string> map_optional = 36 [(google.api.field_behavior) = OPTIONAL];
+
+  map<string, string> map_output_only = 37 [(google.api.field_behavior) = OUTPUT_ONLY];
+
+  map<string, string> map_required = 38 [(google.api.field_behavior) = REQUIRED];
+
+  map<string, string> map_unordered_list = 39 [(google.api.field_behavior) = UNORDERED_LIST];
+
+  map<string, TestFieldBehavior> map_normal_child = 40;
+
+  map<string, TestFieldBehavior> map_identifier_child = 41 [(google.api.field_behavior) = IDENTIFIER];
+
+  map<string, TestFieldBehavior> map_immutable_child = 42 [(google.api.field_behavior) = IMMUTABLE];
+
+  map<string, TestFieldBehavior> map_input_only_child = 43 [(google.api.field_behavior) = INPUT_ONLY];
+
+  map<string, TestFieldBehavior> map_optional_child = 44 [(google.api.field_behavior) = OPTIONAL];
+
+  map<string, TestFieldBehavior> map_output_only_child = 45 [(google.api.field_behavior) = OUTPUT_ONLY];
+
+  map<string, TestFieldBehavior> map_required_child = 46 [(google.api.field_behavior) = REQUIRED];
+
+  map<string, TestFieldBehavior> map_unordered_list_child = 47 [(google.api.field_behavior) = UNORDERED_LIST];
+
+  oneof oneof {
+    string normal_oneof = 48;
+
+    TestFieldBehavior normal_oneof_child = 49;
+
+    string identifier_oneof = 50 [(google.api.field_behavior) = IDENTIFIER];
+
+    string immutable_oneof = 51 [(google.api.field_behavior) = IMMUTABLE];
+
+    string input_only_oneof = 52 [(google.api.field_behavior) = INPUT_ONLY];
+
+    string optional_oneof = 53 [(google.api.field_behavior) = OPTIONAL];
+
+    string output_only_oneof = 54 [(google.api.field_behavior) = OUTPUT_ONLY];
+
+    string required_oneof = 55 [(google.api.field_behavior) = REQUIRED];
+
+    string unordered_list_oneof = 56 [(google.api.field_behavior) = UNORDERED_LIST];
+  }
+}
+
+message TestRequiredFieldBehavior {
+  message Child {
+    string normal = 1;
+
+    string required = 2 [(google.api.field_behavior) = REQUIRED];
+  }
+
+  string normal = 1;
+
+  string required = 2 [(google.api.field_behavior) = REQUIRED];
+
+  Child child = 3;
+
+  repeated Child repeated_child = 4;
+
+  map<string, Child> map_child = 5;
+}
+
+message TestImmutableFieldBehavior {
+  message Child {
+    string normal = 1;
+
+    string immutable = 2 [(google.api.field_behavior) = IMMUTABLE];
+  }
+
+  string normal = 1;
+
+  string immutable = 2 [(google.api.field_behavior) = IMMUTABLE];
+
+  Child child = 3;
+
+  repeated Child repeated_child = 4;
+
+  map<string, Child> map_child = 5;
+}

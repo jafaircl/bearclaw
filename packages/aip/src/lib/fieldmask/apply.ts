@@ -5,15 +5,14 @@ import {
   clearField,
   clone,
   create,
-  DescField,
   DescMessage,
   isFieldSet,
   Message,
   MessageShape,
   toJsonString,
 } from '@bufbuild/protobuf';
-import { ScalarValue } from '@bufbuild/protobuf/reflect';
 import { FieldMask, FieldMaskSchema } from '@bufbuild/protobuf/wkt';
+import { getField, setField } from '../common/fields';
 import { isValidFieldMask } from './validate';
 
 /**
@@ -133,45 +132,4 @@ function applyPath<Desc extends DescMessage>(
     default:
       break;
   }
-}
-
-function setField<Desc extends DescMessage>(
-  message: MessageShape<Desc>,
-  field: DescField,
-  value: any
-) {
-  if (field.parent.typeName !== message.$typeName) {
-    return;
-  }
-  if (field.oneof) {
-    message[field.oneof.localName as keyof MessageShape<Desc>] = {
-      case: field.localName,
-      value,
-    } as any;
-  } else {
-    message[field.localName as keyof MessageShape<Desc>] = value;
-  }
-}
-
-type OneofADT =
-  | { case: undefined; value?: undefined }
-  | { case: string; value: Message | ScalarValue };
-
-function getField<Desc extends DescMessage>(
-  message: MessageShape<Desc>,
-  field: DescField
-) {
-  if (field.parent.typeName !== message.$typeName) {
-    return;
-  }
-  if (field.oneof) {
-    const oneof = message[
-      field.oneof.localName as keyof MessageShape<Desc>
-    ] as OneofADT;
-    if (oneof.case === field.localName) {
-      return oneof.value;
-    }
-    return undefined;
-  }
-  return message[field.localName as keyof MessageShape<Desc>];
 }
