@@ -1,6 +1,7 @@
 import { isNil } from '@bearclaw/is';
 import { DescMessage, ScalarType } from '@bufbuild/protobuf';
 import { isScalarZeroValue } from '@bufbuild/protobuf/reflect';
+import { InvalidArgumentError } from '../errors';
 import { calculateRequestCheckSum, RequestMessage } from './request';
 
 /**
@@ -93,8 +94,19 @@ export function parsePageToken<T extends string = string>(
   }
   const pageToken = decodePageTokenStruct(request.pageToken);
   if (pageToken.requestChecksum !== requestCheckSum) {
-    throw new Error(
-      `invalid page token: checksum mismatch got 0x${pageToken.requestChecksum} but expected 0x${requestCheckSum}`
+    throw new InvalidArgumentError(
+      `invalid page token: checksum mismatch got 0x${pageToken.requestChecksum} but expected 0x${requestCheckSum}`,
+      {
+        errorInfo: {
+          reason: 'PAGE_TOKEN_CHECKSUM_MISMATCH',
+          domain: 'bearclaw.aip.pagination',
+          metadata: {
+            pageToken: request.pageToken,
+            got: `0x${pageToken.requestChecksum}`,
+            expected: `0x${requestCheckSum}`,
+          },
+        },
+      }
     );
   }
   if (!isNil(request.skip)) {

@@ -10,6 +10,7 @@ import {
 } from '@bufbuild/protobuf';
 import { FieldMask } from '@bufbuild/protobuf/wkt';
 import { getField } from '../common/fields';
+import { InvalidArgumentError } from '../errors/errors';
 import {
   fieldMask,
   fieldMaskHasPath,
@@ -87,7 +88,15 @@ function _validateRequiredFields<Desc extends DescMessage>(
       (fieldMaskHasPath(fieldMask, currPath) ||
         (parentIsListOrMap && fieldMaskHasPath(fieldMask, listOrMapCurrPath)))
     ) {
-      throw new Error(`missing required field: ${currPath}`);
+      throw new InvalidArgumentError(`missing required field: ${currPath}`, {
+        errorInfo: {
+          reason: 'REQUIRED_FIELD',
+          domain: 'bearclaw.aip.fieldbehavior',
+          metadata: {
+            field: currPath,
+          },
+        },
+      });
     } else if (field.message) {
       const value = getField(message, field);
       switch (field.fieldKind) {

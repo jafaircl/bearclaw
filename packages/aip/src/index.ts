@@ -1,3 +1,4 @@
+export * from './lib/errors';
 export * from './lib/fieldbehavior';
 export * from './lib/fieldmask';
 export * from './lib/filtering';

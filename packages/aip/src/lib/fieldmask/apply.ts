@@ -13,6 +13,7 @@ import {
 } from '@bufbuild/protobuf';
 import { FieldMask, FieldMaskSchema } from '@bufbuild/protobuf/wkt';
 import { getField, setField } from '../common/fields';
+import { InvalidArgumentError } from '../errors';
 import { isValidFieldMask } from './validate';
 
 /**
@@ -34,11 +35,19 @@ export function applyFieldMask<Desc extends DescMessage>(
   inverse = false
 ) {
   if (!isValidFieldMask(fieldMask, schema)) {
-    throw new Error(
-      `invalid field mask for schema ${schema.typeName}: ${toJsonString(
-        FieldMaskSchema,
-        fieldMask
-      )}`
+    const fieldMaskString = toJsonString(FieldMaskSchema, fieldMask);
+    throw new InvalidArgumentError(
+      `invalid field mask for schema ${schema.typeName}: ${fieldMaskString}`,
+      {
+        errorInfo: {
+          reason: 'INVALID_FIELD_MASK',
+          domain: 'bearclaw.aip.fieldmask',
+          metadata: {
+            fieldMask: fieldMaskString,
+            messageType: schema.typeName,
+          },
+        },
+      }
     );
   }
   const copy = inverse ? clone(schema, message) : create(schema);

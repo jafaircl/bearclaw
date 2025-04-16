@@ -1,6 +1,7 @@
 /* eslint-disable no-case-declarations */
 
 import { DescMessage } from '@bufbuild/protobuf';
+import { InvalidArgumentError } from '../errors';
 import { fieldMask, isValidFieldMask } from '../fieldmask';
 
 /**
@@ -86,7 +87,19 @@ export function parseOrderBy(str: string) {
   for (const char of str) {
     // Check if the character is a valid character for a field name or a space
     if (!/^[a-zA-Z0-9_., ]+$/.test(char)) {
-      throw new Error(`parse order by '${str}': invalid character '${char}'`);
+      throw new InvalidArgumentError(
+        `parse order by '${str}': invalid character '${char}'`,
+        {
+          errorInfo: {
+            reason: 'INVALID_CHARACTER',
+            domain: 'bearclaw.aip.orderby',
+            metadata: {
+              orderBy: str,
+              char,
+            },
+          },
+        }
+      );
     }
   }
   const fields: Field[] = [];
@@ -94,7 +107,18 @@ export function parseOrderBy(str: string) {
   for (const field of candidates) {
     const parts = field.split(' ').map((s) => s.trim());
     if (parts[0] === '') {
-      throw new Error(`parse order by '${str}': invalid format`);
+      throw new InvalidArgumentError(
+        `parse order by '${str}': invalid format`,
+        {
+          errorInfo: {
+            reason: 'MISSING_FIELD_NAME',
+            domain: 'bearclaw.aip.orderby',
+            metadata: {
+              orderBy: str,
+            },
+          },
+        }
+      );
     }
     switch (parts.length) {
       case 1:
@@ -112,12 +136,34 @@ export function parseOrderBy(str: string) {
             desc = true;
             break;
           default:
-            throw new Error(`parse order by '${str}': invalid format`);
+            throw new InvalidArgumentError(
+              `parse order by '${str}': invalid format`,
+              {
+                errorInfo: {
+                  reason: 'INVALID_SORT_ORDER',
+                  domain: 'bearclaw.aip.orderby',
+                  metadata: {
+                    orderBy: str,
+                  },
+                },
+              }
+            );
         }
         fields.push(new Field(parts[0], desc));
         break;
       default:
-        throw new Error(`parse order by '${str}': invalid format`);
+        throw new InvalidArgumentError(
+          `parse order by '${str}': invalid format`,
+          {
+            errorInfo: {
+              reason: 'INVALID_FORMAT',
+              domain: 'bearclaw.aip.orderby',
+              metadata: {
+                orderBy: str,
+              },
+            },
+          }
+        );
     }
   }
   return new OrderBy(fields);
@@ -138,7 +184,19 @@ export function parseAndValidateOrderBy(
 ): OrderBy | undefined {
   const orderBy = parseOrderBy(str);
   if (!orderBy.validateForMessage(desc)) {
-    throw new Error(`invalid order by '${str}' for message ${desc.typeName}`);
+    throw new InvalidArgumentError(
+      `invalid order by '${str}' for message ${desc.typeName}`,
+      {
+        errorInfo: {
+          reason: 'INVALID_MESSAGE_FIELDS',
+          domain: 'bearclaw.aip.orderby',
+          metadata: {
+            orderBy: str,
+            messageType: desc.typeName,
+          },
+        },
+      }
+    );
   }
   return orderBy;
 }
