@@ -16,7 +16,7 @@ import { ExprSchema } from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb.
 import { create, DescMessage } from '@bufbuild/protobuf';
 import { Checker } from '../checker/checker';
 import { Env } from '../checker/env';
-import { Container } from '../common/container';
+import { abbrevs, Container, name as containerName } from '../common/container';
 import {
   FunctionDecl,
   newVariableDecl,
@@ -52,9 +52,18 @@ import {
 } from '../common/types/types';
 import { objectToMap } from '../common/utils';
 import { AllMacros } from '../parser/macro';
-import { Parser } from '../parser/parser';
+import {
+  enableOptionalSyntax,
+  enableVariadicOperatorASTs,
+  macros,
+  Parser,
+} from '../parser/parser';
 import { Activation, EmptyActivation, newActivation } from './activation';
-import { AttrFactory, AttributeFactory } from './attributes';
+import {
+  AttrFactory,
+  AttributeFactory,
+  enableErrorOnBadPresenceTest,
+} from './attributes';
 import { InterpretableDecorator } from './decorators';
 import { Interpretable } from './interpretable';
 
@@ -1578,10 +1587,10 @@ describe('interpreter', () => {
       expr: `has(dyn(1).invalid)`,
       err: 'no such key: invalid',
       attrs: new AttrFactory(
-        new Container(''),
+        new Container(),
         new Registry(),
         new Registry(),
-        { enableErrorOnBadPresenceTest: true }
+        enableErrorOnBadPresenceTest(true)
       ),
     },
     {
@@ -1589,10 +1598,10 @@ describe('interpreter', () => {
       expr: `has(dyn([]).invalid)`,
       err: "unsupported index type 'string' in list",
       attrs: new AttrFactory(
-        new Container(''),
+        new Container(),
         new Registry(),
         new Registry(),
-        { enableErrorOnBadPresenceTest: true }
+        enableErrorOnBadPresenceTest(true)
       ),
     },
     {
@@ -1635,9 +1644,9 @@ function program(
   ...opts: InterpretableDecorator[]
 ): [Interpretable | null, Activation | null, Error | null] {
   // Configure the package.
-  const cont = new Container(tst.container);
+  let cont = new Container(containerName(tst.container ?? ''));
   if (!isNil(tst.abbrevs)) {
-    cont.addAbbrevs(...tst.abbrevs);
+    cont = cont.extend(abbrevs(...tst.abbrevs));
   }
   const reg = new Registry();
   if (!isNil(tst.types)) {
@@ -1672,11 +1681,11 @@ function program(
 
   // Parse the expression.
   const s = new TextSource(tst.expr);
-  const p = new Parser({
-    macros: [...AllMacros],
-    enableOptionalSyntax: true,
-    enableVariadicOperatorASTs: true,
-  });
+  const p = new Parser(
+    macros(...AllMacros),
+    enableOptionalSyntax(true),
+    enableVariadicOperatorASTs(true)
+  );
   const parsed = p.parse(s);
   if (p.errors.length() > 0) {
     return [null, null, new Error(p.errors.toDisplayString())];

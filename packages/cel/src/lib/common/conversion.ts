@@ -11,6 +11,8 @@ import {
 import {
   Constant,
   Expr,
+  ParsedExpr,
+  ParsedExprSchema,
   SourceInfo as ProtoSourceInfo,
   SourceInfoSchema,
 } from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb.js';
@@ -21,9 +23,31 @@ import { RefVal } from './ref/reference';
 import { exprTypeToType, Type, typeToExprType } from './types/types';
 
 /**
- * ToProto converts an AST to a CheckedExpr protobouf.
+ * ToParsedExprProto converts an AST to a CheckedExpr protobouf.
  */
-export function toProto(ast: AST): CheckedExpr {
+export function toParsedExprProto(ast: AST): ParsedExpr {
+  const info = sourceInfoToProto(ast.sourceInfo());
+  return create(ParsedExprSchema, {
+    expr: ast.expr(),
+    sourceInfo: info,
+  });
+}
+
+/**
+ * ParsedExprToAST converts a ParsedExpr protobuf to an AST instance.
+ */
+export function parsedExprToAST(expr: ParsedExpr): AST {
+  if (isNil(expr.sourceInfo)) {
+    throw new Error('sourceInfo is required');
+  }
+  const info = protoToSourceInfo(expr.sourceInfo);
+  return new AST(expr.expr!, info);
+}
+
+/**
+ * ToCheckedExprProto converts an AST to a CheckedExpr protobouf.
+ */
+export function toCheckedExprProto(ast: AST): CheckedExpr {
   const refMap: Record<string, Reference> = {};
   for (const [id, ref] of ast.referenceMap()) {
     refMap[id.toString()] = referenceInfoToProto(ref);
@@ -46,9 +70,9 @@ export function toProto(ast: AST): CheckedExpr {
 }
 
 /**
- * ToAST converts a CheckedExpr protobuf to an AST instance.
+ * CheckedExprToAST converts a CheckedExpr protobuf to an AST instance.
  */
-export function toAST(expr: CheckedExpr): AST {
+export function checkedExprToAST(expr: CheckedExpr): AST {
   const refMap = new Map<bigint, ReferenceInfo>();
   for (const [id, ref] of Object.entries(expr.referenceMap)) {
     refMap.set(BigInt(id), protoToReferenceInfo(ref));

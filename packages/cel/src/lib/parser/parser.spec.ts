@@ -9,8 +9,8 @@ import {
   EQUALS_OPERATOR,
   GREATER_EQUALS_OPERATOR,
   GREATER_OPERATOR,
-  INDEX_OPERATOR,
   IN_OPERATOR,
+  INDEX_OPERATOR,
   LESS_EQUALS_OPERATOR,
   LESS_OPERATOR,
   LOGICAL_AND_OPERATOR,
@@ -46,8 +46,17 @@ import {
   newUintProtoExpr,
 } from '../common/pb/expressions';
 import { TextSource } from './../common/source';
-import { AccumulatorName } from './macro';
-import { Parser, ParserOptions } from './parser';
+import { AccumulatorName, AllMacros } from './macro';
+import {
+  enableOptionalSyntax,
+  errorRecoveryLimit,
+  errorRecoveryLookaheadTokenLimit,
+  macros,
+  maxRecursionDepth,
+  Parser,
+  ParserOption,
+  populateMacroCalls,
+} from './parser';
 
 interface TestInfo {
   // I contains the input expression to be parsed.
@@ -66,7 +75,7 @@ interface TestInfo {
   M?: Expr | any;
 
   // Opts contains the list of options to be configured with the parser before parsing the expression.
-  Opts?: ParserOptions;
+  Opts?: ParserOption[];
 }
 
 // See: https://github.com/google/cel-go/blob/master/parser/parser_test.go
@@ -1603,8 +1612,8 @@ const testCases: TestInfo[] = [
       ]),
     ]),
   },
+  // TODO: the error message points at the wrong characters
   // {
-  //   // TODO: the error message points at the wrong characters
   //   I: `      '😁' in ['😁', '😑', '😦']
   // 	 && in.😁`,
   //   E: `ERROR: <input>:2:7: Syntax error: extraneous input 'in' expecting {'[', '{', '(', '.', '-', '!', 'true', 'false', 'null', NUM_FLOAT, NUM_INT, NUM_UINT, STRING, BYTES, IDENTIFIER}
@@ -1728,7 +1737,6 @@ const testCases: TestInfo[] = [
 		| while
 		| ^`,
   },
-  // TODO: "argument is not an identifier" is out of order
   {
     I: '[1, 2, 3].map(var, var * var)',
     E: `ERROR: <input>:1:15: reserved identifier: var
@@ -2425,7 +2433,7 @@ const testCases: TestInfo[] = [
   },
   {
     I: `a.?b[?0] && a[?c]`,
-    Opts: { enableOptionalSyntax: true },
+    Opts: [enableOptionalSyntax(true)],
     // P: `_&&_(
     // 	_[?_](
     // 	  _?._(
@@ -2455,7 +2463,7 @@ const testCases: TestInfo[] = [
   },
   {
     I: `[?a, ?b]`,
-    Opts: { enableOptionalSyntax: true },
+    Opts: [enableOptionalSyntax(true)],
     // P: `[
     // 	a^#2:*expr.Expr_IdentExpr#,
     // 	b^#3:*expr.Expr_IdentExpr#
@@ -2468,7 +2476,7 @@ const testCases: TestInfo[] = [
   },
   {
     I: `[?a[?b]]`,
-    Opts: { enableOptionalSyntax: true },
+    Opts: [enableOptionalSyntax(true)],
     // P: `[
     // 	_[?_](
     // 	  a^#2:*expr.Expr_IdentExpr#,
@@ -2497,7 +2505,7 @@ const testCases: TestInfo[] = [
   },
   {
     I: `Msg{?field: value}`,
-    Opts: { enableOptionalSyntax: true },
+    Opts: [enableOptionalSyntax(true)],
     // P: `Msg{
     // 	?field:value^#3:*expr.Expr_IdentExpr#^#2:*expr.Expr_CreateStruct_Entry#
     //   }^#1:*expr.Expr_StructExpr#`,
@@ -2572,7 +2580,7 @@ describe('Parser', () => {
   for (const testCase of testCases) {
     it(`should parse ${testCase.I}`, () => {
       // Arrange
-      const parser = new Parser(testCase.Opts ?? { maxRecursionDepth: 32 });
+      const parser = newTestParser(...(testCase.Opts || []));
 
       // Act
       const expr = parser.parse(new TextSource(testCase.I));
@@ -2613,3 +2621,15 @@ describe('Parser', () => {
     });
   }
 });
+
+function newTestParser(...options: ParserOption[]) {
+  const opts = [
+    macros(...AllMacros),
+    maxRecursionDepth(32),
+    errorRecoveryLimit(4),
+    errorRecoveryLookaheadTokenLimit(4),
+    populateMacroCalls(true),
+    ...options,
+  ];
+  return new Parser(...opts);
+}

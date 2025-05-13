@@ -2,7 +2,7 @@
 import { TestAllTypesSchema } from '@buf/cel_spec.bufbuild_es/proto/test/v1/proto3/test_all_types_pb.js';
 import { create, createRegistry } from '@bufbuild/protobuf';
 import { anyPack } from '@bufbuild/protobuf/wkt';
-import { Container } from '../common/container';
+import { Container, name } from '../common/container';
 import { BoolRefVal } from '../common/types/bool';
 import { ErrorRefVal } from '../common/types/error';
 import { IntRefVal } from '../common/types/int';
@@ -18,7 +18,7 @@ import { EvalConst } from './interpretable';
 describe('attributes', () => {
   it('TestAttributesAbsoluteAttr', () => {
     const reg = new Registry();
-    const container = new Container('acme.ns');
+    const container = new Container(name('acme.ns'));
     const attrs = new AttrFactory(container, reg, reg);
     const vars = new MapActivation({
       'acme.a': {
@@ -94,7 +94,7 @@ describe('attributes', () => {
 
   it('TestAttributesRelativeAttrOneOf', () => {
     const reg = new Registry();
-    const attrs = new AttrFactory(new Container('acme.ns'), reg, reg);
+    const attrs = new AttrFactory(new Container(name('acme.ns')), reg, reg);
     const data = {
       a: new Map([[BigInt(-1), [BigInt(2), BigInt(42)]]]),
       ['acme.b']: BigInt(1),
@@ -170,7 +170,7 @@ describe('attributes', () => {
   it('TestAttributesRelativeAttrRelativeQualifier', () => {
     // In the cel-go implementation, the out type is a Uint. But, since javascript does not have a Uint type, it is a BigInt.
     const reg = new Registry();
-    const attrs = new AttrFactory(new Container('acme.ns'), reg, reg);
+    const attrs = new AttrFactory(new Container(name('acme.ns')), reg, reg);
     const data = {
       a: new Map([
         [
@@ -244,7 +244,7 @@ describe('attributes', () => {
 
   it('TestAttributesOneofAttr', () => {
     const reg = new Registry();
-    const attrs = new AttrFactory(new Container('acme.ns'), reg, reg);
+    const attrs = new AttrFactory(new Container(name('acme.ns')), reg, reg);
     const data = {
       a: {
         b: [BigInt(2), BigInt(42)],
@@ -324,7 +324,7 @@ describe('attributes', () => {
 
   it('TestAttributesOptional', () => {
     const reg = new Registry(undefined, createRegistry(TestAllTypesSchema));
-    const attrs = new AttrFactory(new Container('ns'), reg, reg);
+    const attrs = new AttrFactory(new Container(name('ns')), reg, reg);
     interface Test {
       varName: string;
       quals?: any[];

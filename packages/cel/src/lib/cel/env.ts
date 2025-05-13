@@ -3,7 +3,7 @@
 /* eslint-disable @typescript-eslint/no-empty-interface */
 import { isNil } from '@bearclaw/is';
 import { Checker } from '../checker/checker';
-import { Coster, CosterOptions, CostEstimator } from '../checker/cost';
+import { Coster, CostEstimator, CostOption } from '../checker/cost';
 import { Env as CheckerEnv, CheckerEnvOptions } from '../checker/env';
 import { AST, SourceInfo, AST as œAST } from '../common/ast';
 import { Container } from '../common/container';
@@ -16,7 +16,13 @@ import { Adapter, isRegistry, Provider } from '../common/ref/provider';
 import { TextSource, Source as œSource } from '../common/source';
 import { Registry } from '../common/types/provider';
 import { Macro } from '../parser/macro';
-import { Parser, ParserOptions } from '../parser/parser';
+import {
+  enableVariadicOperatorASTs,
+  macros,
+  Parser,
+  ParserOption,
+  populateMacroCalls,
+} from '../parser/parser';
 import { Type } from './decls';
 import { Feature, StdLib } from './library';
 import {
@@ -104,10 +110,10 @@ interface EnvBaseOptions {
   appliedFeatures?: Map<number, boolean>;
   libraries?: Map<string, boolean>;
   // validators?      []ASTValidator
-  costOptions?: CosterOptions;
+  costOptions?: CostOption[];
 
   // Internal parser representation
-  prsrOpts?: ParserOptions;
+  prsrOpts?: ParserOption[];
 
   // Internal checker representation
   // #chkMutex sync.Mutex
@@ -137,11 +143,11 @@ export class EnvBase {
    */
   libraries: Map<string, boolean>;
   // validators      []ASTValidator
-  costOptions: CosterOptions;
+  costOptions: CostOption[];
 
   // Internal parser representation
   prsr!: Parser;
-  prsrOpts!: ParserOptions;
+  prsrOpts!: ParserOption[];
 
   // Internal checker representation
   // chkMutex sync.Mutex
@@ -165,8 +171,8 @@ export class EnvBase {
     this.appliedFeatures = opts.appliedFeatures ?? new Map();
     this.libraries = opts.libraries ?? new Map();
     // validators:      []ASTValidator{},
-    this.costOptions = opts.costOptions ?? {};
-    this.prsrOpts = opts.prsrOpts ?? {};
+    this.costOptions = opts.costOptions ?? [];
+    this.prsrOpts = opts.prsrOpts ?? [];
     this.chkOpts = opts.chkOpts ?? {};
     this.progOpts = opts.progOpts ?? [];
   }
@@ -189,15 +195,15 @@ export class EnvBase {
     // }
 
     // Configure the parser.
-    const prsrOpts = { ...this.prsrOpts };
-    prsrOpts.macros = this.macros;
+    const prsrOpts = this.prsrOpts || [];
+    prsrOpts.push(macros(...this.macros));
     if (this.hasFeature(Feature.EnableMacroCallTracking)) {
-      prsrOpts.populateMacroCalls = true;
+      prsrOpts.push(populateMacroCalls(true));
     }
     if (this.hasFeature(Feature.VariadicLogicalASTs)) {
-      prsrOpts.enableVariadicOperatorASTs = true;
+      prsrOpts.push(enableVariadicOperatorASTs(true));
     }
-    this.prsr = new Parser(prsrOpts);
+    this.prsr = new Parser(...prsrOpts);
 
     // Ensure that the checker init happens eagerly rather than lazily.
     if (this.hasFeature(Feature.EagerlyValidateDeclarations)) {
@@ -317,7 +323,7 @@ export class EnvBase {
       throw this.chkErr;
     }
 
-    const prsrOptsCopy = { ...this.prsrOpts };
+    const prsrOptsCopy = [...this.prsrOpts];
 
     // The type-checker is configured with Declarations. The declarations may
     // either be provided as options which have not yet been validated, or may
@@ -395,7 +401,7 @@ export class EnvBase {
    * flag, as enumerated in options.go.
    */
   hasFeature(feature: Feature) {
-    return this.features.has(feature);
+    return this.features.get(feature) === true;
   }
 
   /**
@@ -481,19 +487,21 @@ export class EnvBase {
    * length estimates of input data and extension functions provided by
    * estimator.
    */
-  estimateCost(ast: Ast, estimator: CostEstimator, opts?: CosterOptions) {
-    const extendedOptions = { ...this.costOptions, ...opts };
-    return new Coster(ast.nativeRep(), estimator, extendedOptions).cost();
+  estimateCost(ast: Ast, estimator: CostEstimator, ...opts: CostOption[]) {
+    const extendedOptions = [...this.costOptions, ...opts];
+    return new Coster(ast.nativeRep(), estimator, ...extendedOptions).cost();
   }
 
   private _initChecker() {
     if (!isNil(this.chk)) {
       return;
     }
-    const chkOpts = { ...this.chkOpts };
-    if (this.hasFeature(Feature.CrossTypeNumericComparisions)) {
-      chkOpts.crossTypeNumericComparisons = true;
-    }
+    const chkOpts: CheckerEnvOptions = {
+      ...this.chkOpts,
+      crossTypeNumericComparisons: this.hasFeature(
+        Feature.CrossTypeNumericComparisions
+      ),
+    };
 
     const chk = new CheckerEnv(this.container, this.provider, chkOpts);
     // Add the statically configured declarations.
@@ -550,8 +558,8 @@ export class CustomEnv extends EnvBase {
       features: new Map(),
       appliedFeatures: new Map(),
       libraries: new Map(),
-      costOptions: {},
-      prsrOpts: {},
+      costOptions: [],
+      prsrOpts: [],
       chkOpts: {},
       progOpts: [],
     });

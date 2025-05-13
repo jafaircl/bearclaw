@@ -2,10 +2,12 @@
 import { isNil } from '@bearclaw/is';
 import {
   Expr,
+  ParsedExpr,
   SourceInfo as ProtoSourceInfo,
   SourceInfoSchema,
 } from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb.js';
 import { create } from '@bufbuild/protobuf';
+import { toCheckedExprProto, toParsedExprProto } from './conversion';
 import { Location, NoLocation } from './location';
 import {
   unwrapCallProtoExpr,
@@ -120,6 +122,10 @@ export class AST {
   isChecked() {
     return this._typeMap.size > 0;
   }
+
+  toProto<T extends ParsedExpr = ParsedExpr>(): T {
+    return toParsedExprProto(this) as T;
+  }
 }
 
 /**
@@ -199,6 +205,10 @@ export class CheckedAST extends AST {
     this._parsed = parsed;
     this._typeMap = typeMap;
     this._refMap = refMap;
+  }
+
+  override toProto<CheckedExpr>(): CheckedExpr {
+    return toCheckedExprProto(this) as CheckedExpr;
   }
 }
 

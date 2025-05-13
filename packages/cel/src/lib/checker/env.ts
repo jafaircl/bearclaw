@@ -95,9 +95,8 @@ export class Env {
   readonly #container: Container;
   readonly #provider: Provider;
   readonly #declarations: Scopes;
-  readonly #aggLitElemType: AggregateLiteralElementType =
-    AggregateLiteralElementType.DYN_ELEMENT_TYPE;
-  readonly #filteredOverloadIDs = new Set<string>();
+  readonly #aggLitElemType: AggregateLiteralElementType;
+  readonly #filteredOverloadIDs: Set<string>;
 
   constructor(
     container: Container,
@@ -110,6 +109,7 @@ export class Env {
     this.#declarations = new Scopes();
     this.#declarations.push();
 
+    this.#aggLitElemType = AggregateLiteralElementType.DYN_ELEMENT_TYPE;
     if (options?.homogeneousAggregateLiterals === true) {
       this.#aggLitElemType =
         AggregateLiteralElementType.HOMOGENEOUS_ELEMENT_TYPE;

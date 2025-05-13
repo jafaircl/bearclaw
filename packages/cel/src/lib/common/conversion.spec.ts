@@ -8,7 +8,7 @@ import {
   newIdentReference,
   SourceInfo,
 } from './ast';
-import { toAST, toProto } from './conversion';
+import { checkedExprToAST, toCheckedExprProto } from './conversion';
 import { LOGICAL_NOT_OVERLOAD } from './overloads';
 import { BoolProtoType, DynProtoType } from './pb/types';
 import { InfoSource } from './source';
@@ -59,10 +59,10 @@ describe('conversion', () => {
   ];
   for (const tc of astTests) {
     it('should convert to proto', () => {
-      expect(toProto(tc.cel)).toStrictEqual(tc.pb);
+      expect(toCheckedExprProto(tc.cel)).toStrictEqual(tc.pb);
     });
     it('should convert to AST', () => {
-      expect(toAST(tc.pb)).toStrictEqual(tc.cel);
+      expect(checkedExprToAST(tc.pb)).toStrictEqual(tc.cel);
     });
   }
 

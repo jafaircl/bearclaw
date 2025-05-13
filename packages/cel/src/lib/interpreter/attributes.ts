@@ -228,34 +228,43 @@ export function isNamespacedAttribute(
   );
 }
 
-export interface AttrFactoryOptions {
-  /**
-   * EnableErrorOnBadPresenceTest error generation when a presence test or
-   * optional field selection is performed on a primitive type.
-   */
-  enableErrorOnBadPresenceTest?: boolean;
+/**
+ * AttrFactoryOption specifies a functional option for configuring an attribute
+ * factory.
+ */
+export type AttrFactoryOption = (fac: AttrFactory) => AttrFactory;
+
+/**
+ * EnableErrorOnBadPresenceTest error generation when a presence test or
+ * optional field selection is performed on a primitive type.
+ */
+export function enableErrorOnBadPresenceTest(
+  value: boolean
+): AttrFactoryOption {
+  return (fac) => {
+    fac.errorOnBadPresenceTest = value;
+    return fac;
+  };
 }
 
 export class AttrFactory implements AttributeFactory {
   #container: Container;
   #adapter: Adapter;
   #provider: Provider;
-  #errorOnBadPresenceTest = false;
+  errorOnBadPresenceTest = false;
 
   constructor(
     container: Container,
     adapter: Adapter,
     provider: Provider,
-    opts?: AttrFactoryOptions
+    ...opts: AttrFactoryOption[]
   ) {
     this.#container = container;
     this.#adapter = adapter;
     this.#provider = provider;
 
-    if (!isNil(opts)) {
-      if (opts.enableErrorOnBadPresenceTest) {
-        this.#errorOnBadPresenceTest = opts.enableErrorOnBadPresenceTest;
-      }
+    for (const opt of opts) {
+      opt(this);
     }
   }
 
@@ -267,7 +276,7 @@ export class AttrFactory implements AttributeFactory {
       this.#adapter,
       this.#provider,
       this,
-      this.#errorOnBadPresenceTest
+      this.errorOnBadPresenceTest
     );
   }
 
@@ -302,7 +311,7 @@ export class AttrFactory implements AttributeFactory {
       [],
       this.#adapter,
       this,
-      this.#errorOnBadPresenceTest
+      this.errorOnBadPresenceTest
     );
   }
 
@@ -326,7 +335,7 @@ export class AttrFactory implements AttributeFactory {
       qualID,
       val,
       opt,
-      this.#errorOnBadPresenceTest
+      this.errorOnBadPresenceTest
     );
   }
 }

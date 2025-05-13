@@ -4,8 +4,11 @@
 import { isNil } from '@bearclaw/is';
 import { DescEnum, DescField, DescMessage, Message } from '@bufbuild/protobuf';
 import { reflect } from '@bufbuild/protobuf/reflect';
-import extend from 'just-extend';
-import { CosterOptions } from '../checker/cost';
+import { CostOption } from '../checker/cost';
+import {
+  abbrevs as containerAbbrevs,
+  name as containerName,
+} from '../common/container';
 import { FunctionDecl, VariableDecl } from '../common/decls';
 import { Adapter, isRegistry, Provider } from '../common/ref/provider';
 import { fieldDescToCELType } from '../common/types/provider';
@@ -13,8 +16,11 @@ import { isType } from '../common/types/types';
 import {
   Activation,
   EmptyActivation,
+  HierarchicalActivation,
   MapActivation,
+  newActivation,
 } from '../interpreter/activation';
+import { InterpretableDecorator } from '../interpreter/decorators';
 import { Macro } from '../parser/macro';
 import { Declaration, maybeUnwrapDeclaration, Type, variable } from './decls';
 import { EnvBase } from './env';
@@ -154,7 +160,7 @@ export function macros(...macros: Macro[]): EnvOption {
  */
 export function container(name: string): EnvOption {
   return (e) => {
-    const cont = e.container.extend(name, new Map());
+    const cont = e.container.extend(containerName(name));
     e.container = cont;
     return e;
   };
@@ -211,8 +217,7 @@ export function container(name: string): EnvOption {
  */
 export function abbrevs(...qualifiedNames: string[]): EnvOption {
   return (e) => {
-    const cont = e.container;
-    cont.addAbbrevs(...qualifiedNames);
+    const cont = e.container.extend(containerAbbrevs(...qualifiedNames));
     e.container = cont;
     return e;
   };
@@ -254,6 +259,43 @@ export function types(...types: (DescMessage | DescEnum | Type)[]): EnvOption {
  * and behaviors.
  */
 export type ProgramOption = (p: prog) => prog;
+
+/**
+ * CustomDecorator appends an InterpreterDecorator to the program.
+ *
+ * InterpretableDecorators can be used to inspect, alter, or replace the
+ * Program plan.
+ */
+export function customDecorator(dec: InterpretableDecorator): ProgramOption {
+  return (p) => {
+    p.decorators.push(dec);
+    return p;
+  };
+}
+
+/**
+ * Globals sets the global variable values for a given program. These values
+ * may be shadowed by variables with the same name provided to the Eval() call.
+ * If Globals is used in a Library with a Lib EnvOption, vars may shadow
+ * variables provided by previously added libraries.
+ *
+ * The vars value may either be an `interpreter.Activation` instance or a
+ * `map[string]any`.
+ */
+export function globals(
+  vars: Activation | Record<string, any> | Map<string, any>
+): ProgramOption {
+  return (p) => {
+    let defaultVars = newActivation(vars);
+    if (!isNil(p.defaultVars)) {
+      defaultVars = new HierarchicalActivation(p.defaultVars, defaultVars);
+    }
+    p.defaultVars = defaultVars;
+    return p;
+  };
+}
+
+// TODO: optimizeregex
 
 /**
  * EvalOption indicates an evaluation option that may affect the evaluation
@@ -303,9 +345,9 @@ export enum EvalOption {
  * CostEstimatorOptions configure type-check time options for estimating
  * expression cost.
  */
-export function costEstimatorOptions(costOpts: CosterOptions): EnvOption {
+export function costEstimatorOptions(costOpts: CostOption[]): EnvOption {
   return (e) => {
-    e.costOptions = extend(e.costOptions, costOpts);
+    e.costOptions.push(...costOpts);
     return e;
   };
 }
@@ -363,6 +405,38 @@ function fieldToVariable(field: DescField) {
 }
 
 /**
+ * EnableMacroCallTracking ensures that call expressions which are replaced by
+ * macros are tracked in the `SourceInfo` of parsed and checked expressions.
+ */
+export function enableMacroCallTracking(): EnvOption {
+  return features(Feature.EnableMacroCallTracking, true);
+}
+
+/**
+ * EnableIdentifierEscapeSyntax enables identifier escaping (`) syntax for
+ * fields.
+ */
+export function enableIdentifierEscapeSyntax(): EnvOption {
+  return features(Feature.IdentEscapeSyntax, true);
+}
+
+/**
+ * CrossTypeNumericComparisons makes it possible to compare across numeric
+ * types, e.g. double < int
+ */
+export function crossTypeNumericComparisons(enabled: boolean): EnvOption {
+  return features(Feature.CrossTypeNumericComparisions, enabled);
+}
+
+/**
+ * DefaultUTCTimeZone ensures that time-based operations use the UTC timezone
+ * rather than the input time's local timezone.
+ */
+export function defaultUTCTimeZone(enabled: boolean): EnvOption {
+  return features(Feature.DefaultUTCTimeZone, enabled);
+}
+
+/**
  * features sets the given feature flags.  See list of Feature constants above.
  */
 function features(flag: Feature, enabled: boolean): EnvOption {
@@ -372,4 +446,4 @@ function features(flag: Feature, enabled: boolean): EnvOption {
   };
 }
 
-// TODO: program options
+// TODO: make parser options functional so we can add ParserExpressionSizeLimit & ParserRecursionLimit
