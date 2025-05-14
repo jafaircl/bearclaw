@@ -1,12 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { assert, isNil } from '@bearclaw/is';
 import {
-  Expr,
-  Expr_CreateList,
-  Expr_CreateStruct,
-  Expr_CreateStruct_Entry,
-} from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb.js';
-import {
   CharStream,
   CommonTokenStream,
   ParseTree,
@@ -84,6 +78,12 @@ import {
   UintContext,
 } from '../gen/CELParser';
 import { default as GeneratedCelVisitor } from '../gen/CELVisitor';
+import {
+  Expr,
+  Expr_CreateList,
+  Expr_CreateStruct,
+  Expr_CreateStruct_Entry,
+} from '../protogen/cel/expr/syntax_pb.js';
 import { ExprHelper, LogicManager, ParserHelper } from './helper';
 import { Macro, makeMacroKey, makeVarArgMacroKey } from './macro';
 

@@ -1,4 +1,4 @@
-import { TestAllTypesSchema } from '@buf/cel_spec.bufbuild_es/proto/test/v1/proto3/test_all_types_pb.js';
+import { TestAllTypesSchema } from '../../protogen/cel/expr/conformance/proto3/test_all_types_pb.js';
 import { Registry } from './provider';
 import { Mapper } from './traits/mapper';
 

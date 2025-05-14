@@ -1,13 +1,14 @@
 import { InfoSource } from './source';
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { isNil } from '@bearclaw/is';
+import { create } from '@bufbuild/protobuf';
 import {
   CheckedExpr,
   CheckedExprSchema,
   Type as ProtoType,
   Reference,
   ReferenceSchema,
-} from '@buf/google_cel-spec.bufbuild_es/cel/expr/checked_pb.js';
+} from '../protogen/cel/expr/checked_pb.js';
 import {
   Constant,
   Expr,
@@ -15,8 +16,7 @@ import {
   ParsedExprSchema,
   SourceInfo as ProtoSourceInfo,
   SourceInfoSchema,
-} from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb.js';
-import { create } from '@bufbuild/protobuf';
+} from '../protogen/cel/expr/syntax_pb.js';
 import { AST, CheckedAST, OffsetRange, ReferenceInfo, SourceInfo } from './ast';
 import { protoConstantToRefVal, refValToProtoConstant } from './pb/constants';
 import { RefVal } from './ref/reference';

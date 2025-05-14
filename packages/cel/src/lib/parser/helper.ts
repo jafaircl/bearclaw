@@ -1,13 +1,7 @@
-import { OffsetRange } from './../common/ast';
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable no-case-declarations */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { isBigInt, isEmpty, isNil } from '@bearclaw/is';
-import {
-  Expr,
-  Expr_CreateStruct_Entry,
-  ExprSchema,
-} from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb.js';
 import { create } from '@bufbuild/protobuf';
 import { ParserRuleContext, Token } from 'antlr4';
 import { newSourceInfo, SourceInfo } from '../common/ast';
@@ -38,6 +32,12 @@ import { IntRefVal } from '../common/types/int';
 import { reflectNativeType } from '../common/types/native';
 import { StringRefVal } from '../common/types/string';
 import { UintRefVal } from '../common/types/uint';
+import {
+  Expr,
+  Expr_CreateStruct_Entry,
+  ExprSchema,
+} from '../protogen/cel/expr/syntax_pb.js';
+import { OffsetRange } from './../common/ast';
 
 export class ParserHelper {
   private _source: Source;

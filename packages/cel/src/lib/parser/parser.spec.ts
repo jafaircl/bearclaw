@@ -1,6 +1,5 @@
 /* eslint-disable no-useless-escape */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Expr } from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb.js';
 import { Location } from '../common/location';
 import {
   ADD_OPERATOR,
@@ -45,6 +44,7 @@ import {
   newTestOnlySelectProtoExpr,
   newUintProtoExpr,
 } from '../common/pb/expressions';
+import { Expr } from '../protogen/cel/expr/syntax_pb.js';
 import { TextSource } from './../common/source';
 import { AccumulatorName, AllMacros } from './macro';
 import {

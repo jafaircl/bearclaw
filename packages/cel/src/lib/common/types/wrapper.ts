@@ -1,9 +1,9 @@
+import { create } from '@bufbuild/protobuf';
 import {
   Type,
-  TypeSchema,
   Type_PrimitiveType,
-} from '@buf/google_cel-spec.bufbuild_es/cel/expr/checked_pb.js';
-import { create } from '@bufbuild/protobuf';
+  TypeSchema,
+} from '../../protogen/cel/expr/checked_pb.js';
 
 export function wrapperType(value: Type_PrimitiveType) {
   return create(TypeSchema, {

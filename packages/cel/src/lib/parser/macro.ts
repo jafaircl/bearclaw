@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { isNil } from '@bearclaw/is';
-import { Expr } from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb.js';
 import { CELError } from '../common/error';
 import {
   ADD_OPERATOR,
@@ -19,6 +18,7 @@ import {
 } from '../common/operators';
 import { BoolRefVal } from '../common/types/bool';
 import { IntRefVal } from '../common/types/int';
+import { Expr } from '../protogen/cel/expr/syntax_pb.js';
 import { ExprHelper } from './helper';
 
 /**

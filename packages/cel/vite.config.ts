@@ -47,8 +47,6 @@ export default defineConfig({
       external: [
         '@bearclaw/collections',
         '@bearclaw/is',
-        '@buf/cel_spec.bufbuild_es',
-        '@buf/google_cel-spec.bufbuild_es',
         '@bufbuild/protobuf',
         'antlr4',
         'dequal',

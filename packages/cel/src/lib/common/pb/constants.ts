@@ -1,9 +1,6 @@
-import {
-  Constant,
-  ConstantSchema,
-} from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb.js';
 import { create } from '@bufbuild/protobuf';
 import { NullValue } from '@bufbuild/protobuf/wkt';
+import { Constant, ConstantSchema } from '../../protogen/cel/expr/syntax_pb.js';
 import { RefVal } from '../ref/reference';
 import { BoolRefVal } from '../types/bool';
 import { BytesRefVal } from '../types/bytes';

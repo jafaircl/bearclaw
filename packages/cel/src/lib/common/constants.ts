@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-import { ConstantSchema } from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb.js';
 import { create } from '@bufbuild/protobuf';
 import { ParseException } from '../exceptions';
+import { ConstantSchema } from '../protogen/cel/expr/syntax_pb.js';
 
 const DOUBLE_QUOTE = `"`;
 const SINGLE_QUOTE = `'`;

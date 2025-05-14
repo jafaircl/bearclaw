@@ -1,8 +1,3 @@
-import {
-  Constant,
-  Expr,
-  Expr_Call,
-} from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb.js';
 import { toJsonString } from '@bufbuild/protobuf';
 import { DurationSchema, TimestampSchema } from '@bufbuild/protobuf/wkt';
 import { AST } from '../common/ast.js';
@@ -32,6 +27,7 @@ import {
   precedence,
   SUBTRACT_OPERATOR,
 } from '../common/operators.js';
+import { Constant, Expr, Expr_Call } from '../protogen/cel/expr/syntax_pb.js';
 
 /**
  * UnparserOption is a functional option for configuring the output formatting

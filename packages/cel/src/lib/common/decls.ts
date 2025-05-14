@@ -1,12 +1,12 @@
 import { isNil } from '@bearclaw/is';
+import { create } from '@bufbuild/protobuf';
+import { dequal } from 'dequal';
 import {
   Decl,
   Decl_FunctionDecl_Overload,
   Decl_FunctionDecl_OverloadSchema,
   Type as ProtoType,
-} from '@buf/google_cel-spec.bufbuild_es/cel/expr/checked_pb.js';
-import { create } from '@bufbuild/protobuf';
-import { dequal } from 'dequal';
+} from '../protogen/cel/expr/checked_pb.js';
 import { BinaryOp, FunctionOp, Overload, UnaryOp } from './functions';
 import { newFunctionProto, newVarIdentDeclProto } from './pb/decls';
 import { RefVal } from './ref/reference';

@@ -1,5 +1,5 @@
-import { ParsedExprSchema } from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb';
 import { create, createMutableRegistry } from '@bufbuild/protobuf';
+import { ParsedExprSchema } from '../../protogen/cel/expr/syntax_pb.js';
 import { BoolRefVal } from './bool';
 import { DoubleRefVal } from './double';
 import { ErrorRefVal } from './error';

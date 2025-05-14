@@ -1,7 +1,5 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { isNil } from '@bearclaw/is';
-import { TestAllTypesSchema as TestAllTypesSchemaProto2 } from '@buf/cel_spec.bufbuild_es/proto/test/v1/proto2/test_all_types_pb.js';
-import { TestAllTypesSchema as TestAllTypesSchemaProto3 } from '@buf/cel_spec.bufbuild_es/proto/test/v1/proto3/test_all_types_pb.js';
 import { createRegistry } from '@bufbuild/protobuf';
 import { Container, name as containerName } from '../common/container';
 import {
@@ -45,6 +43,8 @@ import {
   Parser,
   ParserOption,
 } from '../parser/parser';
+import { TestAllTypesSchema as TestAllTypesSchemaProto2 } from '../protogen/cel/expr/conformance/proto2/test_all_types_pb.js';
+import { TestAllTypesSchema as TestAllTypesSchemaProto3 } from '../protogen/cel/expr/conformance/proto3/test_all_types_pb.js';
 import { Checker } from './checker';
 import { CheckerEnvOptions, Env } from './env';
 
@@ -254,17 +254,17 @@ _+_(
     },
     {
       in: `TestAllTypes{single_int32: 1, single_int64: 2}`,
-      container: 'google.api.expr.test.v1.proto3',
+      container: 'cel.expr.conformance.proto3',
       out: `
-    google.api.expr.test.v1.proto3.TestAllTypes{
+    cel.expr.conformance.proto3.TestAllTypes{
         single_int32 : 1~int,
         single_int64 : 2~int
-    }~google.api.expr.test.v1.proto3.TestAllTypes^google.api.expr.test.v1.proto3.TestAllTypes`,
-      outType: newObjectType('google.api.expr.test.v1.proto3.TestAllTypes'),
+    }~cel.expr.conformance.proto3.TestAllTypes^cel.expr.conformance.proto3.TestAllTypes`,
+      outType: newObjectType('cel.expr.conformance.proto3.TestAllTypes'),
     },
     {
       in: `TestAllTypes{single_int32: 1u}`,
-      container: 'google.api.expr.test.v1.proto3',
+      container: 'cel.expr.conformance.proto3',
       err: `
 ERROR: <input>:1:26: expected type of field 'single_int32' is 'int' but provided type is 'uint'
   | TestAllTypes{single_int32: 1u}
@@ -272,7 +272,7 @@ ERROR: <input>:1:26: expected type of field 'single_int32' is 'int' but provided
     },
     {
       in: `TestAllTypes{single_int32: 1, undefined: 2}`,
-      container: 'google.api.expr.test.v1.proto3',
+      container: 'cel.expr.conformance.proto3',
       err: `
 ERROR: <input>:1:40: undefined field 'undefined'
   | TestAllTypes{single_int32: 1, undefined: 2}
@@ -376,38 +376,38 @@ _!=_(_-_(_+_(1~double, _*_(2~double, 3~double)~double^multiply_double)
     },
     {
       in: `x.single_int32 != null`,
-      container: 'google.api.expr.test.v1.proto3',
+      container: 'cel.expr.conformance.proto3',
       env: {
         idents: [
           newVariableDecl(
             'x',
-            newObjectType('google.api.expr.test.v1.proto3.Proto2Message')
+            newObjectType('cel.expr.conformance.proto3.Proto2Message')
           ),
         ],
       },
       err: `
-ERROR: <input>:1:2: unexpected failed resolution of 'google.api.expr.test.v1.proto3.Proto2Message'
+ERROR: <input>:1:2: unexpected failed resolution of 'cel.expr.conformance.proto3.Proto2Message'
   | x.single_int32 != null
   | .^
 `,
     },
     {
       in: `x.single_value + 1 / x.single_struct.y == 23`,
-      container: 'google.api.expr.test.v1.proto3',
+      container: 'cel.expr.conformance.proto3',
       env: {
         idents: [
           newVariableDecl(
             'x',
-            newObjectType('google.api.expr.test.v1.proto3.TestAllTypes')
+            newObjectType('cel.expr.conformance.proto3.TestAllTypes')
           ),
         ],
       },
       out: `_==_(
         _+_(
-          x~google.api.expr.test.v1.proto3.TestAllTypes^x.single_value~dyn,
+          x~cel.expr.conformance.proto3.TestAllTypes^x.single_value~dyn,
           _/_(
             1~int,
-            x~google.api.expr.test.v1.proto3.TestAllTypes^x.single_struct~map(string, dyn).y~dyn
+            x~cel.expr.conformance.proto3.TestAllTypes^x.single_struct~map(string, dyn).y~dyn
           )~int^divide_int64
         )~int^add_int64,
         23~int
@@ -416,22 +416,22 @@ ERROR: <input>:1:2: unexpected failed resolution of 'google.api.expr.test.v1.pro
     },
     {
       in: `x.single_value[23] + x.single_struct['y']`,
-      container: 'google.api.expr.test.v1.proto3',
+      container: 'cel.expr.conformance.proto3',
       env: {
         idents: [
           newVariableDecl(
             'x',
-            newObjectType('google.api.expr.test.v1.proto3.TestAllTypes')
+            newObjectType('cel.expr.conformance.proto3.TestAllTypes')
           ),
         ],
       },
       out: `_+_(
         _[_](
-          x~google.api.expr.test.v1.proto3.TestAllTypes^x.single_value~dyn,
+          x~cel.expr.conformance.proto3.TestAllTypes^x.single_value~dyn,
           23~int
         )~dyn^index_list|index_map,
         _[_](
-          x~google.api.expr.test.v1.proto3.TestAllTypes^x.single_struct~map(string, dyn),
+          x~cel.expr.conformance.proto3.TestAllTypes^x.single_struct~map(string, dyn),
           "y"~string
         )~dyn^index_map
       )~dyn^add_bytes|add_double|add_duration_duration|add_duration_timestamp|add_int64|add_list|add_string|add_timestamp_duration|add_uint64
@@ -440,9 +440,9 @@ ERROR: <input>:1:2: unexpected failed resolution of 'google.api.expr.test.v1.pro
     },
     {
       in: `TestAllTypes.NestedEnum.BAR != 99`,
-      container: 'google.api.expr.test.v1.proto3',
-      out: `_!=_(google.api.expr.test.v1.proto3.TestAllTypes.NestedEnum.BAR
-     ~int^google.api.expr.test.v1.proto3.TestAllTypes.NestedEnum.BAR,
+      container: 'cel.expr.conformance.proto3',
+      out: `_!=_(cel.expr.conformance.proto3.TestAllTypes.NestedEnum.BAR
+     ~int^cel.expr.conformance.proto3.TestAllTypes.NestedEnum.BAR,
     99~int)
 ~bool^not_equals`,
       outType: BoolType,
@@ -455,7 +455,7 @@ ERROR: <input>:1:2: unexpected failed resolution of 'google.api.expr.test.v1.pro
         idents: [
           newVariableDecl(
             'x',
-            newObjectType('google.api.expr.test.v1.proto3.TestAllTypes')
+            newObjectType('cel.expr.conformance.proto3.TestAllTypes')
           ),
         ],
       },
@@ -521,14 +521,14 @@ ERROR: <input>:1:2: unexpected failed resolution of 'google.api.expr.test.v1.pro
           newVariableDecl(
             'x',
             newListType(
-              newObjectType('google.api.expr.test.v1.proto3.TestAllTypes')
+              newObjectType('cel.expr.conformance.proto3.TestAllTypes')
             )
           ),
           newVariableDecl('y', newListType(IntType)),
         ],
       },
       err: `
-ERROR: <input>:1:3: found no matching overload for '_+_' applied to '(list(google.api.expr.test.v1.proto3.TestAllTypes), list(int))'
+ERROR: <input>:1:3: found no matching overload for '_+_' applied to '(list(cel.expr.conformance.proto3.TestAllTypes), list(int))'
 | x + y
 | ..^
     `,
@@ -540,13 +540,13 @@ ERROR: <input>:1:3: found no matching overload for '_+_' applied to '(list(googl
           newVariableDecl(
             'x',
             newListType(
-              newObjectType('google.api.expr.test.v1.proto3.TestAllTypes')
+              newObjectType('cel.expr.conformance.proto3.TestAllTypes')
             )
           ),
         ],
       },
       err: `
-ERROR: <input>:1:2: found no matching overload for '_[_]' applied to '(list(google.api.expr.test.v1.proto3.TestAllTypes), uint)'
+ERROR: <input>:1:2: found no matching overload for '_[_]' applied to '(list(cel.expr.conformance.proto3.TestAllTypes), uint)'
 | x[1u]
 | .^
 `,
@@ -558,21 +558,21 @@ ERROR: <input>:1:2: found no matching overload for '_[_]' applied to '(list(goog
           newVariableDecl(
             'x',
             newListType(
-              newObjectType('google.api.expr.test.v1.proto3.TestAllTypes')
+              newObjectType('cel.expr.conformance.proto3.TestAllTypes')
             )
           ),
         ],
       },
       out: `
-_==_(_[_](_+_(x~list(google.api.expr.test.v1.proto3.TestAllTypes)^x,
-            x~list(google.api.expr.test.v1.proto3.TestAllTypes)^x)
-        ~list(google.api.expr.test.v1.proto3.TestAllTypes)^add_list,
+_==_(_[_](_+_(x~list(cel.expr.conformance.proto3.TestAllTypes)^x,
+            x~list(cel.expr.conformance.proto3.TestAllTypes)^x)
+        ~list(cel.expr.conformance.proto3.TestAllTypes)^add_list,
        1~int)
-   ~google.api.expr.test.v1.proto3.TestAllTypes^index_list
+   ~cel.expr.conformance.proto3.TestAllTypes^index_list
    .
    single_int32
    ~int,
-  size(x~list(google.api.expr.test.v1.proto3.TestAllTypes)^x)~int^size_list)
+  size(x~list(cel.expr.conformance.proto3.TestAllTypes)^x)~int^size_list)
 ~bool^equals
 `,
       outType: BoolType,
@@ -583,13 +583,13 @@ _==_(_[_](_+_(x~list(google.api.expr.test.v1.proto3.TestAllTypes)^x,
         idents: [
           newVariableDecl(
             'x',
-            newObjectType('google.api.expr.test.v1.proto3.TestAllTypes')
+            newObjectType('cel.expr.conformance.proto3.TestAllTypes')
           ),
         ],
       },
       out: `
-_==_(_[_](x~google.api.expr.test.v1.proto3.TestAllTypes^x.repeated_int64~list(int),
-       x~google.api.expr.test.v1.proto3.TestAllTypes^x.single_int32~int)
+_==_(_[_](x~cel.expr.conformance.proto3.TestAllTypes^x.repeated_int64~list(int),
+       x~cel.expr.conformance.proto3.TestAllTypes^x.single_int32~int)
    ~int^index_list,
   23~int)
 ~bool^equals`,
@@ -601,13 +601,13 @@ _==_(_[_](x~google.api.expr.test.v1.proto3.TestAllTypes^x.repeated_int64~list(in
         idents: [
           newVariableDecl(
             'x',
-            newObjectType('google.api.expr.test.v1.proto3.TestAllTypes')
+            newObjectType('cel.expr.conformance.proto3.TestAllTypes')
           ),
         ],
       },
       out: `
-_==_(size(x~google.api.expr.test.v1.proto3.TestAllTypes^x.map_int64_nested_type
-        ~map(int, google.api.expr.test.v1.proto3.NestedTestAllTypes))
+_==_(size(x~cel.expr.conformance.proto3.TestAllTypes^x.map_int64_nested_type
+        ~map(int, cel.expr.conformance.proto3.NestedTestAllTypes))
    ~int^size_map,
   0~int)
 ~bool^equals
@@ -654,7 +654,7 @@ _==_(size(x~google.api.expr.test.v1.proto3.TestAllTypes^x.map_int64_nested_type
         idents: [
           newVariableDecl(
             'x',
-            newObjectType('google.api.expr.test.v1.proto3.TestAllTypes')
+            newObjectType('cel.expr.conformance.proto3.TestAllTypes')
           ),
         ],
       },
@@ -663,7 +663,7 @@ _==_(size(x~google.api.expr.test.v1.proto3.TestAllTypes^x.map_int64_nested_type
           // Variable
           x,
           // Target
-          x~google.api.expr.test.v1.proto3.TestAllTypes^x.repeated_int64~list(int),
+          x~cel.expr.conformance.proto3.TestAllTypes^x.repeated_int64~list(int),
           // Accumulator
           __result__,
           // Init
@@ -690,7 +690,7 @@ _==_(size(x~google.api.expr.test.v1.proto3.TestAllTypes^x.map_int64_nested_type
         idents: [
           newVariableDecl(
             'x',
-            newObjectType('google.api.expr.test.v1.proto3.TestAllTypes')
+            newObjectType('cel.expr.conformance.proto3.TestAllTypes')
           ),
         ],
       },
@@ -699,7 +699,7 @@ __comprehension__(
           // Variable
           x,
           // Target
-          x~google.api.expr.test.v1.proto3.TestAllTypes^x.repeated_int64~list(int),
+          x~cel.expr.conformance.proto3.TestAllTypes^x.repeated_int64~list(int),
           // Accumulator
           __result__,
           // Init
@@ -735,13 +735,13 @@ __comprehension__(
             'x',
             newMapType(
               StringType,
-              newObjectType('google.api.expr.test.v1.proto3.TestAllTypes')
+              newObjectType('cel.expr.conformance.proto3.TestAllTypes')
             )
           ),
         ],
       },
       err: `
-ERROR: <input>:1:2: found no matching overload for '_[_]' applied to '(map(string, google.api.expr.test.v1.proto3.TestAllTypes), int)'
+ERROR: <input>:1:2: found no matching overload for '_[_]' applied to '(map(string, cel.expr.conformance.proto3.TestAllTypes), int)'
 | x[2].single_int32 == 23
 | .^
     `,
@@ -754,14 +754,14 @@ ERROR: <input>:1:2: found no matching overload for '_[_]' applied to '(map(strin
             'x',
             newMapType(
               StringType,
-              newObjectType('google.api.expr.test.v1.proto3.TestAllTypes')
+              newObjectType('cel.expr.conformance.proto3.TestAllTypes')
             )
           ),
         ],
       },
       out: `
-    _==_(_[_](x~map(string, google.api.expr.test.v1.proto3.TestAllTypes)^x, "a"~string)
-    ~google.api.expr.test.v1.proto3.TestAllTypes^index_map
+    _==_(_[_](x~map(string, cel.expr.conformance.proto3.TestAllTypes)^x, "a"~string)
+    ~cel.expr.conformance.proto3.TestAllTypes^index_map
     .
     single_int32
     ~int,
@@ -775,17 +775,17 @@ ERROR: <input>:1:2: found no matching overload for '_[_]' applied to '(map(strin
         idents: [
           newVariableDecl(
             'x',
-            newObjectType('google.api.expr.test.v1.proto3.TestAllTypes')
+            newObjectType('cel.expr.conformance.proto3.TestAllTypes')
           ),
         ],
       },
       // Our implementation code is expanding the macro
       out: `_&&_(
           _==_(
-            x~google.api.expr.test.v1.proto3.TestAllTypes^x.single_nested_message~google.api.expr.test.v1.proto3.TestAllTypes.NestedMessage.bb~int,
+            x~cel.expr.conformance.proto3.TestAllTypes^x.single_nested_message~cel.expr.conformance.proto3.TestAllTypes.NestedMessage.bb~int,
             43~int
           )~bool^equals,
-          x~google.api.expr.test.v1.proto3.TestAllTypes^x.single_nested_message~test-only~~bool
+          x~cel.expr.conformance.proto3.TestAllTypes^x.single_nested_message~test-only~~bool
         )~bool^logical_and`,
       outType: BoolType,
     },
@@ -795,7 +795,7 @@ ERROR: <input>:1:2: found no matching overload for '_[_]' applied to '(map(strin
         idents: [
           newVariableDecl(
             'x',
-            newObjectType('google.api.expr.test.v1.proto3.TestAllTypes')
+            newObjectType('cel.expr.conformance.proto3.TestAllTypes')
           ),
         ],
       },
@@ -813,13 +813,13 @@ ERROR: <input>:1:39: undefined field 'undefined'
         idents: [
           newVariableDecl(
             'x',
-            newObjectType('google.api.expr.test.v1.proto3.TestAllTypes')
+            newObjectType('cel.expr.conformance.proto3.TestAllTypes')
           ),
         ],
       },
       out: `
-    _!=_(x~google.api.expr.test.v1.proto3.TestAllTypes^x.single_nested_message
-    ~google.api.expr.test.v1.proto3.TestAllTypes.NestedMessage,
+    _!=_(x~cel.expr.conformance.proto3.TestAllTypes^x.single_nested_message
+    ~cel.expr.conformance.proto3.TestAllTypes.NestedMessage,
     null~null)
     ~bool^not_equals
     `,
@@ -831,7 +831,7 @@ ERROR: <input>:1:39: undefined field 'undefined'
         idents: [
           newVariableDecl(
             'x',
-            newObjectType('google.api.expr.test.v1.proto3.TestAllTypes')
+            newObjectType('cel.expr.conformance.proto3.TestAllTypes')
           ),
         ],
       },
@@ -847,12 +847,12 @@ ERROR: <input>:1:16: found no matching overload for '_!=_' applied to '(int, nul
         idents: [
           newVariableDecl(
             'x',
-            newObjectType('google.api.expr.test.v1.proto3.TestAllTypes')
+            newObjectType('cel.expr.conformance.proto3.TestAllTypes')
           ),
         ],
       },
       out: `
-    _==_(x~google.api.expr.test.v1.proto3.TestAllTypes^x.single_int64_wrapper
+    _==_(x~cel.expr.conformance.proto3.TestAllTypes^x.single_int64_wrapper
     ~wrapper(int),
     null~null)
     ~bool^equals
@@ -873,7 +873,7 @@ ERROR: <input>:1:16: found no matching overload for '_!=_' applied to '(int, nul
         idents: [
           newVariableDecl(
             'x',
-            newObjectType('google.api.expr.test.v1.proto3.TestAllTypes')
+            newObjectType('cel.expr.conformance.proto3.TestAllTypes')
           ),
         ],
       },
@@ -882,24 +882,24 @@ ERROR: <input>:1:16: found no matching overload for '_!=_' applied to '(int, nul
         _&&_(
             _&&_(
             _&&_(
-                x~google.api.expr.test.v1.proto3.TestAllTypes^x.single_bool_wrapper~wrapper(bool),
+                x~cel.expr.conformance.proto3.TestAllTypes^x.single_bool_wrapper~wrapper(bool),
                 _==_(
-                x~google.api.expr.test.v1.proto3.TestAllTypes^x.single_bytes_wrapper~wrapper(bytes),
+                x~cel.expr.conformance.proto3.TestAllTypes^x.single_bytes_wrapper~wrapper(bytes),
                 b"hi"~bytes
                 )~bool^equals
             )~bool^logical_and,
             _!=_(
-                x~google.api.expr.test.v1.proto3.TestAllTypes^x.single_double_wrapper~wrapper(double),
+                x~cel.expr.conformance.proto3.TestAllTypes^x.single_double_wrapper~wrapper(double),
                 2~double
             )~bool^not_equals
             )~bool^logical_and,
             _&&_(
             _==_(
-                x~google.api.expr.test.v1.proto3.TestAllTypes^x.single_float_wrapper~wrapper(double),
+                x~cel.expr.conformance.proto3.TestAllTypes^x.single_float_wrapper~wrapper(double),
                 1~double
             )~bool^equals,
             _!=_(
-                x~google.api.expr.test.v1.proto3.TestAllTypes^x.single_int32_wrapper~wrapper(int),
+                x~cel.expr.conformance.proto3.TestAllTypes^x.single_int32_wrapper~wrapper(int),
                 2~int
             )~bool^not_equals
             )~bool^logical_and
@@ -907,21 +907,21 @@ ERROR: <input>:1:16: found no matching overload for '_!=_' applied to '(int, nul
         _&&_(
             _&&_(
             _==_(
-                x~google.api.expr.test.v1.proto3.TestAllTypes^x.single_int64_wrapper~wrapper(int),
+                x~cel.expr.conformance.proto3.TestAllTypes^x.single_int64_wrapper~wrapper(int),
                 1~int
             )~bool^equals,
             _==_(
-                x~google.api.expr.test.v1.proto3.TestAllTypes^x.single_string_wrapper~wrapper(string),
+                x~cel.expr.conformance.proto3.TestAllTypes^x.single_string_wrapper~wrapper(string),
                 "hi"~string
             )~bool^equals
             )~bool^logical_and,
             _&&_(
             _==_(
-                x~google.api.expr.test.v1.proto3.TestAllTypes^x.single_uint32_wrapper~wrapper(uint),
+                x~cel.expr.conformance.proto3.TestAllTypes^x.single_uint32_wrapper~wrapper(uint),
                 1u~uint
             )~bool^equals,
             _!=_(
-                x~google.api.expr.test.v1.proto3.TestAllTypes^x.single_uint64_wrapper~wrapper(uint),
+                x~cel.expr.conformance.proto3.TestAllTypes^x.single_uint64_wrapper~wrapper(uint),
                 42u~uint
             )~bool^not_equals
             )~bool^logical_and
@@ -936,7 +936,7 @@ ERROR: <input>:1:16: found no matching overload for '_!=_' applied to '(int, nul
         idents: [
           newVariableDecl(
             'x',
-            newObjectType('google.api.expr.test.v1.proto3.TestAllTypes')
+            newObjectType('cel.expr.conformance.proto3.TestAllTypes')
           ),
         ],
       },
@@ -957,7 +957,7 @@ ERROR: <input>:1:16: found no matching overload for '_!=_' applied to '(int, nul
         idents: [
           newVariableDecl(
             'x',
-            newObjectType('google.api.expr.test.v1.proto3.TestAllTypes')
+            newObjectType('cel.expr.conformance.proto3.TestAllTypes')
           ),
         ],
       },
@@ -970,7 +970,7 @@ ERROR: <input>:1:16: found no matching overload for '_!=_' applied to '(int, nul
         idents: [
           newVariableDecl(
             'x',
-            newObjectType('google.api.expr.test.v1.proto3.TestAllTypes')
+            newObjectType('cel.expr.conformance.proto3.TestAllTypes')
           ),
         ],
       },
@@ -984,7 +984,7 @@ ERROR: <input>:1:16: found no matching overload for '_!=_' applied to '(int, nul
         idents: [
           newVariableDecl(
             'x',
-            newObjectType('google.api.expr.test.v1.proto3.TestAllTypes')
+            newObjectType('cel.expr.conformance.proto3.TestAllTypes')
           ),
         ],
       },
@@ -994,7 +994,7 @@ ERROR: <input>:1:16: found no matching overload for '_!=_' applied to '(int, nul
             // Variable
             e,
             // Target
-            x~google.api.expr.test.v1.proto3.TestAllTypes^x.repeated_int64~list(int),
+            x~cel.expr.conformance.proto3.TestAllTypes^x.repeated_int64~list(int),
             // Accumulator
             __result__,
             // Init
@@ -1017,7 +1017,7 @@ ERROR: <input>:1:16: found no matching overload for '_!=_' applied to '(int, nul
             // Variable
             e,
             // Target
-            x~google.api.expr.test.v1.proto3.TestAllTypes^x.repeated_int64~list(int),
+            x~cel.expr.conformance.proto3.TestAllTypes^x.repeated_int64~list(int),
             // Accumulator
             __result__,
             // Init
@@ -1043,7 +1043,7 @@ ERROR: <input>:1:16: found no matching overload for '_!=_' applied to '(int, nul
           // Variable
           e,
           // Target
-          x~google.api.expr.test.v1.proto3.TestAllTypes^x.repeated_int64~list(int),
+          x~cel.expr.conformance.proto3.TestAllTypes^x.repeated_int64~list(int),
           // Accumulator
           __result__,
           // Init
@@ -1076,12 +1076,12 @@ ERROR: <input>:1:16: found no matching overload for '_!=_' applied to '(int, nul
         idents: [
           newVariableDecl(
             'x',
-            newObjectType('google.api.expr.test.v1.proto3.TestAllTypes')
+            newObjectType('cel.expr.conformance.proto3.TestAllTypes')
           ),
         ],
       },
       err: `
-ERROR: <input>:1:1: expression of type 'google.api.expr.test.v1.proto3.TestAllTypes' cannot be range of a comprehension (must be list, map, or dynamic)
+ERROR: <input>:1:1: expression of type 'cel.expr.conformance.proto3.TestAllTypes' cannot be range of a comprehension (must be list, map, or dynamic)
 | x.all(e, 0)
 | ^
 ERROR: <input>:1:10: expected type 'bool' but found 'int'
@@ -1124,24 +1124,24 @@ ERROR: <input>:1:10: expected type 'bool' but found 'int'
       },
     },
     {
-      in: `.google.api.expr.test.v1.proto3.TestAllTypes`,
-      out: `google.api.expr.test.v1.proto3.TestAllTypes
-    ~type(google.api.expr.test.v1.proto3.TestAllTypes)
-    ^google.api.expr.test.v1.proto3.TestAllTypes`,
+      in: `.cel.expr.conformance.proto3.TestAllTypes`,
+      out: `cel.expr.conformance.proto3.TestAllTypes
+    ~type(cel.expr.conformance.proto3.TestAllTypes)
+    ^cel.expr.conformance.proto3.TestAllTypes`,
       outType: newTypeTypeWithParam(
-        newObjectType('google.api.expr.test.v1.proto3.TestAllTypes')
+        newObjectType('cel.expr.conformance.proto3.TestAllTypes')
       ),
     },
     {
       in: `proto3.TestAllTypes`,
-      container: 'google.api.expr.test.v1',
+      container: 'cel.expr.conformance',
       out: `
-google.api.expr.test.v1.proto3.TestAllTypes
-~type(google.api.expr.test.v1.proto3.TestAllTypes)
-^google.api.expr.test.v1.proto3.TestAllTypes
+cel.expr.conformance.proto3.TestAllTypes
+~type(cel.expr.conformance.proto3.TestAllTypes)
+^cel.expr.conformance.proto3.TestAllTypes
     `,
       outType: newTypeTypeWithParam(
-        newObjectType('google.api.expr.test.v1.proto3.TestAllTypes')
+        newObjectType('cel.expr.conformance.proto3.TestAllTypes')
       ),
     },
     {
@@ -1153,9 +1153,9 @@ ERROR: <input>:1:5: undeclared reference to 'x' (in container '')
     },
     {
       in: `x == google.protobuf.Any{
-            type_url:'types.googleapis.com/google.api.expr.test.v1.proto3.TestAllTypes'
+            type_url:'types.googleapis.com/cel.expr.conformance.proto3.TestAllTypes'
         } && x.single_nested_message.bb == 43
-        || x == google.api.expr.test.v1.proto3.TestAllTypes{}
+        || x == cel.expr.conformance.proto3.TestAllTypes{}
         || y < x
         || x >= x`,
       env: {
@@ -1171,7 +1171,7 @@ ERROR: <input>:1:5: undeclared reference to 'x' (in container '')
                 _==_(
                     x~any^x,
                     google.protobuf.Any{
-                        type_url:"types.googleapis.com/google.api.expr.test.v1.proto3.TestAllTypes"~string
+                        type_url:"types.googleapis.com/cel.expr.conformance.proto3.TestAllTypes"~string
                     }~any^google.protobuf.Any
                 )~bool^equals,
                 _==_(
@@ -1181,7 +1181,7 @@ ERROR: <input>:1:5: undeclared reference to 'x' (in container '')
             )~bool^logical_and,
             _==_(
                 x~any^x,
-                google.api.expr.test.v1.proto3.TestAllTypes{}~google.api.expr.test.v1.proto3.TestAllTypes^google.api.expr.test.v1.proto3.TestAllTypes
+                cel.expr.conformance.proto3.TestAllTypes{}~cel.expr.conformance.proto3.TestAllTypes^cel.expr.conformance.proto3.TestAllTypes
             )~bool^equals
         )~bool^logical_or,
         _||_(
@@ -1200,9 +1200,9 @@ ERROR: <input>:1:5: undeclared reference to 'x' (in container '')
     },
     {
       in: `x == google.protobuf.Any{
-            type_url:'types.googleapis.com/google.api.expr.test.v1.proto3.TestAllTypes'
+            type_url:'types.googleapis.com/cel.expr.conformance.proto3.TestAllTypes'
         } && x.single_nested_message.bb == 43
-        || x == google.api.expr.test.v1.proto3.TestAllTypes{}
+        || x == cel.expr.conformance.proto3.TestAllTypes{}
         || y < x
         || x >= x`,
       env: {
@@ -1217,7 +1217,7 @@ ERROR: <input>:1:5: undeclared reference to 'x' (in container '')
           _==_(
             x~any^x,
             google.protobuf.Any{
-              type_url:"types.googleapis.com/google.api.expr.test.v1.proto3.TestAllTypes"~string
+              type_url:"types.googleapis.com/cel.expr.conformance.proto3.TestAllTypes"~string
             }~any^google.protobuf.Any
           )~bool^equals,
           _==_(
@@ -1227,7 +1227,7 @@ ERROR: <input>:1:5: undeclared reference to 'x' (in container '')
         )~bool^logical_and,
         _==_(
           x~any^x,
-          google.api.expr.test.v1.proto3.TestAllTypes{}~google.api.expr.test.v1.proto3.TestAllTypes^google.api.expr.test.v1.proto3.TestAllTypes
+          cel.expr.conformance.proto3.TestAllTypes{}~cel.expr.conformance.proto3.TestAllTypes^cel.expr.conformance.proto3.TestAllTypes
         )~bool^equals,
         _<_(
           y~wrapper(int)^y,
@@ -1248,12 +1248,12 @@ ERROR: <input>:1:5: undeclared reference to 'x' (in container '')
         idents: [
           newVariableDecl(
             'x',
-            newObjectType('google.api.expr.test.v1.proto3.TestAllTypes')
+            newObjectType('cel.expr.conformance.proto3.TestAllTypes')
           ),
         ],
       },
-      out: `container.x~google.api.expr.test.v1.proto3.TestAllTypes^container.x`,
-      outType: newObjectType('google.api.expr.test.v1.proto3.TestAllTypes'),
+      out: `container.x~cel.expr.conformance.proto3.TestAllTypes^container.x`,
+      outType: newObjectType('cel.expr.conformance.proto3.TestAllTypes'),
     },
     {
       in: `list == type([1]) && map == type({1:2u})`,
@@ -1317,7 +1317,7 @@ ERROR: <input>:1:5: undeclared reference to 'x' (in container '')
               new OverloadDecl({
                 id: 'size_message',
                 argTypes: [
-                  newObjectType('google.api.expr.test.v1.proto3.TestAllTypes'),
+                  newObjectType('cel.expr.conformance.proto3.TestAllTypes'),
                 ],
                 resultType: IntType,
               }),
@@ -1333,12 +1333,12 @@ ERROR: <input>:1:5: undeclared reference to 'x' (in container '')
         idents: [
           newVariableDecl(
             'x',
-            newObjectType('google.api.expr.test.v1.proto3.TestAllTypes')
+            newObjectType('cel.expr.conformance.proto3.TestAllTypes')
           ),
         ],
       },
       out: `
-    _!=_(_+_(x~google.api.expr.test.v1.proto3.TestAllTypes^x.single_int64_wrapper
+    _!=_(_+_(x~cel.expr.conformance.proto3.TestAllTypes^x.single_int64_wrapper
     ~wrapper(int),
     1~int)
     ~int^add_int64,
@@ -1353,7 +1353,7 @@ ERROR: <input>:1:5: undeclared reference to 'x' (in container '')
         idents: [
           newVariableDecl(
             'x',
-            newObjectType('google.api.expr.test.v1.proto3.TestAllTypes')
+            newObjectType('cel.expr.conformance.proto3.TestAllTypes')
           ),
           newVariableDecl('y', newObjectType('google.protobuf.Int32Value')),
         ],
@@ -1361,7 +1361,7 @@ ERROR: <input>:1:5: undeclared reference to 'x' (in container '')
       out: `
     _!=_(
         _+_(
-          x~google.api.expr.test.v1.proto3.TestAllTypes^x.single_int64_wrapper~wrapper(int),
+          x~cel.expr.conformance.proto3.TestAllTypes^x.single_int64_wrapper~wrapper(int),
           y~wrapper(int)^y
         )~int^add_int64,
         23~int
@@ -1556,11 +1556,11 @@ ERROR: <input>:1:5: undeclared reference to 'x' (in container '')
         idents: [
           newVariableDecl(
             'pb2',
-            newObjectType('google.api.expr.test.v1.proto2.TestAllTypes')
+            newObjectType('cel.expr.conformance.proto2.TestAllTypes')
           ),
           newVariableDecl(
             'pb3',
-            newObjectType('google.api.expr.test.v1.proto3.TestAllTypes')
+            newObjectType('cel.expr.conformance.proto3.TestAllTypes')
           ),
         ],
       },
@@ -1569,27 +1569,27 @@ ERROR: <input>:1:5: undeclared reference to 'x' (in container '')
         _&&_(
           _&&_(
             !_(
-              pb2~google.api.expr.test.v1.proto2.TestAllTypes^pb2.single_int64~test-only~~bool
+              pb2~cel.expr.conformance.proto2.TestAllTypes^pb2.single_int64~test-only~~bool
             )~bool^logical_not,
             !_(
-              pb2~google.api.expr.test.v1.proto2.TestAllTypes^pb2.repeated_int32~test-only~~bool
+              pb2~cel.expr.conformance.proto2.TestAllTypes^pb2.repeated_int32~test-only~~bool
             )~bool^logical_not
           )~bool^logical_and,
           !_(
-            pb2~google.api.expr.test.v1.proto2.TestAllTypes^pb2.map_string_string~test-only~~bool
+            pb2~cel.expr.conformance.proto2.TestAllTypes^pb2.map_string_string~test-only~~bool
           )~bool^logical_not
         )~bool^logical_and,
         _&&_(
           _&&_(
             !_(
-              pb3~google.api.expr.test.v1.proto3.TestAllTypes^pb3.single_int64~test-only~~bool
+              pb3~cel.expr.conformance.proto3.TestAllTypes^pb3.single_int64~test-only~~bool
             )~bool^logical_not,
             !_(
-              pb3~google.api.expr.test.v1.proto3.TestAllTypes^pb3.repeated_int32~test-only~~bool
+              pb3~cel.expr.conformance.proto3.TestAllTypes^pb3.repeated_int32~test-only~~bool
             )~bool^logical_not
           )~bool^logical_and,
           !_(
-            pb3~google.api.expr.test.v1.proto3.TestAllTypes^pb3.map_string_string~test-only~~bool
+            pb3~cel.expr.conformance.proto3.TestAllTypes^pb3.map_string_string~test-only~~bool
           )~bool^logical_not
         )~bool^logical_and
       )~bool^logical_and`,
@@ -1597,28 +1597,24 @@ ERROR: <input>:1:5: undeclared reference to 'x' (in container '')
     },
     {
       in: `TestAllTypes{}.repeated_nested_message`,
-      container: 'google.api.expr.test.v1.proto2',
+      container: 'cel.expr.conformance.proto2',
       out: `
-    google.api.expr.test.v1.proto2.TestAllTypes{}~google.api.expr.test.v1.proto2.TestAllTypes^
-    google.api.expr.test.v1.proto2.TestAllTypes.repeated_nested_message
-    ~list(google.api.expr.test.v1.proto2.TestAllTypes.NestedMessage)`,
+    cel.expr.conformance.proto2.TestAllTypes{}~cel.expr.conformance.proto2.TestAllTypes^
+    cel.expr.conformance.proto2.TestAllTypes.repeated_nested_message
+    ~list(cel.expr.conformance.proto2.TestAllTypes.NestedMessage)`,
       outType: newListType(
-        newObjectType(
-          'google.api.expr.test.v1.proto2.TestAllTypes.NestedMessage'
-        )
+        newObjectType('cel.expr.conformance.proto2.TestAllTypes.NestedMessage')
       ),
     },
     {
       in: `TestAllTypes{}.repeated_nested_message`,
-      container: 'google.api.expr.test.v1.proto3',
+      container: 'cel.expr.conformance.proto3',
       out: `
-    google.api.expr.test.v1.proto3.TestAllTypes{}~google.api.expr.test.v1.proto3.TestAllTypes^
-    google.api.expr.test.v1.proto3.TestAllTypes.repeated_nested_message
-    ~list(google.api.expr.test.v1.proto3.TestAllTypes.NestedMessage)`,
+    cel.expr.conformance.proto3.TestAllTypes{}~cel.expr.conformance.proto3.TestAllTypes^
+    cel.expr.conformance.proto3.TestAllTypes.repeated_nested_message
+    ~list(cel.expr.conformance.proto3.TestAllTypes.NestedMessage)`,
       outType: newListType(
-        newObjectType(
-          'google.api.expr.test.v1.proto3.TestAllTypes.NestedMessage'
-        )
+        newObjectType('cel.expr.conformance.proto3.TestAllTypes.NestedMessage')
       ),
     },
     {
@@ -2179,7 +2175,7 @@ ERROR: <input>:1:5: undeclared reference to 'x' (in container '')
     //     env.addIdent(
     //       newVariableDecl(
     //         'testAllTypes',
-    //         newObjectType('google.api.expr.test.v1.proto2.TestAllTypes')
+    //         newObjectType('cel.expr.conformance.proto2.TestAllTypes')
     //       )
     //     );
     //     return env;
@@ -2187,7 +2183,7 @@ ERROR: <input>:1:5: undeclared reference to 'x' (in container '')
     //   outType: BoolType,
     //   out: `_==_(
     //     type(
-    //       testAllTypes~google.api.expr.test.v1.proto2.TestAllTypes^testAllTypes.nestedgroup~google.api.expr.test.v1.proto2.TestAllTypes.NestedGroup.nested_id~int
+    //       testAllTypes~cel.expr.conformance.proto2.TestAllTypes^testAllTypes.nestedgroup~cel.expr.conformance.proto2.TestAllTypes.NestedGroup.nested_id~int
     //     )~type(int)^type,
     //     int~type(int)^int
     //   )~bool^equals`,
@@ -2329,19 +2325,19 @@ ERROR: <input>:1:5: undeclared reference to 'x' (in container '')
     },
     {
       in: `TestAllTypes{?single_int32: {}.?i}`,
-      container: 'google.api.expr.test.v1.proto2',
+      container: 'cel.expr.conformance.proto2',
       env: { optionalSyntax: true },
-      out: `google.api.expr.test.v1.proto2.TestAllTypes{
+      out: `cel.expr.conformance.proto2.TestAllTypes{
 			?single_int32:_?._(
 			  {}~map(dyn, int),
 			  "i"
 			)~optional_type(int)^select_optional_field
-		  }~google.api.expr.test.v1.proto2.TestAllTypes^google.api.expr.test.v1.proto2.TestAllTypes`,
-      outType: newObjectType('google.api.expr.test.v1.proto2.TestAllTypes'),
+		  }~cel.expr.conformance.proto2.TestAllTypes^cel.expr.conformance.proto2.TestAllTypes`,
+      outType: newObjectType('cel.expr.conformance.proto2.TestAllTypes'),
     },
     {
       in: `TestAllTypes{?single_int32: 1}`,
-      container: 'google.api.expr.test.v1.proto2',
+      container: 'cel.expr.conformance.proto2',
       env: { optionalSyntax: true },
       err: `ERROR: <input>:1:29: expected type 'optional_type(int)' but found 'int'
 		| TestAllTypes{?single_int32: 1}
@@ -2367,7 +2363,7 @@ ERROR: <input>:1:5: undeclared reference to 'x' (in container '')
           newVariableDecl(
             'null_msg',
             newNullableType(
-              newObjectType('google.api.expr.test.v1.proto2.TestAllTypes')
+              newObjectType('cel.expr.conformance.proto2.TestAllTypes')
             )
           ),
         ],

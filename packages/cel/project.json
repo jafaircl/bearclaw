@@ -50,6 +50,13 @@
         "command": "go run textproto-to-json.go",
         "cwd": "packages/cel/src/lib/conformance"
       }
+    },
+    "genproto": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "npx buf generate",
+        "cwd": "packages/cel"
+      }
     }
   }
 }

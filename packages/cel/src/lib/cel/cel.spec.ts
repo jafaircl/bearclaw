@@ -1,10 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { ExprSchema } from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb';
 import { create } from '@bufbuild/protobuf';
 import { RefVal } from '../common/ref/reference';
 import { BoolRefVal } from '../common/types/bool';
 import { IntRefVal } from '../common/types/int';
 import { Activation } from '../interpreter/activation';
+import { ExprSchema } from '../protogen/cel/expr/syntax_pb.js';
 import { BoolType, StringType, variable } from './decls';
 import { Ast, CustomEnv, Env, Issues } from './env';
 import { StdLib } from './library';

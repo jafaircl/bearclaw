@@ -1,12 +1,12 @@
 /* eslint-disable no-case-declarations */
 import { isNil } from '@bearclaw/is';
+import { create } from '@bufbuild/protobuf';
 import {
   Expr,
   ParsedExpr,
   SourceInfo as ProtoSourceInfo,
   SourceInfoSchema,
-} from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb.js';
-import { create } from '@bufbuild/protobuf';
+} from '../protogen/cel/expr/syntax_pb.js';
 import { toCheckedExprProto, toParsedExprProto } from './conversion';
 import { Location, NoLocation } from './location';
 import {
