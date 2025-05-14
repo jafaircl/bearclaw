@@ -40,7 +40,6 @@ export {
   wrapOnOperators,
 } from '../parser/unparser';
 export type { UnparserOption } from '../parser/unparser';
-export * from './decls';
 export {
   AnyType,
   BoolType,
