@@ -62,6 +62,7 @@ export default class CELParser extends Parser {
   public static readonly STRING = 34;
   public static readonly BYTES = 35;
   public static readonly IDENTIFIER = 36;
+  public static readonly ESC_IDENTIFIER = 37;
   public static override readonly EOF = Token.EOF;
   public static readonly RULE_start = 0;
   public static readonly RULE_expr = 1;
@@ -77,8 +78,9 @@ export default class CELParser extends Parser {
   public static readonly RULE_fieldInitializerList = 11;
   public static readonly RULE_optField = 12;
   public static readonly RULE_mapInitializerList = 13;
-  public static readonly RULE_optExpr = 14;
-  public static readonly RULE_literal = 15;
+  public static readonly RULE_escapeIdent = 14;
+  public static readonly RULE_optExpr = 15;
+  public static readonly RULE_literal = 16;
   public static readonly literalNames: (string | null)[] = [
     null,
     "'=='",
@@ -148,6 +150,7 @@ export default class CELParser extends Parser {
     'STRING',
     'BYTES',
     'IDENTIFIER',
+    'ESC_IDENTIFIER',
   ];
   // tslint:disable:no-trailing-whitespace
   public static readonly ruleNames: string[] = [
@@ -165,6 +168,7 @@ export default class CELParser extends Parser {
     'fieldInitializerList',
     'optField',
     'mapInitializerList',
+    'escapeIdent',
     'optExpr',
     'literal',
   ];
@@ -207,9 +211,9 @@ export default class CELParser extends Parser {
     try {
       this.enterOuterAlt(localctx, 1);
       {
-        this.state = 32;
+        this.state = 34;
         localctx._e = this.expr();
-        this.state = 33;
+        this.state = 35;
         this.match(CELParser.EOF);
       }
     } catch (re) {
@@ -233,20 +237,20 @@ export default class CELParser extends Parser {
     try {
       this.enterOuterAlt(localctx, 1);
       {
-        this.state = 35;
+        this.state = 37;
         localctx._e = this.conditionalOr();
-        this.state = 41;
+        this.state = 43;
         this._errHandler.sync(this);
         _la = this._input.LA(1);
         if (_la === 20) {
           {
-            this.state = 36;
-            localctx._op = this.match(CELParser.QUESTIONMARK);
-            this.state = 37;
-            localctx._e1 = this.conditionalOr();
             this.state = 38;
-            this.match(CELParser.COLON);
+            localctx._op = this.match(CELParser.QUESTIONMARK);
             this.state = 39;
+            localctx._e1 = this.conditionalOr();
+            this.state = 40;
+            this.match(CELParser.COLON);
+            this.state = 41;
             localctx._e2 = this.expr();
           }
         }
@@ -276,23 +280,23 @@ export default class CELParser extends Parser {
     try {
       this.enterOuterAlt(localctx, 1);
       {
-        this.state = 43;
+        this.state = 45;
         localctx._e = this.conditionalAnd();
-        this.state = 48;
+        this.state = 50;
         this._errHandler.sync(this);
         _la = this._input.LA(1);
         while (_la === 9) {
           {
             {
-              this.state = 44;
+              this.state = 46;
               localctx._s9 = this.match(CELParser.LOGICAL_OR);
               localctx._ops.push(localctx._s9);
-              this.state = 45;
+              this.state = 47;
               localctx._conditionalAnd = this.conditionalAnd();
               localctx._e1.push(localctx._conditionalAnd);
             }
           }
-          this.state = 50;
+          this.state = 52;
           this._errHandler.sync(this);
           _la = this._input.LA(1);
         }
@@ -322,23 +326,23 @@ export default class CELParser extends Parser {
     try {
       this.enterOuterAlt(localctx, 1);
       {
-        this.state = 51;
+        this.state = 53;
         localctx._e = this.relation(0);
-        this.state = 56;
+        this.state = 58;
         this._errHandler.sync(this);
         _la = this._input.LA(1);
         while (_la === 8) {
           {
             {
-              this.state = 52;
+              this.state = 54;
               localctx._s8 = this.match(CELParser.LOGICAL_AND);
               localctx._ops.push(localctx._s8);
-              this.state = 53;
+              this.state = 55;
               localctx._relation = this.relation(0);
               localctx._e1.push(localctx._relation);
             }
           }
-          this.state = 58;
+          this.state = 60;
           this._errHandler.sync(this);
           _la = this._input.LA(1);
         }
@@ -381,11 +385,11 @@ export default class CELParser extends Parser {
       this.enterOuterAlt(localctx, 1);
       {
         {
-          this.state = 60;
+          this.state = 62;
           this.calc(0);
         }
         this._ctx.stop = this._input.LT(-1);
-        this.state = 67;
+        this.state = 69;
         this._errHandler.sync(this);
         _alt = this._interp.adaptivePredict(this._input, 3, this._ctx);
         while (_alt !== 2 && _alt !== ATN.INVALID_ALT_NUMBER) {
@@ -402,13 +406,13 @@ export default class CELParser extends Parser {
                   _startState,
                   CELParser.RULE_relation
                 );
-                this.state = 62;
+                this.state = 64;
                 if (!this.precpred(this._ctx, 1)) {
                   throw this.createFailedPredicateException(
                     'this.precpred(this._ctx, 1)'
                   );
                 }
-                this.state = 63;
+                this.state = 65;
                 localctx._op = this._input.LT(1);
                 _la = this._input.LA(1);
                 if (!((_la & ~0x1f) === 0 && ((1 << _la) & 254) !== 0)) {
@@ -417,12 +421,12 @@ export default class CELParser extends Parser {
                   this._errHandler.reportMatch(this);
                   this.consume();
                 }
-                this.state = 64;
+                this.state = 66;
                 this.relation(2);
               }
             }
           }
-          this.state = 69;
+          this.state = 71;
           this._errHandler.sync(this);
           _alt = this._interp.adaptivePredict(this._input, 3, this._ctx);
         }
@@ -461,11 +465,11 @@ export default class CELParser extends Parser {
       this.enterOuterAlt(localctx, 1);
       {
         {
-          this.state = 71;
+          this.state = 73;
           this.unary();
         }
         this._ctx.stop = this._input.LT(-1);
-        this.state = 81;
+        this.state = 83;
         this._errHandler.sync(this);
         _alt = this._interp.adaptivePredict(this._input, 5, this._ctx);
         while (_alt !== 2 && _alt !== ATN.INVALID_ALT_NUMBER) {
@@ -475,7 +479,7 @@ export default class CELParser extends Parser {
             }
             _prevctx = localctx;
             {
-              this.state = 79;
+              this.state = 81;
               this._errHandler.sync(this);
               switch (this._interp.adaptivePredict(this._input, 4, this._ctx)) {
                 case 1:
@@ -486,13 +490,13 @@ export default class CELParser extends Parser {
                       _startState,
                       CELParser.RULE_calc
                     );
-                    this.state = 73;
+                    this.state = 75;
                     if (!this.precpred(this._ctx, 2)) {
                       throw this.createFailedPredicateException(
                         'this.precpred(this._ctx, 2)'
                       );
                     }
-                    this.state = 74;
+                    this.state = 76;
                     localctx._op = this._input.LT(1);
                     _la = this._input.LA(1);
                     if (
@@ -503,7 +507,7 @@ export default class CELParser extends Parser {
                       this._errHandler.reportMatch(this);
                       this.consume();
                     }
-                    this.state = 75;
+                    this.state = 77;
                     this.calc(3);
                   }
                   break;
@@ -515,13 +519,13 @@ export default class CELParser extends Parser {
                       _startState,
                       CELParser.RULE_calc
                     );
-                    this.state = 76;
+                    this.state = 78;
                     if (!this.precpred(this._ctx, 1)) {
                       throw this.createFailedPredicateException(
                         'this.precpred(this._ctx, 1)'
                       );
                     }
-                    this.state = 77;
+                    this.state = 79;
                     localctx._op = this._input.LT(1);
                     _la = this._input.LA(1);
                     if (!(_la === 18 || _la === 22)) {
@@ -530,14 +534,14 @@ export default class CELParser extends Parser {
                       this._errHandler.reportMatch(this);
                       this.consume();
                     }
-                    this.state = 78;
+                    this.state = 80;
                     this.calc(2);
                   }
                   break;
               }
             }
           }
-          this.state = 83;
+          this.state = 85;
           this._errHandler.sync(this);
           _alt = this._interp.adaptivePredict(this._input, 5, this._ctx);
         }
@@ -562,14 +566,14 @@ export default class CELParser extends Parser {
     let _la: number;
     try {
       let _alt: number;
-      this.state = 97;
+      this.state = 99;
       this._errHandler.sync(this);
       switch (this._interp.adaptivePredict(this._input, 8, this._ctx)) {
         case 1:
           localctx = new MemberExprContext(this, localctx);
           this.enterOuterAlt(localctx, 1);
           {
-            this.state = 84;
+            this.state = 86;
             this.member(0);
           }
           break;
@@ -577,13 +581,13 @@ export default class CELParser extends Parser {
           localctx = new LogicalNotContext(this, localctx);
           this.enterOuterAlt(localctx, 2);
           {
-            this.state = 86;
+            this.state = 88;
             this._errHandler.sync(this);
             _la = this._input.LA(1);
             do {
               {
                 {
-                  this.state = 85;
+                  this.state = 87;
                   (localctx as LogicalNotContext)._s19 = this.match(
                     CELParser.EXCLAM
                   );
@@ -592,11 +596,11 @@ export default class CELParser extends Parser {
                   );
                 }
               }
-              this.state = 88;
+              this.state = 90;
               this._errHandler.sync(this);
               _la = this._input.LA(1);
             } while (_la === 19);
-            this.state = 90;
+            this.state = 92;
             this.member(0);
           }
           break;
@@ -604,7 +608,7 @@ export default class CELParser extends Parser {
           localctx = new NegateContext(this, localctx);
           this.enterOuterAlt(localctx, 3);
           {
-            this.state = 92;
+            this.state = 94;
             this._errHandler.sync(this);
             _alt = 1;
             do {
@@ -612,7 +616,7 @@ export default class CELParser extends Parser {
                 case 1:
                   {
                     {
-                      this.state = 91;
+                      this.state = 93;
                       (localctx as NegateContext)._s18 = this.match(
                         CELParser.MINUS
                       );
@@ -625,11 +629,11 @@ export default class CELParser extends Parser {
                 default:
                   throw new NoViableAltException(this);
               }
-              this.state = 94;
+              this.state = 96;
               this._errHandler.sync(this);
               _alt = this._interp.adaptivePredict(this._input, 7, this._ctx);
             } while (_alt !== 2 && _alt !== ATN.INVALID_ALT_NUMBER);
-            this.state = 96;
+            this.state = 98;
             this.member(0);
           }
           break;
@@ -676,11 +680,11 @@ export default class CELParser extends Parser {
           this._ctx = localctx;
           _prevctx = localctx;
 
-          this.state = 100;
+          this.state = 102;
           this.primary();
         }
         this._ctx.stop = this._input.LT(-1);
-        this.state = 126;
+        this.state = 128;
         this._errHandler.sync(this);
         _alt = this._interp.adaptivePredict(this._input, 13, this._ctx);
         while (_alt !== 2 && _alt !== ATN.INVALID_ALT_NUMBER) {
@@ -690,7 +694,7 @@ export default class CELParser extends Parser {
             }
             _prevctx = localctx;
             {
-              this.state = 124;
+              this.state = 126;
               this._errHandler.sync(this);
               switch (
                 this._interp.adaptivePredict(this._input, 12, this._ctx)
@@ -706,30 +710,28 @@ export default class CELParser extends Parser {
                       _startState,
                       CELParser.RULE_member
                     );
-                    this.state = 102;
+                    this.state = 104;
                     if (!this.precpred(this._ctx, 3)) {
                       throw this.createFailedPredicateException(
                         'this.precpred(this._ctx, 3)'
                       );
                     }
-                    this.state = 103;
-                    (localctx as SelectContext)._op = this.match(CELParser.DOT);
                     this.state = 105;
+                    (localctx as SelectContext)._op = this.match(CELParser.DOT);
+                    this.state = 107;
                     this._errHandler.sync(this);
                     _la = this._input.LA(1);
                     if (_la === 20) {
                       {
-                        this.state = 104;
+                        this.state = 106;
                         (localctx as SelectContext)._opt = this.match(
                           CELParser.QUESTIONMARK
                         );
                       }
                     }
 
-                    this.state = 107;
-                    (localctx as SelectContext)._id = this.match(
-                      CELParser.IDENTIFIER
-                    );
+                    this.state = 109;
+                    (localctx as SelectContext)._id = this.escapeIdent();
                   }
                   break;
                 case 2:
@@ -743,25 +745,25 @@ export default class CELParser extends Parser {
                       _startState,
                       CELParser.RULE_member
                     );
-                    this.state = 108;
+                    this.state = 110;
                     if (!this.precpred(this._ctx, 2)) {
                       throw this.createFailedPredicateException(
                         'this.precpred(this._ctx, 2)'
                       );
                     }
-                    this.state = 109;
+                    this.state = 111;
                     (localctx as MemberCallContext)._op = this.match(
                       CELParser.DOT
                     );
-                    this.state = 110;
+                    this.state = 112;
                     (localctx as MemberCallContext)._id = this.match(
                       CELParser.IDENTIFIER
                     );
-                    this.state = 111;
+                    this.state = 113;
                     (localctx as MemberCallContext)._open = this.match(
                       CELParser.LPAREN
                     );
-                    this.state = 113;
+                    this.state = 115;
                     this._errHandler.sync(this);
                     _la = this._input.LA(1);
                     if (
@@ -769,12 +771,12 @@ export default class CELParser extends Parser {
                       ((1 << (_la - 10)) & 132580181) !== 0
                     ) {
                       {
-                        this.state = 112;
+                        this.state = 114;
                         (localctx as MemberCallContext)._args = this.exprList();
                       }
                     }
 
-                    this.state = 115;
+                    this.state = 117;
                     this.match(CELParser.RPAREN);
                   }
                   break;
@@ -789,38 +791,38 @@ export default class CELParser extends Parser {
                       _startState,
                       CELParser.RULE_member
                     );
-                    this.state = 116;
+                    this.state = 118;
                     if (!this.precpred(this._ctx, 1)) {
                       throw this.createFailedPredicateException(
                         'this.precpred(this._ctx, 1)'
                       );
                     }
-                    this.state = 117;
+                    this.state = 119;
                     (localctx as IndexContext)._op = this.match(
                       CELParser.LBRACKET
                     );
-                    this.state = 119;
+                    this.state = 121;
                     this._errHandler.sync(this);
                     _la = this._input.LA(1);
                     if (_la === 20) {
                       {
-                        this.state = 118;
+                        this.state = 120;
                         (localctx as IndexContext)._opt = this.match(
                           CELParser.QUESTIONMARK
                         );
                       }
                     }
 
-                    this.state = 121;
+                    this.state = 123;
                     (localctx as IndexContext)._index = this.expr();
-                    this.state = 122;
+                    this.state = 124;
                     this.match(CELParser.RPRACKET);
                   }
                   break;
               }
             }
           }
-          this.state = 128;
+          this.state = 130;
           this._errHandler.sync(this);
           _alt = this._interp.adaptivePredict(this._input, 13, this._ctx);
         }
@@ -848,80 +850,93 @@ export default class CELParser extends Parser {
     this.enterRule(localctx, 16, CELParser.RULE_primary);
     let _la: number;
     try {
-      this.state = 180;
+      this.state = 184;
       this._errHandler.sync(this);
       switch (this._interp.adaptivePredict(this._input, 25, this._ctx)) {
         case 1:
-          localctx = new IdentOrGlobalCallContext(this, localctx);
+          localctx = new IdentContext(this, localctx);
           this.enterOuterAlt(localctx, 1);
           {
-            this.state = 130;
+            this.state = 132;
             this._errHandler.sync(this);
             _la = this._input.LA(1);
             if (_la === 16) {
               {
-                this.state = 129;
-                (localctx as IdentOrGlobalCallContext)._leadingDot = this.match(
+                this.state = 131;
+                (localctx as IdentContext)._leadingDot = this.match(
                   CELParser.DOT
                 );
               }
             }
 
-            this.state = 132;
-            (localctx as IdentOrGlobalCallContext)._id = this.match(
-              CELParser.IDENTIFIER
-            );
-            this.state = 138;
-            this._errHandler.sync(this);
-            switch (this._interp.adaptivePredict(this._input, 16, this._ctx)) {
-              case 1:
-                {
-                  this.state = 133;
-                  (localctx as IdentOrGlobalCallContext)._op = this.match(
-                    CELParser.LPAREN
-                  );
-                  this.state = 135;
-                  this._errHandler.sync(this);
-                  _la = this._input.LA(1);
-                  if (
-                    ((_la - 10) & ~0x1f) === 0 &&
-                    ((1 << (_la - 10)) & 132580181) !== 0
-                  ) {
-                    {
-                      this.state = 134;
-                      (localctx as IdentOrGlobalCallContext)._args =
-                        this.exprList();
-                    }
-                  }
-
-                  this.state = 137;
-                  this.match(CELParser.RPAREN);
-                }
-                break;
-            }
+            this.state = 134;
+            (localctx as IdentContext)._id = this.match(CELParser.IDENTIFIER);
           }
           break;
         case 2:
-          localctx = new NestedContext(this, localctx);
+          localctx = new GlobalCallContext(this, localctx);
           this.enterOuterAlt(localctx, 2);
           {
-            this.state = 140;
-            this.match(CELParser.LPAREN);
-            this.state = 141;
-            (localctx as NestedContext)._e = this.expr();
-            this.state = 142;
-            this.match(CELParser.RPAREN);
+            this.state = 136;
+            this._errHandler.sync(this);
+            _la = this._input.LA(1);
+            if (_la === 16) {
+              {
+                this.state = 135;
+                (localctx as GlobalCallContext)._leadingDot = this.match(
+                  CELParser.DOT
+                );
+              }
+            }
+
+            this.state = 138;
+            (localctx as GlobalCallContext)._id = this.match(
+              CELParser.IDENTIFIER
+            );
+            {
+              this.state = 139;
+              (localctx as GlobalCallContext)._op = this.match(
+                CELParser.LPAREN
+              );
+              this.state = 141;
+              this._errHandler.sync(this);
+              _la = this._input.LA(1);
+              if (
+                ((_la - 10) & ~0x1f) === 0 &&
+                ((1 << (_la - 10)) & 132580181) !== 0
+              ) {
+                {
+                  this.state = 140;
+                  (localctx as GlobalCallContext)._args = this.exprList();
+                }
+              }
+
+              this.state = 143;
+              this.match(CELParser.RPAREN);
+            }
           }
           break;
         case 3:
-          localctx = new CreateListContext(this, localctx);
+          localctx = new NestedContext(this, localctx);
           this.enterOuterAlt(localctx, 3);
           {
             this.state = 144;
+            this.match(CELParser.LPAREN);
+            this.state = 145;
+            (localctx as NestedContext)._e = this.expr();
+            this.state = 146;
+            this.match(CELParser.RPAREN);
+          }
+          break;
+        case 4:
+          localctx = new CreateListContext(this, localctx);
+          this.enterOuterAlt(localctx, 4);
+          {
+            this.state = 148;
             (localctx as CreateListContext)._op = this.match(
               CELParser.LBRACKET
             );
-            this.state = 146;
+            this.state = 150;
             this._errHandler.sync(this);
             _la = this._input.LA(1);
             if (
@@ -929,34 +944,34 @@ export default class CELParser extends Parser {
               ((1 << (_la - 10)) & 132581205) !== 0
             ) {
               {
-                this.state = 145;
+                this.state = 149;
                 (localctx as CreateListContext)._elems = this.listInit();
               }
             }
 
-            this.state = 149;
+            this.state = 153;
             this._errHandler.sync(this);
             _la = this._input.LA(1);
             if (_la === 17) {
               {
-                this.state = 148;
+                this.state = 152;
                 this.match(CELParser.COMMA);
               }
             }
 
-            this.state = 151;
+            this.state = 155;
             this.match(CELParser.RPRACKET);
           }
           break;
-        case 4:
+        case 5:
           localctx = new CreateStructContext(this, localctx);
-          this.enterOuterAlt(localctx, 4);
+          this.enterOuterAlt(localctx, 5);
           {
-            this.state = 152;
+            this.state = 156;
             (localctx as CreateStructContext)._op = this.match(
               CELParser.LBRACE
             );
-            this.state = 154;
+            this.state = 158;
             this._errHandler.sync(this);
             _la = this._input.LA(1);
             if (
@@ -964,63 +979,63 @@ export default class CELParser extends Parser {
               ((1 << (_la - 10)) & 132581205) !== 0
             ) {
               {
-                this.state = 153;
+                this.state = 157;
                 (localctx as CreateStructContext)._entries =
                   this.mapInitializerList();
               }
             }
 
-            this.state = 157;
+            this.state = 161;
             this._errHandler.sync(this);
             _la = this._input.LA(1);
             if (_la === 17) {
               {
-                this.state = 156;
+                this.state = 160;
                 this.match(CELParser.COMMA);
               }
             }
 
-            this.state = 159;
+            this.state = 163;
             this.match(CELParser.RBRACE);
           }
           break;
-        case 5:
+        case 6:
           localctx = new CreateMessageContext(this, localctx);
-          this.enterOuterAlt(localctx, 5);
+          this.enterOuterAlt(localctx, 6);
           {
-            this.state = 161;
+            this.state = 165;
             this._errHandler.sync(this);
             _la = this._input.LA(1);
             if (_la === 16) {
               {
-                this.state = 160;
+                this.state = 164;
                 (localctx as CreateMessageContext)._leadingDot = this.match(
                   CELParser.DOT
                 );
               }
             }
 
-            this.state = 163;
+            this.state = 167;
             (localctx as CreateMessageContext)._IDENTIFIER = this.match(
               CELParser.IDENTIFIER
             );
             (localctx as CreateMessageContext)._ids.push(
               (localctx as CreateMessageContext)._IDENTIFIER
             );
-            this.state = 168;
+            this.state = 172;
             this._errHandler.sync(this);
             _la = this._input.LA(1);
             while (_la === 16) {
               {
                 {
-                  this.state = 164;
+                  this.state = 168;
                   (localctx as CreateMessageContext)._s16 = this.match(
                     CELParser.DOT
                   );
                   (localctx as CreateMessageContext)._ops.push(
                     (localctx as CreateMessageContext)._s16
                   );
-                  this.state = 165;
+                  this.state = 169;
                   (localctx as CreateMessageContext)._IDENTIFIER = this.match(
                     CELParser.IDENTIFIER
                   );
@@ -1029,44 +1044,47 @@ export default class CELParser extends Parser {
                   );
                 }
               }
-              this.state = 170;
+              this.state = 174;
               this._errHandler.sync(this);
               _la = this._input.LA(1);
             }
-            this.state = 171;
+            this.state = 175;
             (localctx as CreateMessageContext)._op = this.match(
               CELParser.LBRACE
             );
-            this.state = 173;
+            this.state = 177;
             this._errHandler.sync(this);
             _la = this._input.LA(1);
-            if (_la === 20 || _la === 36) {
+            if (
+              ((_la - 20) & ~0x1f) === 0 &&
+              ((1 << (_la - 20)) & 196609) !== 0
+            ) {
               {
-                this.state = 172;
+                this.state = 176;
                 (localctx as CreateMessageContext)._entries =
                   this.fieldInitializerList();
               }
             }
 
-            this.state = 176;
+            this.state = 180;
             this._errHandler.sync(this);
             _la = this._input.LA(1);
             if (_la === 17) {
               {
-                this.state = 175;
+                this.state = 179;
                 this.match(CELParser.COMMA);
               }
             }
 
-            this.state = 178;
+            this.state = 182;
             this.match(CELParser.RBRACE);
           }
           break;
-        case 6:
+        case 7:
           localctx = new ConstantLiteralContext(this, localctx);
-          this.enterOuterAlt(localctx, 6);
+          this.enterOuterAlt(localctx, 7);
           {
-            this.state = 179;
+            this.state = 183;
             this.literal();
           }
           break;
@@ -1096,23 +1114,23 @@ export default class CELParser extends Parser {
     try {
       this.enterOuterAlt(localctx, 1);
       {
-        this.state = 182;
+        this.state = 186;
         localctx._expr = this.expr();
         localctx._e.push(localctx._expr);
-        this.state = 187;
+        this.state = 191;
         this._errHandler.sync(this);
         _la = this._input.LA(1);
         while (_la === 17) {
           {
             {
-              this.state = 183;
+              this.state = 187;
               this.match(CELParser.COMMA);
-              this.state = 184;
+              this.state = 188;
               localctx._expr = this.expr();
               localctx._e.push(localctx._expr);
             }
           }
-          this.state = 189;
+          this.state = 193;
           this._errHandler.sync(this);
           _la = this._input.LA(1);
         }
@@ -1142,25 +1160,25 @@ export default class CELParser extends Parser {
       let _alt: number;
       this.enterOuterAlt(localctx, 1);
       {
-        this.state = 190;
+        this.state = 194;
         localctx._optExpr = this.optExpr();
         localctx._elems.push(localctx._optExpr);
-        this.state = 195;
+        this.state = 199;
         this._errHandler.sync(this);
         _alt = this._interp.adaptivePredict(this._input, 27, this._ctx);
         while (_alt !== 2 && _alt !== ATN.INVALID_ALT_NUMBER) {
           if (_alt === 1) {
             {
               {
-                this.state = 191;
+                this.state = 195;
                 this.match(CELParser.COMMA);
-                this.state = 192;
+                this.state = 196;
                 localctx._optExpr = this.optExpr();
                 localctx._elems.push(localctx._optExpr);
               }
             }
           }
-          this.state = 197;
+          this.state = 201;
           this._errHandler.sync(this);
           _alt = this._interp.adaptivePredict(this._input, 27, this._ctx);
         }
@@ -1190,37 +1208,37 @@ export default class CELParser extends Parser {
       let _alt: number;
       this.enterOuterAlt(localctx, 1);
       {
-        this.state = 198;
+        this.state = 202;
         localctx._optField = this.optField();
         localctx._fields.push(localctx._optField);
-        this.state = 199;
+        this.state = 203;
         localctx._s21 = this.match(CELParser.COLON);
         localctx._cols.push(localctx._s21);
-        this.state = 200;
+        this.state = 204;
         localctx._expr = this.expr();
         localctx._values.push(localctx._expr);
-        this.state = 208;
+        this.state = 212;
         this._errHandler.sync(this);
         _alt = this._interp.adaptivePredict(this._input, 28, this._ctx);
         while (_alt !== 2 && _alt !== ATN.INVALID_ALT_NUMBER) {
           if (_alt === 1) {
             {
               {
-                this.state = 201;
+                this.state = 205;
                 this.match(CELParser.COMMA);
-                this.state = 202;
+                this.state = 206;
                 localctx._optField = this.optField();
                 localctx._fields.push(localctx._optField);
-                this.state = 203;
+                this.state = 207;
                 localctx._s21 = this.match(CELParser.COLON);
                 localctx._cols.push(localctx._s21);
-                this.state = 204;
+                this.state = 208;
                 localctx._expr = this.expr();
                 localctx._values.push(localctx._expr);
               }
             }
           }
-          this.state = 210;
+          this.state = 214;
           this._errHandler.sync(this);
           _alt = this._interp.adaptivePredict(this._input, 28, this._ctx);
         }
@@ -1250,18 +1268,18 @@ export default class CELParser extends Parser {
     try {
       this.enterOuterAlt(localctx, 1);
       {
-        this.state = 212;
+        this.state = 216;
         this._errHandler.sync(this);
         _la = this._input.LA(1);
         if (_la === 20) {
           {
-            this.state = 211;
+            this.state = 215;
             localctx._opt = this.match(CELParser.QUESTIONMARK);
           }
         }
 
-        this.state = 214;
-        this.match(CELParser.IDENTIFIER);
+        this.state = 218;
+        this.escapeIdent();
       }
     } catch (re) {
       if (re instanceof RecognitionException) {
@@ -1288,40 +1306,88 @@ export default class CELParser extends Parser {
       let _alt: number;
       this.enterOuterAlt(localctx, 1);
       {
-        this.state = 216;
+        this.state = 220;
         localctx._optExpr = this.optExpr();
         localctx._keys.push(localctx._optExpr);
-        this.state = 217;
+        this.state = 221;
         localctx._s21 = this.match(CELParser.COLON);
         localctx._cols.push(localctx._s21);
-        this.state = 218;
+        this.state = 222;
         localctx._expr = this.expr();
         localctx._values.push(localctx._expr);
-        this.state = 226;
+        this.state = 230;
         this._errHandler.sync(this);
         _alt = this._interp.adaptivePredict(this._input, 30, this._ctx);
         while (_alt !== 2 && _alt !== ATN.INVALID_ALT_NUMBER) {
           if (_alt === 1) {
             {
               {
-                this.state = 219;
+                this.state = 223;
                 this.match(CELParser.COMMA);
-                this.state = 220;
+                this.state = 224;
                 localctx._optExpr = this.optExpr();
                 localctx._keys.push(localctx._optExpr);
-                this.state = 221;
+                this.state = 225;
                 localctx._s21 = this.match(CELParser.COLON);
                 localctx._cols.push(localctx._s21);
-                this.state = 222;
+                this.state = 226;
                 localctx._expr = this.expr();
                 localctx._values.push(localctx._expr);
               }
             }
           }
-          this.state = 228;
+          this.state = 232;
           this._errHandler.sync(this);
           _alt = this._interp.adaptivePredict(this._input, 30, this._ctx);
         }
+      }
+    } catch (re) {
+      if (re instanceof RecognitionException) {
+        localctx.exception = re;
+        this._errHandler.reportError(this, re);
+        this._errHandler.recover(this, re);
+      } else {
+        throw re;
+      }
+    } finally {
+      this.exitRule();
+    }
+    return localctx;
+  }
+  // @RuleVersion(0)
+  public escapeIdent(): EscapeIdentContext {
+    let localctx: EscapeIdentContext = new EscapeIdentContext(
+      this,
+      this._ctx,
+      this.state
+    );
+    this.enterRule(localctx, 28, CELParser.RULE_escapeIdent);
+    try {
+      this.state = 235;
+      this._errHandler.sync(this);
+      switch (this._input.LA(1)) {
+        case 36:
+          localctx = new SimpleIdentifierContext(this, localctx);
+          this.enterOuterAlt(localctx, 1);
+          {
+            this.state = 233;
+            (localctx as SimpleIdentifierContext)._id = this.match(
+              CELParser.IDENTIFIER
+            );
+          }
+          break;
+        case 37:
+          localctx = new EscapedIdentifierContext(this, localctx);
+          this.enterOuterAlt(localctx, 2);
+          {
+            this.state = 234;
+            (localctx as EscapedIdentifierContext)._id = this.match(
+              CELParser.ESC_IDENTIFIER
+            );
+          }
+          break;
+        default:
+          throw new NoViableAltException(this);
       }
     } catch (re) {
       if (re instanceof RecognitionException) {
@@ -1343,22 +1409,22 @@ export default class CELParser extends Parser {
       this._ctx,
       this.state
     );
-    this.enterRule(localctx, 28, CELParser.RULE_optExpr);
+    this.enterRule(localctx, 30, CELParser.RULE_optExpr);
     let _la: number;
     try {
       this.enterOuterAlt(localctx, 1);
       {
-        this.state = 230;
+        this.state = 238;
         this._errHandler.sync(this);
         _la = this._input.LA(1);
         if (_la === 20) {
           {
-            this.state = 229;
+            this.state = 237;
             localctx._opt = this.match(CELParser.QUESTIONMARK);
           }
         }
 
-        this.state = 232;
+        this.state = 240;
         localctx._e = this.expr();
       }
     } catch (re) {
@@ -1381,27 +1447,27 @@ export default class CELParser extends Parser {
       this._ctx,
       this.state
     );
-    this.enterRule(localctx, 30, CELParser.RULE_literal);
+    this.enterRule(localctx, 32, CELParser.RULE_literal);
     let _la: number;
     try {
-      this.state = 248;
+      this.state = 256;
       this._errHandler.sync(this);
-      switch (this._interp.adaptivePredict(this._input, 34, this._ctx)) {
+      switch (this._interp.adaptivePredict(this._input, 35, this._ctx)) {
         case 1:
           localctx = new IntContext(this, localctx);
           this.enterOuterAlt(localctx, 1);
           {
-            this.state = 235;
+            this.state = 243;
             this._errHandler.sync(this);
             _la = this._input.LA(1);
             if (_la === 18) {
               {
-                this.state = 234;
+                this.state = 242;
                 (localctx as IntContext)._sign = this.match(CELParser.MINUS);
               }
             }
 
-            this.state = 237;
+            this.state = 245;
             (localctx as IntContext)._tok = this.match(CELParser.NUM_INT);
           }
           break;
@@ -1409,7 +1475,7 @@ export default class CELParser extends Parser {
           localctx = new UintContext(this, localctx);
           this.enterOuterAlt(localctx, 2);
           {
-            this.state = 238;
+            this.state = 246;
             (localctx as UintContext)._tok = this.match(CELParser.NUM_UINT);
           }
           break;
@@ -1417,17 +1483,17 @@ export default class CELParser extends Parser {
           localctx = new DoubleContext(this, localctx);
           this.enterOuterAlt(localctx, 3);
           {
-            this.state = 240;
+            this.state = 248;
             this._errHandler.sync(this);
             _la = this._input.LA(1);
             if (_la === 18) {
               {
-                this.state = 239;
+                this.state = 247;
                 (localctx as DoubleContext)._sign = this.match(CELParser.MINUS);
               }
             }
 
-            this.state = 242;
+            this.state = 250;
             (localctx as DoubleContext)._tok = this.match(CELParser.NUM_FLOAT);
           }
           break;
@@ -1435,7 +1501,7 @@ export default class CELParser extends Parser {
           localctx = new StringContext(this, localctx);
           this.enterOuterAlt(localctx, 4);
           {
-            this.state = 243;
+            this.state = 251;
             (localctx as StringContext)._tok = this.match(CELParser.STRING);
           }
           break;
@@ -1443,7 +1509,7 @@ export default class CELParser extends Parser {
           localctx = new BytesContext(this, localctx);
           this.enterOuterAlt(localctx, 5);
           {
-            this.state = 244;
+            this.state = 252;
             (localctx as BytesContext)._tok = this.match(CELParser.BYTES);
           }
           break;
@@ -1451,7 +1517,7 @@ export default class CELParser extends Parser {
           localctx = new BoolTrueContext(this, localctx);
           this.enterOuterAlt(localctx, 6);
           {
-            this.state = 245;
+            this.state = 253;
             (localctx as BoolTrueContext)._tok = this.match(CELParser.CEL_TRUE);
           }
           break;
@@ -1459,7 +1525,7 @@ export default class CELParser extends Parser {
           localctx = new BoolFalseContext(this, localctx);
           this.enterOuterAlt(localctx, 7);
           {
-            this.state = 246;
+            this.state = 254;
             (localctx as BoolFalseContext)._tok = this.match(
               CELParser.CEL_FALSE
             );
@@ -1469,7 +1535,7 @@ export default class CELParser extends Parser {
           localctx = new NullContext(this, localctx);
           this.enterOuterAlt(localctx, 8);
           {
-            this.state = 247;
+            this.state = 255;
             (localctx as NullContext)._tok = this.match(CELParser.NUL);
           }
           break;
@@ -1535,115 +1601,119 @@ export default class CELParser extends Parser {
   }
 
   public static readonly _serializedATN: number[] = [
-    4, 1, 36, 251, 2, 0, 7, 0, 2, 1, 7, 1, 2, 2, 7, 2, 2, 3, 7, 3, 2, 4, 7, 4,
+    4, 1, 37, 259, 2, 0, 7, 0, 2, 1, 7, 1, 2, 2, 7, 2, 2, 3, 7, 3, 2, 4, 7, 4,
     2, 5, 7, 5, 2, 6, 7, 6, 2, 7, 7, 7, 2, 8, 7, 8, 2, 9, 7, 9, 2, 10, 7, 10, 2,
-    11, 7, 11, 2, 12, 7, 12, 2, 13, 7, 13, 2, 14, 7, 14, 2, 15, 7, 15, 1, 0, 1,
-    0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 3, 1, 42, 8, 1, 1, 2, 1, 2, 1,
-    2, 5, 2, 47, 8, 2, 10, 2, 12, 2, 50, 9, 2, 1, 3, 1, 3, 1, 3, 5, 3, 55, 8, 3,
-    10, 3, 12, 3, 58, 9, 3, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 5, 4, 66, 8, 4,
-    10, 4, 12, 4, 69, 9, 4, 1, 5, 1, 5, 1, 5, 1, 5, 1, 5, 1, 5, 1, 5, 1, 5, 1,
-    5, 5, 5, 80, 8, 5, 10, 5, 12, 5, 83, 9, 5, 1, 6, 1, 6, 4, 6, 87, 8, 6, 11,
-    6, 12, 6, 88, 1, 6, 1, 6, 4, 6, 93, 8, 6, 11, 6, 12, 6, 94, 1, 6, 3, 6, 98,
-    8, 6, 1, 7, 1, 7, 1, 7, 1, 7, 1, 7, 1, 7, 3, 7, 106, 8, 7, 1, 7, 1, 7, 1, 7,
-    1, 7, 1, 7, 1, 7, 3, 7, 114, 8, 7, 1, 7, 1, 7, 1, 7, 1, 7, 3, 7, 120, 8, 7,
-    1, 7, 1, 7, 1, 7, 5, 7, 125, 8, 7, 10, 7, 12, 7, 128, 9, 7, 1, 8, 3, 8, 131,
-    8, 8, 1, 8, 1, 8, 1, 8, 3, 8, 136, 8, 8, 1, 8, 3, 8, 139, 8, 8, 1, 8, 1, 8,
-    1, 8, 1, 8, 1, 8, 1, 8, 3, 8, 147, 8, 8, 1, 8, 3, 8, 150, 8, 8, 1, 8, 1, 8,
-    1, 8, 3, 8, 155, 8, 8, 1, 8, 3, 8, 158, 8, 8, 1, 8, 1, 8, 3, 8, 162, 8, 8,
-    1, 8, 1, 8, 1, 8, 5, 8, 167, 8, 8, 10, 8, 12, 8, 170, 9, 8, 1, 8, 1, 8, 3,
-    8, 174, 8, 8, 1, 8, 3, 8, 177, 8, 8, 1, 8, 1, 8, 3, 8, 181, 8, 8, 1, 9, 1,
-    9, 1, 9, 5, 9, 186, 8, 9, 10, 9, 12, 9, 189, 9, 9, 1, 10, 1, 10, 1, 10, 5,
-    10, 194, 8, 10, 10, 10, 12, 10, 197, 9, 10, 1, 11, 1, 11, 1, 11, 1, 11, 1,
-    11, 1, 11, 1, 11, 1, 11, 5, 11, 207, 8, 11, 10, 11, 12, 11, 210, 9, 11, 1,
-    12, 3, 12, 213, 8, 12, 1, 12, 1, 12, 1, 13, 1, 13, 1, 13, 1, 13, 1, 13, 1,
-    13, 1, 13, 1, 13, 5, 13, 225, 8, 13, 10, 13, 12, 13, 228, 9, 13, 1, 14, 3,
-    14, 231, 8, 14, 1, 14, 1, 14, 1, 15, 3, 15, 236, 8, 15, 1, 15, 1, 15, 1, 15,
-    3, 15, 241, 8, 15, 1, 15, 1, 15, 1, 15, 1, 15, 1, 15, 1, 15, 3, 15, 249, 8,
-    15, 1, 15, 0, 3, 8, 10, 14, 16, 0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22,
-    24, 26, 28, 30, 0, 3, 1, 0, 1, 7, 1, 0, 23, 25, 2, 0, 18, 18, 22, 22, 281,
-    0, 32, 1, 0, 0, 0, 2, 35, 1, 0, 0, 0, 4, 43, 1, 0, 0, 0, 6, 51, 1, 0, 0, 0,
-    8, 59, 1, 0, 0, 0, 10, 70, 1, 0, 0, 0, 12, 97, 1, 0, 0, 0, 14, 99, 1, 0, 0,
-    0, 16, 180, 1, 0, 0, 0, 18, 182, 1, 0, 0, 0, 20, 190, 1, 0, 0, 0, 22, 198,
-    1, 0, 0, 0, 24, 212, 1, 0, 0, 0, 26, 216, 1, 0, 0, 0, 28, 230, 1, 0, 0, 0,
-    30, 248, 1, 0, 0, 0, 32, 33, 3, 2, 1, 0, 33, 34, 5, 0, 0, 1, 34, 1, 1, 0, 0,
-    0, 35, 41, 3, 4, 2, 0, 36, 37, 5, 20, 0, 0, 37, 38, 3, 4, 2, 0, 38, 39, 5,
-    21, 0, 0, 39, 40, 3, 2, 1, 0, 40, 42, 1, 0, 0, 0, 41, 36, 1, 0, 0, 0, 41,
-    42, 1, 0, 0, 0, 42, 3, 1, 0, 0, 0, 43, 48, 3, 6, 3, 0, 44, 45, 5, 9, 0, 0,
-    45, 47, 3, 6, 3, 0, 46, 44, 1, 0, 0, 0, 47, 50, 1, 0, 0, 0, 48, 46, 1, 0, 0,
-    0, 48, 49, 1, 0, 0, 0, 49, 5, 1, 0, 0, 0, 50, 48, 1, 0, 0, 0, 51, 56, 3, 8,
-    4, 0, 52, 53, 5, 8, 0, 0, 53, 55, 3, 8, 4, 0, 54, 52, 1, 0, 0, 0, 55, 58, 1,
-    0, 0, 0, 56, 54, 1, 0, 0, 0, 56, 57, 1, 0, 0, 0, 57, 7, 1, 0, 0, 0, 58, 56,
-    1, 0, 0, 0, 59, 60, 6, 4, -1, 0, 60, 61, 3, 10, 5, 0, 61, 67, 1, 0, 0, 0,
-    62, 63, 10, 1, 0, 0, 63, 64, 7, 0, 0, 0, 64, 66, 3, 8, 4, 2, 65, 62, 1, 0,
-    0, 0, 66, 69, 1, 0, 0, 0, 67, 65, 1, 0, 0, 0, 67, 68, 1, 0, 0, 0, 68, 9, 1,
-    0, 0, 0, 69, 67, 1, 0, 0, 0, 70, 71, 6, 5, -1, 0, 71, 72, 3, 12, 6, 0, 72,
-    81, 1, 0, 0, 0, 73, 74, 10, 2, 0, 0, 74, 75, 7, 1, 0, 0, 75, 80, 3, 10, 5,
-    3, 76, 77, 10, 1, 0, 0, 77, 78, 7, 2, 0, 0, 78, 80, 3, 10, 5, 2, 79, 73, 1,
-    0, 0, 0, 79, 76, 1, 0, 0, 0, 80, 83, 1, 0, 0, 0, 81, 79, 1, 0, 0, 0, 81, 82,
-    1, 0, 0, 0, 82, 11, 1, 0, 0, 0, 83, 81, 1, 0, 0, 0, 84, 98, 3, 14, 7, 0, 85,
-    87, 5, 19, 0, 0, 86, 85, 1, 0, 0, 0, 87, 88, 1, 0, 0, 0, 88, 86, 1, 0, 0, 0,
-    88, 89, 1, 0, 0, 0, 89, 90, 1, 0, 0, 0, 90, 98, 3, 14, 7, 0, 91, 93, 5, 18,
-    0, 0, 92, 91, 1, 0, 0, 0, 93, 94, 1, 0, 0, 0, 94, 92, 1, 0, 0, 0, 94, 95, 1,
-    0, 0, 0, 95, 96, 1, 0, 0, 0, 96, 98, 3, 14, 7, 0, 97, 84, 1, 0, 0, 0, 97,
-    86, 1, 0, 0, 0, 97, 92, 1, 0, 0, 0, 98, 13, 1, 0, 0, 0, 99, 100, 6, 7, -1,
-    0, 100, 101, 3, 16, 8, 0, 101, 126, 1, 0, 0, 0, 102, 103, 10, 3, 0, 0, 103,
-    105, 5, 16, 0, 0, 104, 106, 5, 20, 0, 0, 105, 104, 1, 0, 0, 0, 105, 106, 1,
-    0, 0, 0, 106, 107, 1, 0, 0, 0, 107, 125, 5, 36, 0, 0, 108, 109, 10, 2, 0, 0,
-    109, 110, 5, 16, 0, 0, 110, 111, 5, 36, 0, 0, 111, 113, 5, 14, 0, 0, 112,
-    114, 3, 18, 9, 0, 113, 112, 1, 0, 0, 0, 113, 114, 1, 0, 0, 0, 114, 115, 1,
-    0, 0, 0, 115, 125, 5, 15, 0, 0, 116, 117, 10, 1, 0, 0, 117, 119, 5, 10, 0,
-    0, 118, 120, 5, 20, 0, 0, 119, 118, 1, 0, 0, 0, 119, 120, 1, 0, 0, 0, 120,
-    121, 1, 0, 0, 0, 121, 122, 3, 2, 1, 0, 122, 123, 5, 11, 0, 0, 123, 125, 1,
-    0, 0, 0, 124, 102, 1, 0, 0, 0, 124, 108, 1, 0, 0, 0, 124, 116, 1, 0, 0, 0,
-    125, 128, 1, 0, 0, 0, 126, 124, 1, 0, 0, 0, 126, 127, 1, 0, 0, 0, 127, 15,
-    1, 0, 0, 0, 128, 126, 1, 0, 0, 0, 129, 131, 5, 16, 0, 0, 130, 129, 1, 0, 0,
-    0, 130, 131, 1, 0, 0, 0, 131, 132, 1, 0, 0, 0, 132, 138, 5, 36, 0, 0, 133,
-    135, 5, 14, 0, 0, 134, 136, 3, 18, 9, 0, 135, 134, 1, 0, 0, 0, 135, 136, 1,
-    0, 0, 0, 136, 137, 1, 0, 0, 0, 137, 139, 5, 15, 0, 0, 138, 133, 1, 0, 0, 0,
-    138, 139, 1, 0, 0, 0, 139, 181, 1, 0, 0, 0, 140, 141, 5, 14, 0, 0, 141, 142,
-    3, 2, 1, 0, 142, 143, 5, 15, 0, 0, 143, 181, 1, 0, 0, 0, 144, 146, 5, 10, 0,
-    0, 145, 147, 3, 20, 10, 0, 146, 145, 1, 0, 0, 0, 146, 147, 1, 0, 0, 0, 147,
-    149, 1, 0, 0, 0, 148, 150, 5, 17, 0, 0, 149, 148, 1, 0, 0, 0, 149, 150, 1,
-    0, 0, 0, 150, 151, 1, 0, 0, 0, 151, 181, 5, 11, 0, 0, 152, 154, 5, 12, 0, 0,
-    153, 155, 3, 26, 13, 0, 154, 153, 1, 0, 0, 0, 154, 155, 1, 0, 0, 0, 155,
-    157, 1, 0, 0, 0, 156, 158, 5, 17, 0, 0, 157, 156, 1, 0, 0, 0, 157, 158, 1,
-    0, 0, 0, 158, 159, 1, 0, 0, 0, 159, 181, 5, 13, 0, 0, 160, 162, 5, 16, 0, 0,
-    161, 160, 1, 0, 0, 0, 161, 162, 1, 0, 0, 0, 162, 163, 1, 0, 0, 0, 163, 168,
-    5, 36, 0, 0, 164, 165, 5, 16, 0, 0, 165, 167, 5, 36, 0, 0, 166, 164, 1, 0,
-    0, 0, 167, 170, 1, 0, 0, 0, 168, 166, 1, 0, 0, 0, 168, 169, 1, 0, 0, 0, 169,
-    171, 1, 0, 0, 0, 170, 168, 1, 0, 0, 0, 171, 173, 5, 12, 0, 0, 172, 174, 3,
-    22, 11, 0, 173, 172, 1, 0, 0, 0, 173, 174, 1, 0, 0, 0, 174, 176, 1, 0, 0, 0,
-    175, 177, 5, 17, 0, 0, 176, 175, 1, 0, 0, 0, 176, 177, 1, 0, 0, 0, 177, 178,
-    1, 0, 0, 0, 178, 181, 5, 13, 0, 0, 179, 181, 3, 30, 15, 0, 180, 130, 1, 0,
-    0, 0, 180, 140, 1, 0, 0, 0, 180, 144, 1, 0, 0, 0, 180, 152, 1, 0, 0, 0, 180,
-    161, 1, 0, 0, 0, 180, 179, 1, 0, 0, 0, 181, 17, 1, 0, 0, 0, 182, 187, 3, 2,
-    1, 0, 183, 184, 5, 17, 0, 0, 184, 186, 3, 2, 1, 0, 185, 183, 1, 0, 0, 0,
-    186, 189, 1, 0, 0, 0, 187, 185, 1, 0, 0, 0, 187, 188, 1, 0, 0, 0, 188, 19,
-    1, 0, 0, 0, 189, 187, 1, 0, 0, 0, 190, 195, 3, 28, 14, 0, 191, 192, 5, 17,
-    0, 0, 192, 194, 3, 28, 14, 0, 193, 191, 1, 0, 0, 0, 194, 197, 1, 0, 0, 0,
-    195, 193, 1, 0, 0, 0, 195, 196, 1, 0, 0, 0, 196, 21, 1, 0, 0, 0, 197, 195,
-    1, 0, 0, 0, 198, 199, 3, 24, 12, 0, 199, 200, 5, 21, 0, 0, 200, 208, 3, 2,
-    1, 0, 201, 202, 5, 17, 0, 0, 202, 203, 3, 24, 12, 0, 203, 204, 5, 21, 0, 0,
-    204, 205, 3, 2, 1, 0, 205, 207, 1, 0, 0, 0, 206, 201, 1, 0, 0, 0, 207, 210,
-    1, 0, 0, 0, 208, 206, 1, 0, 0, 0, 208, 209, 1, 0, 0, 0, 209, 23, 1, 0, 0, 0,
-    210, 208, 1, 0, 0, 0, 211, 213, 5, 20, 0, 0, 212, 211, 1, 0, 0, 0, 212, 213,
-    1, 0, 0, 0, 213, 214, 1, 0, 0, 0, 214, 215, 5, 36, 0, 0, 215, 25, 1, 0, 0,
-    0, 216, 217, 3, 28, 14, 0, 217, 218, 5, 21, 0, 0, 218, 226, 3, 2, 1, 0, 219,
-    220, 5, 17, 0, 0, 220, 221, 3, 28, 14, 0, 221, 222, 5, 21, 0, 0, 222, 223,
-    3, 2, 1, 0, 223, 225, 1, 0, 0, 0, 224, 219, 1, 0, 0, 0, 225, 228, 1, 0, 0,
-    0, 226, 224, 1, 0, 0, 0, 226, 227, 1, 0, 0, 0, 227, 27, 1, 0, 0, 0, 228,
-    226, 1, 0, 0, 0, 229, 231, 5, 20, 0, 0, 230, 229, 1, 0, 0, 0, 230, 231, 1,
-    0, 0, 0, 231, 232, 1, 0, 0, 0, 232, 233, 3, 2, 1, 0, 233, 29, 1, 0, 0, 0,
-    234, 236, 5, 18, 0, 0, 235, 234, 1, 0, 0, 0, 235, 236, 1, 0, 0, 0, 236, 237,
-    1, 0, 0, 0, 237, 249, 5, 32, 0, 0, 238, 249, 5, 33, 0, 0, 239, 241, 5, 18,
-    0, 0, 240, 239, 1, 0, 0, 0, 240, 241, 1, 0, 0, 0, 241, 242, 1, 0, 0, 0, 242,
-    249, 5, 31, 0, 0, 243, 249, 5, 34, 0, 0, 244, 249, 5, 35, 0, 0, 245, 249, 5,
-    26, 0, 0, 246, 249, 5, 27, 0, 0, 247, 249, 5, 28, 0, 0, 248, 235, 1, 0, 0,
-    0, 248, 238, 1, 0, 0, 0, 248, 240, 1, 0, 0, 0, 248, 243, 1, 0, 0, 0, 248,
-    244, 1, 0, 0, 0, 248, 245, 1, 0, 0, 0, 248, 246, 1, 0, 0, 0, 248, 247, 1, 0,
-    0, 0, 249, 31, 1, 0, 0, 0, 35, 41, 48, 56, 67, 79, 81, 88, 94, 97, 105, 113,
-    119, 124, 126, 130, 135, 138, 146, 149, 154, 157, 161, 168, 173, 176, 180,
-    187, 195, 208, 212, 226, 230, 235, 240, 248,
+    11, 7, 11, 2, 12, 7, 12, 2, 13, 7, 13, 2, 14, 7, 14, 2, 15, 7, 15, 2, 16, 7,
+    16, 1, 0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 3, 1, 44, 8, 1, 1,
+    2, 1, 2, 1, 2, 5, 2, 49, 8, 2, 10, 2, 12, 2, 52, 9, 2, 1, 3, 1, 3, 1, 3, 5,
+    3, 57, 8, 3, 10, 3, 12, 3, 60, 9, 3, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 5,
+    4, 68, 8, 4, 10, 4, 12, 4, 71, 9, 4, 1, 5, 1, 5, 1, 5, 1, 5, 1, 5, 1, 5, 1,
+    5, 1, 5, 1, 5, 5, 5, 82, 8, 5, 10, 5, 12, 5, 85, 9, 5, 1, 6, 1, 6, 4, 6, 89,
+    8, 6, 11, 6, 12, 6, 90, 1, 6, 1, 6, 4, 6, 95, 8, 6, 11, 6, 12, 6, 96, 1, 6,
+    3, 6, 100, 8, 6, 1, 7, 1, 7, 1, 7, 1, 7, 1, 7, 1, 7, 3, 7, 108, 8, 7, 1, 7,
+    1, 7, 1, 7, 1, 7, 1, 7, 1, 7, 3, 7, 116, 8, 7, 1, 7, 1, 7, 1, 7, 1, 7, 3, 7,
+    122, 8, 7, 1, 7, 1, 7, 1, 7, 5, 7, 127, 8, 7, 10, 7, 12, 7, 130, 9, 7, 1, 8,
+    3, 8, 133, 8, 8, 1, 8, 1, 8, 3, 8, 137, 8, 8, 1, 8, 1, 8, 1, 8, 3, 8, 142,
+    8, 8, 1, 8, 1, 8, 1, 8, 1, 8, 1, 8, 1, 8, 1, 8, 3, 8, 151, 8, 8, 1, 8, 3, 8,
+    154, 8, 8, 1, 8, 1, 8, 1, 8, 3, 8, 159, 8, 8, 1, 8, 3, 8, 162, 8, 8, 1, 8,
+    1, 8, 3, 8, 166, 8, 8, 1, 8, 1, 8, 1, 8, 5, 8, 171, 8, 8, 10, 8, 12, 8, 174,
+    9, 8, 1, 8, 1, 8, 3, 8, 178, 8, 8, 1, 8, 3, 8, 181, 8, 8, 1, 8, 1, 8, 3, 8,
+    185, 8, 8, 1, 9, 1, 9, 1, 9, 5, 9, 190, 8, 9, 10, 9, 12, 9, 193, 9, 9, 1,
+    10, 1, 10, 1, 10, 5, 10, 198, 8, 10, 10, 10, 12, 10, 201, 9, 10, 1, 11, 1,
+    11, 1, 11, 1, 11, 1, 11, 1, 11, 1, 11, 1, 11, 5, 11, 211, 8, 11, 10, 11, 12,
+    11, 214, 9, 11, 1, 12, 3, 12, 217, 8, 12, 1, 12, 1, 12, 1, 13, 1, 13, 1, 13,
+    1, 13, 1, 13, 1, 13, 1, 13, 1, 13, 5, 13, 229, 8, 13, 10, 13, 12, 13, 232,
+    9, 13, 1, 14, 1, 14, 3, 14, 236, 8, 14, 1, 15, 3, 15, 239, 8, 15, 1, 15, 1,
+    15, 1, 16, 3, 16, 244, 8, 16, 1, 16, 1, 16, 1, 16, 3, 16, 249, 8, 16, 1, 16,
+    1, 16, 1, 16, 1, 16, 1, 16, 1, 16, 3, 16, 257, 8, 16, 1, 16, 0, 3, 8, 10,
+    14, 17, 0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32, 0, 3,
+    1, 0, 1, 7, 1, 0, 23, 25, 2, 0, 18, 18, 22, 22, 290, 0, 34, 1, 0, 0, 0, 2,
+    37, 1, 0, 0, 0, 4, 45, 1, 0, 0, 0, 6, 53, 1, 0, 0, 0, 8, 61, 1, 0, 0, 0, 10,
+    72, 1, 0, 0, 0, 12, 99, 1, 0, 0, 0, 14, 101, 1, 0, 0, 0, 16, 184, 1, 0, 0,
+    0, 18, 186, 1, 0, 0, 0, 20, 194, 1, 0, 0, 0, 22, 202, 1, 0, 0, 0, 24, 216,
+    1, 0, 0, 0, 26, 220, 1, 0, 0, 0, 28, 235, 1, 0, 0, 0, 30, 238, 1, 0, 0, 0,
+    32, 256, 1, 0, 0, 0, 34, 35, 3, 2, 1, 0, 35, 36, 5, 0, 0, 1, 36, 1, 1, 0, 0,
+    0, 37, 43, 3, 4, 2, 0, 38, 39, 5, 20, 0, 0, 39, 40, 3, 4, 2, 0, 40, 41, 5,
+    21, 0, 0, 41, 42, 3, 2, 1, 0, 42, 44, 1, 0, 0, 0, 43, 38, 1, 0, 0, 0, 43,
+    44, 1, 0, 0, 0, 44, 3, 1, 0, 0, 0, 45, 50, 3, 6, 3, 0, 46, 47, 5, 9, 0, 0,
+    47, 49, 3, 6, 3, 0, 48, 46, 1, 0, 0, 0, 49, 52, 1, 0, 0, 0, 50, 48, 1, 0, 0,
+    0, 50, 51, 1, 0, 0, 0, 51, 5, 1, 0, 0, 0, 52, 50, 1, 0, 0, 0, 53, 58, 3, 8,
+    4, 0, 54, 55, 5, 8, 0, 0, 55, 57, 3, 8, 4, 0, 56, 54, 1, 0, 0, 0, 57, 60, 1,
+    0, 0, 0, 58, 56, 1, 0, 0, 0, 58, 59, 1, 0, 0, 0, 59, 7, 1, 0, 0, 0, 60, 58,
+    1, 0, 0, 0, 61, 62, 6, 4, -1, 0, 62, 63, 3, 10, 5, 0, 63, 69, 1, 0, 0, 0,
+    64, 65, 10, 1, 0, 0, 65, 66, 7, 0, 0, 0, 66, 68, 3, 8, 4, 2, 67, 64, 1, 0,
+    0, 0, 68, 71, 1, 0, 0, 0, 69, 67, 1, 0, 0, 0, 69, 70, 1, 0, 0, 0, 70, 9, 1,
+    0, 0, 0, 71, 69, 1, 0, 0, 0, 72, 73, 6, 5, -1, 0, 73, 74, 3, 12, 6, 0, 74,
+    83, 1, 0, 0, 0, 75, 76, 10, 2, 0, 0, 76, 77, 7, 1, 0, 0, 77, 82, 3, 10, 5,
+    3, 78, 79, 10, 1, 0, 0, 79, 80, 7, 2, 0, 0, 80, 82, 3, 10, 5, 2, 81, 75, 1,
+    0, 0, 0, 81, 78, 1, 0, 0, 0, 82, 85, 1, 0, 0, 0, 83, 81, 1, 0, 0, 0, 83, 84,
+    1, 0, 0, 0, 84, 11, 1, 0, 0, 0, 85, 83, 1, 0, 0, 0, 86, 100, 3, 14, 7, 0,
+    87, 89, 5, 19, 0, 0, 88, 87, 1, 0, 0, 0, 89, 90, 1, 0, 0, 0, 90, 88, 1, 0,
+    0, 0, 90, 91, 1, 0, 0, 0, 91, 92, 1, 0, 0, 0, 92, 100, 3, 14, 7, 0, 93, 95,
+    5, 18, 0, 0, 94, 93, 1, 0, 0, 0, 95, 96, 1, 0, 0, 0, 96, 94, 1, 0, 0, 0, 96,
+    97, 1, 0, 0, 0, 97, 98, 1, 0, 0, 0, 98, 100, 3, 14, 7, 0, 99, 86, 1, 0, 0,
+    0, 99, 88, 1, 0, 0, 0, 99, 94, 1, 0, 0, 0, 100, 13, 1, 0, 0, 0, 101, 102, 6,
+    7, -1, 0, 102, 103, 3, 16, 8, 0, 103, 128, 1, 0, 0, 0, 104, 105, 10, 3, 0,
+    0, 105, 107, 5, 16, 0, 0, 106, 108, 5, 20, 0, 0, 107, 106, 1, 0, 0, 0, 107,
+    108, 1, 0, 0, 0, 108, 109, 1, 0, 0, 0, 109, 127, 3, 28, 14, 0, 110, 111, 10,
+    2, 0, 0, 111, 112, 5, 16, 0, 0, 112, 113, 5, 36, 0, 0, 113, 115, 5, 14, 0,
+    0, 114, 116, 3, 18, 9, 0, 115, 114, 1, 0, 0, 0, 115, 116, 1, 0, 0, 0, 116,
+    117, 1, 0, 0, 0, 117, 127, 5, 15, 0, 0, 118, 119, 10, 1, 0, 0, 119, 121, 5,
+    10, 0, 0, 120, 122, 5, 20, 0, 0, 121, 120, 1, 0, 0, 0, 121, 122, 1, 0, 0, 0,
+    122, 123, 1, 0, 0, 0, 123, 124, 3, 2, 1, 0, 124, 125, 5, 11, 0, 0, 125, 127,
+    1, 0, 0, 0, 126, 104, 1, 0, 0, 0, 126, 110, 1, 0, 0, 0, 126, 118, 1, 0, 0,
+    0, 127, 130, 1, 0, 0, 0, 128, 126, 1, 0, 0, 0, 128, 129, 1, 0, 0, 0, 129,
+    15, 1, 0, 0, 0, 130, 128, 1, 0, 0, 0, 131, 133, 5, 16, 0, 0, 132, 131, 1, 0,
+    0, 0, 132, 133, 1, 0, 0, 0, 133, 134, 1, 0, 0, 0, 134, 185, 5, 36, 0, 0,
+    135, 137, 5, 16, 0, 0, 136, 135, 1, 0, 0, 0, 136, 137, 1, 0, 0, 0, 137, 138,
+    1, 0, 0, 0, 138, 139, 5, 36, 0, 0, 139, 141, 5, 14, 0, 0, 140, 142, 3, 18,
+    9, 0, 141, 140, 1, 0, 0, 0, 141, 142, 1, 0, 0, 0, 142, 143, 1, 0, 0, 0, 143,
+    185, 5, 15, 0, 0, 144, 145, 5, 14, 0, 0, 145, 146, 3, 2, 1, 0, 146, 147, 5,
+    15, 0, 0, 147, 185, 1, 0, 0, 0, 148, 150, 5, 10, 0, 0, 149, 151, 3, 20, 10,
+    0, 150, 149, 1, 0, 0, 0, 150, 151, 1, 0, 0, 0, 151, 153, 1, 0, 0, 0, 152,
+    154, 5, 17, 0, 0, 153, 152, 1, 0, 0, 0, 153, 154, 1, 0, 0, 0, 154, 155, 1,
+    0, 0, 0, 155, 185, 5, 11, 0, 0, 156, 158, 5, 12, 0, 0, 157, 159, 3, 26, 13,
+    0, 158, 157, 1, 0, 0, 0, 158, 159, 1, 0, 0, 0, 159, 161, 1, 0, 0, 0, 160,
+    162, 5, 17, 0, 0, 161, 160, 1, 0, 0, 0, 161, 162, 1, 0, 0, 0, 162, 163, 1,
+    0, 0, 0, 163, 185, 5, 13, 0, 0, 164, 166, 5, 16, 0, 0, 165, 164, 1, 0, 0, 0,
+    165, 166, 1, 0, 0, 0, 166, 167, 1, 0, 0, 0, 167, 172, 5, 36, 0, 0, 168, 169,
+    5, 16, 0, 0, 169, 171, 5, 36, 0, 0, 170, 168, 1, 0, 0, 0, 171, 174, 1, 0, 0,
+    0, 172, 170, 1, 0, 0, 0, 172, 173, 1, 0, 0, 0, 173, 175, 1, 0, 0, 0, 174,
+    172, 1, 0, 0, 0, 175, 177, 5, 12, 0, 0, 176, 178, 3, 22, 11, 0, 177, 176, 1,
+    0, 0, 0, 177, 178, 1, 0, 0, 0, 178, 180, 1, 0, 0, 0, 179, 181, 5, 17, 0, 0,
+    180, 179, 1, 0, 0, 0, 180, 181, 1, 0, 0, 0, 181, 182, 1, 0, 0, 0, 182, 185,
+    5, 13, 0, 0, 183, 185, 3, 32, 16, 0, 184, 132, 1, 0, 0, 0, 184, 136, 1, 0,
+    0, 0, 184, 144, 1, 0, 0, 0, 184, 148, 1, 0, 0, 0, 184, 156, 1, 0, 0, 0, 184,
+    165, 1, 0, 0, 0, 184, 183, 1, 0, 0, 0, 185, 17, 1, 0, 0, 0, 186, 191, 3, 2,
+    1, 0, 187, 188, 5, 17, 0, 0, 188, 190, 3, 2, 1, 0, 189, 187, 1, 0, 0, 0,
+    190, 193, 1, 0, 0, 0, 191, 189, 1, 0, 0, 0, 191, 192, 1, 0, 0, 0, 192, 19,
+    1, 0, 0, 0, 193, 191, 1, 0, 0, 0, 194, 199, 3, 30, 15, 0, 195, 196, 5, 17,
+    0, 0, 196, 198, 3, 30, 15, 0, 197, 195, 1, 0, 0, 0, 198, 201, 1, 0, 0, 0,
+    199, 197, 1, 0, 0, 0, 199, 200, 1, 0, 0, 0, 200, 21, 1, 0, 0, 0, 201, 199,
+    1, 0, 0, 0, 202, 203, 3, 24, 12, 0, 203, 204, 5, 21, 0, 0, 204, 212, 3, 2,
+    1, 0, 205, 206, 5, 17, 0, 0, 206, 207, 3, 24, 12, 0, 207, 208, 5, 21, 0, 0,
+    208, 209, 3, 2, 1, 0, 209, 211, 1, 0, 0, 0, 210, 205, 1, 0, 0, 0, 211, 214,
+    1, 0, 0, 0, 212, 210, 1, 0, 0, 0, 212, 213, 1, 0, 0, 0, 213, 23, 1, 0, 0, 0,
+    214, 212, 1, 0, 0, 0, 215, 217, 5, 20, 0, 0, 216, 215, 1, 0, 0, 0, 216, 217,
+    1, 0, 0, 0, 217, 218, 1, 0, 0, 0, 218, 219, 3, 28, 14, 0, 219, 25, 1, 0, 0,
+    0, 220, 221, 3, 30, 15, 0, 221, 222, 5, 21, 0, 0, 222, 230, 3, 2, 1, 0, 223,
+    224, 5, 17, 0, 0, 224, 225, 3, 30, 15, 0, 225, 226, 5, 21, 0, 0, 226, 227,
+    3, 2, 1, 0, 227, 229, 1, 0, 0, 0, 228, 223, 1, 0, 0, 0, 229, 232, 1, 0, 0,
+    0, 230, 228, 1, 0, 0, 0, 230, 231, 1, 0, 0, 0, 231, 27, 1, 0, 0, 0, 232,
+    230, 1, 0, 0, 0, 233, 236, 5, 36, 0, 0, 234, 236, 5, 37, 0, 0, 235, 233, 1,
+    0, 0, 0, 235, 234, 1, 0, 0, 0, 236, 29, 1, 0, 0, 0, 237, 239, 5, 20, 0, 0,
+    238, 237, 1, 0, 0, 0, 238, 239, 1, 0, 0, 0, 239, 240, 1, 0, 0, 0, 240, 241,
+    3, 2, 1, 0, 241, 31, 1, 0, 0, 0, 242, 244, 5, 18, 0, 0, 243, 242, 1, 0, 0,
+    0, 243, 244, 1, 0, 0, 0, 244, 245, 1, 0, 0, 0, 245, 257, 5, 32, 0, 0, 246,
+    257, 5, 33, 0, 0, 247, 249, 5, 18, 0, 0, 248, 247, 1, 0, 0, 0, 248, 249, 1,
+    0, 0, 0, 249, 250, 1, 0, 0, 0, 250, 257, 5, 31, 0, 0, 251, 257, 5, 34, 0, 0,
+    252, 257, 5, 35, 0, 0, 253, 257, 5, 26, 0, 0, 254, 257, 5, 27, 0, 0, 255,
+    257, 5, 28, 0, 0, 256, 243, 1, 0, 0, 0, 256, 246, 1, 0, 0, 0, 256, 248, 1,
+    0, 0, 0, 256, 251, 1, 0, 0, 0, 256, 252, 1, 0, 0, 0, 256, 253, 1, 0, 0, 0,
+    256, 254, 1, 0, 0, 0, 256, 255, 1, 0, 0, 0, 257, 33, 1, 0, 0, 0, 36, 43, 50,
+    58, 69, 81, 83, 90, 96, 99, 107, 115, 121, 126, 128, 132, 136, 141, 150,
+    153, 158, 161, 165, 172, 177, 180, 184, 191, 199, 212, 216, 230, 235, 238,
+    243, 248, 256,
   ];
 
   private static __ATN: ATN;
@@ -2159,7 +2229,7 @@ export class MemberCallContext extends MemberContext {
 export class SelectContext extends MemberContext {
   public _op!: Token;
   public _opt!: Token;
-  public _id!: Token;
+  public _id!: EscapeIdentContext;
   constructor(parser: CELParser, ctx: MemberContext) {
     super(parser, ctx.parentCtx, ctx.invokingState);
     super.copyFrom(ctx);
@@ -2170,8 +2240,11 @@ export class SelectContext extends MemberContext {
   public DOT(): TerminalNode {
     return this.getToken(CELParser.DOT, 0);
   }
-  public IDENTIFIER(): TerminalNode {
-    return this.getToken(CELParser.IDENTIFIER, 0);
+  public escapeIdent(): EscapeIdentContext {
+    return this.getTypedRuleContext(
+      EscapeIdentContext,
+      0
+    ) as EscapeIdentContext;
   }
   public QUESTIONMARK(): TerminalNode {
     return this.getToken(CELParser.QUESTIONMARK, 0);
@@ -2314,6 +2387,38 @@ export class CreateListContext extends PrimaryContext {
   public accept<Result>(visitor: CELVisitor<Result>): Result {
     if (visitor.visitCreateList) {
       return visitor.visitCreateList(this);
+    } else {
+      return visitor.visitChildren(this);
+    }
+  }
+}
+export class IdentContext extends PrimaryContext {
+  public _leadingDot!: Token;
+  public _id!: Token;
+  constructor(parser: CELParser, ctx: PrimaryContext) {
+    super(parser, ctx.parentCtx, ctx.invokingState);
+    super.copyFrom(ctx);
+  }
+  public IDENTIFIER(): TerminalNode {
+    return this.getToken(CELParser.IDENTIFIER, 0);
+  }
+  public DOT(): TerminalNode {
+    return this.getToken(CELParser.DOT, 0);
+  }
+  public enterRule(listener: CELListener): void {
+    if (listener.enterIdent) {
+      listener.enterIdent(this);
+    }
+  }
+  public exitRule(listener: CELListener): void {
+    if (listener.exitIdent) {
+      listener.exitIdent(this);
+    }
+  }
+  // @Override
+  public accept<Result>(visitor: CELVisitor<Result>): Result {
+    if (visitor.visitIdent) {
+      return visitor.visitIdent(this);
     } else {
       return visitor.visitChildren(this);
     }
@@ -2479,7 +2584,7 @@ export class CreateMessageContext extends PrimaryContext {
     }
   }
 }
-export class IdentOrGlobalCallContext extends PrimaryContext {
+export class GlobalCallContext extends PrimaryContext {
   public _leadingDot!: Token;
   public _id!: Token;
   public _op!: Token;
@@ -2494,29 +2599,29 @@ export class IdentOrGlobalCallContext extends PrimaryContext {
   public RPAREN(): TerminalNode {
     return this.getToken(CELParser.RPAREN, 0);
   }
-  public DOT(): TerminalNode {
-    return this.getToken(CELParser.DOT, 0);
-  }
   public LPAREN(): TerminalNode {
     return this.getToken(CELParser.LPAREN, 0);
+  }
+  public DOT(): TerminalNode {
+    return this.getToken(CELParser.DOT, 0);
   }
   public exprList(): ExprListContext {
     return this.getTypedRuleContext(ExprListContext, 0) as ExprListContext;
   }
   public enterRule(listener: CELListener): void {
-    if (listener.enterIdentOrGlobalCall) {
-      listener.enterIdentOrGlobalCall(this);
+    if (listener.enterGlobalCall) {
+      listener.enterGlobalCall(this);
     }
   }
   public exitRule(listener: CELListener): void {
-    if (listener.exitIdentOrGlobalCall) {
-      listener.exitIdentOrGlobalCall(this);
+    if (listener.exitGlobalCall) {
+      listener.exitGlobalCall(this);
     }
   }
   // @Override
   public accept<Result>(visitor: CELVisitor<Result>): Result {
-    if (visitor.visitIdentOrGlobalCall) {
-      return visitor.visitIdentOrGlobalCall(this);
+    if (visitor.visitGlobalCall) {
+      return visitor.visitGlobalCall(this);
     } else {
       return visitor.visitChildren(this);
     }
@@ -2687,8 +2792,11 @@ export class OptFieldContext extends ParserRuleContext {
     super(parent, invokingState);
     this.parser = parser;
   }
-  public IDENTIFIER(): TerminalNode {
-    return this.getToken(CELParser.IDENTIFIER, 0);
+  public escapeIdent(): EscapeIdentContext {
+    return this.getTypedRuleContext(
+      EscapeIdentContext,
+      0
+    ) as EscapeIdentContext;
   }
   public QUESTIONMARK(): TerminalNode {
     return this.getToken(CELParser.QUESTIONMARK, 0);
@@ -2772,6 +2880,79 @@ export class MapInitializerListContext extends ParserRuleContext {
   public accept<Result>(visitor: CELVisitor<Result>): Result {
     if (visitor.visitMapInitializerList) {
       return visitor.visitMapInitializerList(this);
+    } else {
+      return visitor.visitChildren(this);
+    }
+  }
+}
+
+export class EscapeIdentContext extends ParserRuleContext {
+  constructor(
+    parser?: CELParser,
+    parent?: ParserRuleContext,
+    invokingState?: number
+  ) {
+    super(parent, invokingState);
+    this.parser = parser;
+  }
+  public get ruleIndex(): number {
+    return CELParser.RULE_escapeIdent;
+  }
+  public override copyFrom(ctx: EscapeIdentContext): void {
+    super.copyFrom(ctx);
+  }
+}
+export class EscapedIdentifierContext extends EscapeIdentContext {
+  public _id!: Token;
+  constructor(parser: CELParser, ctx: EscapeIdentContext) {
+    super(parser, ctx.parentCtx, ctx.invokingState);
+    super.copyFrom(ctx);
+  }
+  public ESC_IDENTIFIER(): TerminalNode {
+    return this.getToken(CELParser.ESC_IDENTIFIER, 0);
+  }
+  public enterRule(listener: CELListener): void {
+    if (listener.enterEscapedIdentifier) {
+      listener.enterEscapedIdentifier(this);
+    }
+  }
+  public exitRule(listener: CELListener): void {
+    if (listener.exitEscapedIdentifier) {
+      listener.exitEscapedIdentifier(this);
+    }
+  }
+  // @Override
+  public accept<Result>(visitor: CELVisitor<Result>): Result {
+    if (visitor.visitEscapedIdentifier) {
+      return visitor.visitEscapedIdentifier(this);
+    } else {
+      return visitor.visitChildren(this);
+    }
+  }
+}
+export class SimpleIdentifierContext extends EscapeIdentContext {
+  public _id!: Token;
+  constructor(parser: CELParser, ctx: EscapeIdentContext) {
+    super(parser, ctx.parentCtx, ctx.invokingState);
+    super.copyFrom(ctx);
+  }
+  public IDENTIFIER(): TerminalNode {
+    return this.getToken(CELParser.IDENTIFIER, 0);
+  }
+  public enterRule(listener: CELListener): void {
+    if (listener.enterSimpleIdentifier) {
+      listener.enterSimpleIdentifier(this);
+    }
+  }
+  public exitRule(listener: CELListener): void {
+    if (listener.exitSimpleIdentifier) {
+      listener.exitSimpleIdentifier(this);
+    }
+  }
+  // @Override
+  public accept<Result>(visitor: CELVisitor<Result>): Result {
+    if (visitor.visitSimpleIdentifier) {
+      return visitor.visitSimpleIdentifier(this);
     } else {
       return visitor.visitChildren(this);
     }

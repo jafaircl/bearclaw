@@ -283,9 +283,9 @@ export class EvalTestOnly implements InterpretableAttribute {
 }
 
 class TestOnlyQualifier implements Qualifier {
-  #qual: Qualifier;
+  #qual: ConstantQualifier;
 
-  constructor(qual: Qualifier) {
+  constructor(qual: ConstantQualifier) {
     this.#qual = qual;
   }
 
@@ -302,15 +302,16 @@ class TestOnlyQualifier implements Qualifier {
    * object.
    */
   qualify(vars: Activation, obj: any): boolean | UnknownRefVal | Error {
-    const [out, present, err] = this.#qual.qualifyIfPresent(vars, obj, false);
+    const [out, present, err] = this.#qual.qualifyIfPresent(vars, obj, true);
     if (!isNil(err)) {
       return err;
     }
+    // If qualifying caused an error, the object is not present.
+    if (isErrorRefVal(out)) {
+      return false;
+    }
     if (isUnknownRefVal(out)) {
       return out;
-    }
-    if (isOptionalRefVal(out)) {
-      return out.hasValue();
     }
     return present;
   }

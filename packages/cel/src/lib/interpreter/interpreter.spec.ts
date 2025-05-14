@@ -853,6 +853,16 @@ describe('interpreter', () => {
       out: true,
     },
     {
+      name: 'macro_has_not_map_key',
+      expr: `has({'a':1}.b)`,
+      out: false,
+    },
+    {
+      name: 'macro_has_map_key_single',
+      expr: `has({'a':1}.a)`,
+      out: true,
+    },
+    {
       name: 'macro_has_pb2_field_undefined',
       container: 'google.api.expr.test.v1.proto2',
       types: [TestAllTypesSchemaProto2],

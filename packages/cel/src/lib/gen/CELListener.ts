@@ -16,7 +16,8 @@ import { MemberCallContext } from "./CELParser";
 import { SelectContext } from "./CELParser";
 import { PrimaryExprContext } from "./CELParser";
 import { IndexContext } from "./CELParser";
-import { IdentOrGlobalCallContext } from "./CELParser";
+import { IdentContext } from "./CELParser";
+import { GlobalCallContext } from "./CELParser";
 import { NestedContext } from "./CELParser";
 import { CreateListContext } from "./CELParser";
 import { CreateStructContext } from "./CELParser";
@@ -27,6 +28,8 @@ import { ListInitContext } from "./CELParser";
 import { FieldInitializerListContext } from "./CELParser";
 import { OptFieldContext } from "./CELParser";
 import { MapInitializerListContext } from "./CELParser";
+import { SimpleIdentifierContext } from "./CELParser";
+import { EscapedIdentifierContext } from "./CELParser";
 import { OptExprContext } from "./CELParser";
 import { IntContext } from "./CELParser";
 import { UintContext } from "./CELParser";
@@ -188,17 +191,29 @@ export default class CELListener extends ParseTreeListener {
 	 */
 	exitIndex?: (ctx: IndexContext) => void;
 	/**
-	 * Enter a parse tree produced by the `IdentOrGlobalCall`
+	 * Enter a parse tree produced by the `Ident`
 	 * labeled alternative in `CELParser.primary`.
 	 * @param ctx the parse tree
 	 */
-	enterIdentOrGlobalCall?: (ctx: IdentOrGlobalCallContext) => void;
+	enterIdent?: (ctx: IdentContext) => void;
 	/**
-	 * Exit a parse tree produced by the `IdentOrGlobalCall`
+	 * Exit a parse tree produced by the `Ident`
 	 * labeled alternative in `CELParser.primary`.
 	 * @param ctx the parse tree
 	 */
-	exitIdentOrGlobalCall?: (ctx: IdentOrGlobalCallContext) => void;
+	exitIdent?: (ctx: IdentContext) => void;
+	/**
+	 * Enter a parse tree produced by the `GlobalCall`
+	 * labeled alternative in `CELParser.primary`.
+	 * @param ctx the parse tree
+	 */
+	enterGlobalCall?: (ctx: GlobalCallContext) => void;
+	/**
+	 * Exit a parse tree produced by the `GlobalCall`
+	 * labeled alternative in `CELParser.primary`.
+	 * @param ctx the parse tree
+	 */
+	exitGlobalCall?: (ctx: GlobalCallContext) => void;
 	/**
 	 * Enter a parse tree produced by the `Nested`
 	 * labeled alternative in `CELParser.primary`.
@@ -309,6 +324,30 @@ export default class CELListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	exitMapInitializerList?: (ctx: MapInitializerListContext) => void;
+	/**
+	 * Enter a parse tree produced by the `SimpleIdentifier`
+	 * labeled alternative in `CELParser.escapeIdent`.
+	 * @param ctx the parse tree
+	 */
+	enterSimpleIdentifier?: (ctx: SimpleIdentifierContext) => void;
+	/**
+	 * Exit a parse tree produced by the `SimpleIdentifier`
+	 * labeled alternative in `CELParser.escapeIdent`.
+	 * @param ctx the parse tree
+	 */
+	exitSimpleIdentifier?: (ctx: SimpleIdentifierContext) => void;
+	/**
+	 * Enter a parse tree produced by the `EscapedIdentifier`
+	 * labeled alternative in `CELParser.escapeIdent`.
+	 * @param ctx the parse tree
+	 */
+	enterEscapedIdentifier?: (ctx: EscapedIdentifierContext) => void;
+	/**
+	 * Exit a parse tree produced by the `EscapedIdentifier`
+	 * labeled alternative in `CELParser.escapeIdent`.
+	 * @param ctx the parse tree
+	 */
+	exitEscapedIdentifier?: (ctx: EscapedIdentifierContext) => void;
 	/**
 	 * Enter a parse tree produced by `CELParser.optExpr`.
 	 * @param ctx the parse tree

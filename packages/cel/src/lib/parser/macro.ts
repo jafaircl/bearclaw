@@ -1,9 +1,6 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { isNil } from '@bearclaw/is';
-import {
-  Expr,
-  Expr_Select,
-} from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb.js';
+import { Expr } from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb.js';
 import { CELError } from '../common/error';
 import {
   ADD_OPERATOR,
@@ -451,7 +448,7 @@ function makeHas(
   args: Expr[]
 ): Expr | CELError {
   if (args[0].exprKind.case === 'selectExpr') {
-    const s = args[0].exprKind.value as Expr_Select;
+    const s = args[0].exprKind.value;
     return eh.newPresenceTest(s.operand!, s.field);
   }
   return eh.newError(args[0].id, 'invalid argument to has() macro');

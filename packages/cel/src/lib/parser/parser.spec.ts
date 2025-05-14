@@ -48,6 +48,7 @@ import {
 import { TextSource } from './../common/source';
 import { AccumulatorName, AllMacros } from './macro';
 import {
+  enableIdentEscapeSyntax,
   enableOptionalSyntax,
   errorRecoveryLimit,
   errorRecoveryLookaheadTokenLimit,
@@ -1754,7 +1755,7 @@ const testCases: TestInfo[] = [
   },
   {
     I: 'func{{a}}',
-    E: `ERROR: <input>:1:6: Syntax error: extraneous input '{' expecting {'}', ',', '?', IDENTIFIER}
+    E: `ERROR: <input>:1:6: Syntax error: extraneous input '{' expecting {'}', ',', '?', IDENTIFIER, ESC_IDENTIFIER}
 		| func{{a}}
 		| .....^
 	    ERROR: <input>:1:8: Syntax error: mismatched input '}' expecting ':'
@@ -1766,7 +1767,7 @@ const testCases: TestInfo[] = [
   },
   {
     I: 'msg{:a}',
-    E: `ERROR: <input>:1:5: Syntax error: extraneous input ':' expecting {'}', ',', '?', IDENTIFIER}
+    E: `ERROR: <input>:1:5: Syntax error: extraneous input ':' expecting {'}', ',', '?', IDENTIFIER, ESC_IDENTIFIER}
 		| msg{:a}
 		| ....^
 	    ERROR: <input>:1:7: Syntax error: mismatched input '}' expecting ':'
@@ -2555,7 +2556,7 @@ const testCases: TestInfo[] = [
   // },
   {
     I: `x{.`,
-    E: `ERROR: <input>:1:3: Syntax error: mismatched input '.' expecting {'}', ',', '?', IDENTIFIER}
+    E: `ERROR: <input>:1:3: Syntax error: mismatched input '.' expecting {'}', ',', '?', IDENTIFIER, ESC_IDENTIFIER}
 		 | x{.
 		 | ..^`,
   },
@@ -2574,6 +2575,122 @@ const testCases: TestInfo[] = [
   // 	 | ..................^
   // 	`,
   // },
+  {
+    I: 'a.`b-c`',
+    Opts: [enableIdentEscapeSyntax(true)],
+    // P: `a^#1:*expr.Expr_IdentExpr#.b-c^#2:*expr.Expr_SelectExpr#`,
+    P: newSelectProtoExpr(BigInt(2), newIdentProtoExpr(BigInt(1), 'a'), 'b-c'),
+  },
+  {
+    I: 'a.`b c`',
+    Opts: [enableIdentEscapeSyntax(true)],
+    // P: `a^#1:*expr.Expr_IdentExpr#.b c^#2:*expr.Expr_SelectExpr#`,
+    P: newSelectProtoExpr(BigInt(2), newIdentProtoExpr(BigInt(1), 'a'), 'b c'),
+  },
+  {
+    I: 'a.`b.c`',
+    Opts: [enableIdentEscapeSyntax(true)],
+    // P: `a^#1:*expr.Expr_IdentExpr#.b.c^#2:*expr.Expr_SelectExpr#`,
+    P: newSelectProtoExpr(BigInt(2), newIdentProtoExpr(BigInt(1), 'a'), 'b.c'),
+  },
+  {
+    I: 'a.`in`',
+    Opts: [enableIdentEscapeSyntax(true)],
+    // P: `a^#1:*expr.Expr_IdentExpr#.in^#2:*expr.Expr_SelectExpr#`,
+    P: newSelectProtoExpr(BigInt(2), newIdentProtoExpr(BigInt(1), 'a'), 'in'),
+  },
+  {
+    I: 'a.`/foo`',
+    Opts: [enableIdentEscapeSyntax(true)],
+    // P: `a^#1:*expr.Expr_IdentExpr#./foo^#2:*expr.Expr_SelectExpr#`,
+    P: newSelectProtoExpr(BigInt(2), newIdentProtoExpr(BigInt(1), 'a'), '/foo'),
+  },
+  {
+    I: 'Message{`in`: true}',
+    Opts: [enableIdentEscapeSyntax(true)],
+    // P: `Message{
+    // 	in:true^#3:*expr.Constant_BoolValue#^#2:*expr.Expr_CreateStruct_Entry#
+    //   }^#1:*expr.Expr_StructExpr#`,
+    P: newMessageProtoExpr(BigInt(1), 'Message', [
+      newMessageFieldProtoExpr(
+        BigInt(2),
+        'in',
+        newBoolProtoExpr(BigInt(3), true),
+        false
+      ),
+    ]),
+  },
+  {
+    I: '`b-c`',
+    Opts: [enableIdentEscapeSyntax(true)],
+    E:
+      "ERROR: <input>:1:1: Syntax error: mismatched input '`b-c`' expecting {'[', '{', '(', '.', '-', '!', 'true', 'false', 'null', NUM_FLOAT, NUM_INT, NUM_UINT, STRING, BYTES, IDENTIFIER}\n" +
+      '| `b-c`\n' +
+      '| ^',
+  },
+  {
+    I: '`b-c`()',
+    Opts: [enableIdentEscapeSyntax(true)],
+    E:
+      "ERROR: <input>:1:1: Syntax error: extraneous input '`b-c`' expecting {'[', '{', '(', '.', '-', '!', 'true', 'false', 'null', NUM_FLOAT, NUM_INT, NUM_UINT, STRING, BYTES, IDENTIFIER}\n" +
+      '| `b-c`()\n' +
+      '| ^\n' +
+      "ERROR: <input>:1:7: Syntax error: mismatched input ')' expecting {'[', '{', '(', '.', '-', '!', 'true', 'false', 'null', NUM_FLOAT, NUM_INT, NUM_UINT, STRING, BYTES, IDENTIFIER}\n" +
+      '| `b-c`()\n' +
+      '| ......^',
+  },
+  {
+    I: 'a.`$b`',
+    Opts: [enableIdentEscapeSyntax(true)],
+    E:
+      "ERROR: <input>:1:3: Syntax error: token recognition error at: '`$'\n" +
+      '| a.`$b`\n' +
+      '| ..^\n' +
+      "ERROR: <input>:1:6: Syntax error: token recognition error at: '`'\n" +
+      '| a.`$b`\n' +
+      '| .....^',
+  },
+  {
+    I: 'a.`b.c`()',
+    Opts: [enableIdentEscapeSyntax(true)],
+    E:
+      "ERROR: <input>:1:8: Syntax error: mismatched input '(' expecting <EOF>\n" +
+      '| a.`b.c`()\n' +
+      '| .......^',
+  },
+  {
+    I: 'a.`b-c`',
+    Opts: [enableIdentEscapeSyntax(false)],
+    E:
+      "ERROR: <input>:1:3: unsupported syntax: '`'\n" + '| a.`b-c`\n' + '| ..^',
+  },
+  {
+    I: 'a.`b.c`',
+    Opts: [enableIdentEscapeSyntax(false)],
+    E:
+      "ERROR: <input>:1:3: unsupported syntax: '`'\n" + '| a.`b.c`\n' + '| ..^',
+  },
+  {
+    I: 'a.`in`',
+    Opts: [enableIdentEscapeSyntax(false)],
+    E: "ERROR: <input>:1:3: unsupported syntax: '`'\n" + '| a.`in`\n' + '| ..^',
+  },
+  {
+    I: 'a.`/foo`',
+    Opts: [enableIdentEscapeSyntax(false)],
+    E:
+      "ERROR: <input>:1:3: unsupported syntax: '`'\n" +
+      '| a.`/foo`\n' +
+      '| ..^',
+  },
+  {
+    I: 'Message{`in`: true}',
+    Opts: [enableIdentEscapeSyntax(false)],
+    E:
+      "ERROR: <input>:1:9: unsupported syntax: '`'\n" +
+      '| Message{`in`: true}\n' +
+      '| ........^',
+  },
 ];
 
 describe('Parser', () => {

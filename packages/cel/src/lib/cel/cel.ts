@@ -19,19 +19,19 @@ export { StringRefVal as StringVal } from '../common/types/string';
 export { TimestampRefVal as TimestampVal } from '../common/types/timestamp';
 export { UintRefVal as UintVal } from '../common/types/uint';
 export { UnknownRefVal as UnknownVal } from '../common/types/unknown';
-export {
-  Parser,
-  enableIdentEscapeSyntax,
-  enableOptionalSyntax,
-  enableVariadicOperatorASTs,
-  errorRecoveryLimit,
-  errorRecoveryLookaheadTokenLimit,
-  errorReportingLimit,
-  expressionSizeCodePointLimit,
-  maxRecursionDepth,
-  macros as parserMacros,
-  populateMacroCalls,
-} from '../parser/parser';
+// export {
+//   Parser,
+//   enableIdentEscapeSyntax,
+//   enableOptionalSyntax,
+//   enableVariadicOperatorASTs,
+//   errorRecoveryLimit,
+//   errorRecoveryLookaheadTokenLimit,
+//   errorReportingLimit,
+//   expressionSizeCodePointLimit,
+//   maxRecursionDepth,
+//   macros as parserMacros,
+//   populateMacroCalls,
+// } from '../parser/parser';
 export type { ParserOption } from '../parser/parser';
 export {
   unparse,
