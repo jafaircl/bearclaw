@@ -41,6 +41,42 @@ export {
 } from '../parser/unparser';
 export type { UnparserOption } from '../parser/unparser';
 export * from './decls';
+export {
+  AnyType,
+  BoolType,
+  BytesType,
+  DoubleType,
+  DurationType,
+  DynType,
+  IntType,
+  NullType,
+  StringType,
+  TimestampType,
+  TypeType,
+  UintType,
+  constant,
+  disableDeclaration,
+  exprDeclToDeclaration,
+  exprTypeToType,
+  func,
+  listType,
+  mapType,
+  maybeUnwrapDeclaration,
+  memberOverload,
+  nullableType,
+  objectType,
+  opaqueType,
+  optionalType,
+  overload,
+  protoDeclToDecl,
+  singletonBinaryBinding,
+  singletonFunctionBinding,
+  singletonUnaryBinding,
+  typeParamType,
+  typeToExprType,
+  variable,
+} from './decls';
+export type { Declaration, Kind, Type } from './decls';
 export { Ast, CustomEnv, Env, Issues, formatCELType } from './env';
 export type { Source } from './env';
 export { Feature, StdLib, isLibrary, isSingletonLibrary, lib } from './library';
