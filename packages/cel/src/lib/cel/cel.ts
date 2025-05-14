@@ -4,7 +4,7 @@ export {
   toCheckedExprProto,
   toParsedExprProto,
 } from '../common/conversion';
-export { Registry } from '../common/ref/provider';
+export type { Registry } from '../common/ref/provider';
 export { BoolRefVal as BoolVal } from '../common/types/bool';
 export { BytesRefVal as BytesVal } from '../common/types/bytes';
 export { DoubleRefVal as DoubleVal } from '../common/types/double';
@@ -19,6 +19,27 @@ export { StringRefVal as StringVal } from '../common/types/string';
 export { TimestampRefVal as TimestampVal } from '../common/types/timestamp';
 export { UintRefVal as UintVal } from '../common/types/uint';
 export { UnknownRefVal as UnknownVal } from '../common/types/unknown';
+export {
+  Parser,
+  enableIdentEscapeSyntax,
+  enableOptionalSyntax,
+  enableVariadicOperatorASTs,
+  errorRecoveryLimit,
+  errorRecoveryLookaheadTokenLimit,
+  errorReportingLimit,
+  expressionSizeCodePointLimit,
+  maxRecursionDepth,
+  macros as parserMacros,
+  populateMacroCalls,
+} from '../parser/parser';
+export type { ParserOption } from '../parser/parser';
+export {
+  unparse,
+  wrapAfterColumnLimit,
+  wrapOnColumn,
+  wrapOnOperators,
+} from '../parser/unparser';
+export type { UnparserOption } from '../parser/unparser';
 export * from './decls';
 export { Ast, CustomEnv, Env, Issues, formatCELType } from './env';
 export type { Source } from './env';
@@ -35,9 +56,9 @@ export {
   declarations,
   declareContextProto,
   eagerlyValidateDeclarations,
+  homogeneousAggregateLiterals,
   macros,
   types,
-  //  homogeneousAggregateLiterals,
   variadicLogicalOperatorASTs,
 } from './options';
 export type { EnvOption, EvalOption, ProgramOption } from './options';

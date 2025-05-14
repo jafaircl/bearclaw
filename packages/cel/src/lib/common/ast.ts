@@ -123,6 +123,9 @@ export class AST {
     return this._typeMap.size > 0;
   }
 
+  /**
+   * ToProto returns a ParsedExpr proto representation of the AST.
+   */
   toProto<T extends ParsedExpr = ParsedExpr>(): T {
     return toParsedExprProto(this) as T;
   }
@@ -207,6 +210,9 @@ export class CheckedAST extends AST {
     this._refMap = refMap;
   }
 
+  /**
+   * ToProto returns a CheckedExpr proto representation of the AST.
+   */
   override toProto<CheckedExpr>(): CheckedExpr {
     return toCheckedExprProto(this) as CheckedExpr;
   }
