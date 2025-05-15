@@ -40,3 +40,5 @@ Thumbs.db
 
 # NX
 .nx
+vite.config.*.timestamp*
+vitest.config.*.timestamp*
