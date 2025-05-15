@@ -1,12 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { assert, isNil } from '@bearclaw/is';
 import {
-  Expr,
-  Expr_CreateList,
-  Expr_CreateStruct,
-  Expr_CreateStruct_Entry,
-} from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb.js';
-import {
   CharStream,
   CommonTokenStream,
   ParseTree,
@@ -57,11 +51,14 @@ import {
   CreateMessageContext,
   CreateStructContext,
   DoubleContext,
+  EscapeIdentContext,
+  EscapedIdentifierContext,
   ExprContext,
   ExprListContext,
   FieldInitializerListContext,
   default as GenCELParser,
-  IdentOrGlobalCallContext,
+  GlobalCallContext,
+  IdentContext,
   IndexContext,
   IntContext,
   ListInitContext,
@@ -75,11 +72,18 @@ import {
   PrimaryExprContext,
   RelationContext,
   SelectContext,
+  SimpleIdentifierContext,
   StartContext,
   StringContext,
   UintContext,
 } from '../gen/CELParser';
 import { default as GeneratedCelVisitor } from '../gen/CELVisitor';
+import {
+  Expr,
+  Expr_CreateList,
+  Expr_CreateStruct,
+  Expr_CreateStruct_Entry,
+} from '../protogen/cel/expr/syntax_pb.js';
 import { ExprHelper, LogicManager, ParserHelper } from './helper';
 import { Macro, makeMacroKey, makeVarArgMacroKey } from './macro';
 
@@ -455,7 +459,10 @@ export class Parser extends GeneratedCelVisitor<Expr> {
     if (isNil(ctx._id) || isNil(ctx._op)) {
       return this.#helper.newExpr(ctx);
     }
-    const id = ctx._id.text;
+    const id = this._normalizeIdent(ctx._id);
+    if (id instanceof Error) {
+      return this._reportError(ctx._id, id.message);
+    }
     if (!isNil(ctx._opt)) {
       if (!this.enableOptionalSyntax) {
         return this._reportError(ctx._op, "unsupported syntax '.?'");
@@ -492,7 +499,7 @@ export class Parser extends GeneratedCelVisitor<Expr> {
     return this._globalCallOrMacro(opId, operator, [target, index]);
   };
 
-  override visitIdentOrGlobalCall = (ctx: IdentOrGlobalCallContext): Expr => {
+  override visitIdent = (ctx: IdentContext): Expr => {
     let identName = '';
     if (!isNil(ctx._leadingDot)) {
       identName = '.';
@@ -503,18 +510,33 @@ export class Parser extends GeneratedCelVisitor<Expr> {
     }
     const id = ctx._id.text;
     if (reservedIds.has(id)) {
-      return this._reportError(ctx, `reserved identifier: ${id}`);
+      return this._reportError(ctx._id, `reserved identifier: ${id}`);
     }
     identName += id;
-    if (!isNil(ctx._op)) {
-      const opId = this.#helper.id(ctx._op);
-      let args: Expr[] = [];
-      if (!isNil(ctx._args)) {
-        args = this.visitSlice(ctx._args.expr_list());
-      }
-      return this._globalCallOrMacro(opId, identName, args);
-    }
     return this.#helper.newIdent(ctx._id, identName);
+  };
+
+  override visitGlobalCall = (ctx: GlobalCallContext): Expr => {
+    let identName = '';
+    if (!isNil(ctx._leadingDot)) {
+      identName = '.';
+    }
+    // Handle the error case where no valid identifier is specified.
+    if (isNil(ctx._id)) {
+      return this.#helper.newExpr(ctx);
+    }
+    // Handle reserved identifiers.
+    const id = ctx._id.text;
+    if (reservedIds.has(id)) {
+      return this._reportError(ctx._id, `reserved identifier: ${id}`);
+    }
+    identName += id;
+    const opID = this.#helper.id(ctx._op);
+    return this._globalCallOrMacro(
+      opID,
+      identName,
+      this.visitSlice(ctx._args?.expr_list() ?? [])
+    );
   };
 
   //   override visitNested = (ctx: NestedContext): Expr => {
@@ -622,11 +644,11 @@ export class Parser extends GeneratedCelVisitor<Expr> {
         continue;
       }
       // The field may be empty due to a prior error
-      const id = optField.IDENTIFIER();
-      if (isNil(id)) {
-        return this.#helper.newExpr(optField);
+      const fieldName = this._normalizeIdent(optField.escapeIdent());
+      if (fieldName instanceof Error) {
+        this._reportError(ctx, fieldName.message);
+        continue;
       }
-      const fieldName = id.getText();
       const value = this.visit(vals[i]);
       const field = this.#helper.newObjectField(
         initID,
@@ -864,7 +886,7 @@ export class Parser extends GeneratedCelVisitor<Expr> {
       return null;
     }
     if (this.populateMacroCalls) {
-      this.#helper.addMacroCall(exprID, fn, target, ...args);
+      this.#helper.addMacroCall(expr.id, fn, target, ...args);
     }
     this.#helper.deleteId(exprID);
     return expr;
@@ -906,6 +928,26 @@ export class Parser extends GeneratedCelVisitor<Expr> {
   private _decrementRecursionDepth() {
     this.#recursionDepth--;
   }
+
+  private _normalizeIdent(ctx: EscapeIdentContext) {
+    if (ctx instanceof SimpleIdentifierContext) {
+      return ctx._id.text;
+    }
+    if (ctx instanceof EscapedIdentifierContext) {
+      if (!this.enableIdentEscapeSyntax) {
+        return new Error("unsupported syntax: '`'");
+      }
+      return unescapeIdent(ctx._id.text);
+    }
+    return new Error('Unsupported ident kind.');
+  }
+}
+
+function unescapeIdent(ident: string): string | Error {
+  if (ident.length < 2) {
+    return new Error('invalid escaped identifier: underflow');
+  }
+  return ident.substring(1, ident.length - 1);
 }
 
 class RecursionListener extends ParseTreeListener {

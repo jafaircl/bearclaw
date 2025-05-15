@@ -1,6 +1,6 @@
-import { CheckedExprSchema } from '@buf/google_cel-spec.bufbuild_es/cel/expr/checked_pb';
-import { ExprSchema } from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb';
 import { create } from '@bufbuild/protobuf';
+import { CheckedExprSchema } from '../protogen/cel/expr/checked_pb';
+import { ExprSchema } from '../protogen/cel/expr/syntax_pb';
 import {
   AST,
   CheckedAST,

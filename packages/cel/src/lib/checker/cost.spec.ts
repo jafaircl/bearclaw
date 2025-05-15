@@ -1,9 +1,4 @@
 import { isNil } from '@bearclaw/is';
-import {
-  TestAllTypes_NestedEnumSchema as TestAllTypes_NestedEnumSchemaProto3,
-  TestAllTypes_NestedMessageSchema as TestAllTypes_NestedMessageSchemaProto3,
-  TestAllTypesSchema as TestAllTypesSchemaProto3,
-} from '@buf/cel_spec.bufbuild_es/proto/test/v1/proto3/test_all_types_pb.js';
 import { Container } from '../common/container';
 import { newVariableDecl, VariableDecl } from '../common/decls';
 import {
@@ -27,6 +22,11 @@ import {
 import { MAX_UINT64 } from '../common/types/uint';
 import { AllMacros } from '../parser/macro';
 import { macros, Parser } from '../parser/parser';
+import {
+  TestAllTypes_NestedEnumSchema as TestAllTypes_NestedEnumSchemaProto3,
+  TestAllTypes_NestedMessageSchema as TestAllTypes_NestedMessageSchemaProto3,
+  TestAllTypesSchema as TestAllTypesSchemaProto3,
+} from '../protogen/cel/expr/conformance/proto3/test_all_types_pb.js';
 import { Checker } from './checker';
 import {
   AstNode,
@@ -42,7 +42,7 @@ import {
 import { Env } from './env';
 
 describe('cost', () => {
-  const allTypes = newObjectType('google.api.expr.test.v1.proto3.TestAllTypes');
+  const allTypes = newObjectType('cel.expr.conformance.proto3.TestAllTypes');
   const allList = newListType(allTypes);
   const intList = newListType(IntType);
   const nestedList = newListType(allList);
@@ -92,7 +92,7 @@ describe('cost', () => {
       vars: [
         newVariableDecl(
           'input',
-          newObjectType('google.api.expr.test.v1.proto3.TestAllTypes')
+          newObjectType('cel.expr.conformance.proto3.TestAllTypes')
         ),
       ],
       wanted: new CostEstimate(BigInt(1), BigInt(1)),
@@ -104,7 +104,7 @@ describe('cost', () => {
       vars: [
         newVariableDecl(
           'input',
-          newObjectType('google.api.expr.test.v1.proto3.TestAllTypes')
+          newObjectType('cel.expr.conformance.proto3.TestAllTypes')
         ),
       ],
       wanted: new CostEstimate(BigInt(2), BigInt(2)),
@@ -142,7 +142,7 @@ describe('cost', () => {
     },
     {
       name: 'create struct',
-      expr: `google.api.expr.test.v1.proto3.TestAllTypes{single_int32: 1, single_float: 3.14, single_string: 'str'}`,
+      expr: `cel.expr.conformance.proto3.TestAllTypes{single_int32: 1, single_float: 3.14, single_string: 'str'}`,
       wanted: new CostEstimate(BigInt(40), BigInt(40)),
     },
     {

@@ -1,18 +1,5 @@
-import { UintRefVal } from './../common/types/uint';
-import { DefaultDispatcher, Dispatcher } from './dispatcher';
-import { ExprInterpreter } from './interpreter';
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { isNil } from '@bearclaw/is';
-import {
-  NestedTestAllTypesSchema,
-  TestAllTypesSchema as TestAllTypesSchemaProto2,
-} from '@buf/cel_spec.bufbuild_es/proto/test/v1/proto2/test_all_types_pb.js';
-import {
-  TestAllTypes_NestedEnum,
-  TestAllTypes_NestedMessageSchema,
-  TestAllTypesSchema,
-} from '@buf/cel_spec.bufbuild_es/proto/test/v1/proto3/test_all_types_pb.js';
-import { ExprSchema } from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb.js';
 import { create, DescMessage } from '@bufbuild/protobuf';
 import { Checker } from '../checker/checker';
 import { Env } from '../checker/env';
@@ -58,6 +45,17 @@ import {
   macros,
   Parser,
 } from '../parser/parser';
+import {
+  NestedTestAllTypesSchema,
+  TestAllTypesSchema as TestAllTypesSchemaProto2,
+} from '../protogen/cel/expr/conformance/proto2/test_all_types_pb.js';
+import {
+  TestAllTypes_NestedEnum,
+  TestAllTypes_NestedMessageSchema,
+  TestAllTypesSchema,
+} from '../protogen/cel/expr/conformance/proto3/test_all_types_pb.js';
+import { ExprSchema } from '../protogen/cel/expr/syntax_pb';
+import { UintRefVal } from './../common/types/uint';
 import { Activation, EmptyActivation, newActivation } from './activation';
 import {
   AttrFactory,
@@ -65,7 +63,9 @@ import {
   enableErrorOnBadPresenceTest,
 } from './attributes';
 import { InterpretableDecorator } from './decorators';
+import { DefaultDispatcher, Dispatcher } from './dispatcher';
 import { Interpretable } from './interpretable';
+import { ExprInterpreter } from './interpreter';
 
 interface TestCase {
   name: string;
@@ -693,7 +693,7 @@ describe('interpreter', () => {
     },
     {
       name: 'literal_pb_enum',
-      container: 'google.api.expr.test.v1.proto3',
+      container: 'cel.expr.conformance.proto3',
       types: [TestAllTypesSchema],
       expr: `TestAllTypes{
 				repeated_nested_enum: [
@@ -717,7 +717,7 @@ describe('interpreter', () => {
     },
     {
       name: 'literal_pb_wrapper_assign',
-      container: 'google.api.expr.test.v1.proto3',
+      container: 'cel.expr.conformance.proto3',
       types: [TestAllTypesSchema],
       expr: `TestAllTypes{
 				single_int64_wrapper: 10,
@@ -729,7 +729,7 @@ describe('interpreter', () => {
     },
     {
       name: 'literal_pb_wrapper_assign_roundtrip',
-      container: 'google.api.expr.test.v1.proto3',
+      container: 'cel.expr.conformance.proto3',
       types: [TestAllTypesSchema],
       expr: `TestAllTypes{
     		single_int32_wrapper: TestAllTypes{}.single_int32_wrapper,
@@ -738,7 +738,7 @@ describe('interpreter', () => {
     },
     {
       name: 'literal_pb_list_assign_null_wrapper',
-      container: 'google.api.expr.test.v1.proto3',
+      container: 'cel.expr.conformance.proto3',
       types: [TestAllTypesSchema],
       expr: `TestAllTypes{
     		repeated_int32: [123, 456, TestAllTypes{}.single_int32_wrapper],
@@ -747,7 +747,7 @@ describe('interpreter', () => {
     },
     {
       name: 'literal_pb_map_assign_null_entry_value',
-      container: 'google.api.expr.test.v1.proto3',
+      container: 'cel.expr.conformance.proto3',
       types: [TestAllTypesSchema],
       expr: `TestAllTypes{
     		map_string_string: {
@@ -759,7 +759,7 @@ describe('interpreter', () => {
     },
     {
       name: 'unset_wrapper_access',
-      container: 'google.api.expr.test.v1.proto3',
+      container: 'cel.expr.conformance.proto3',
       types: [TestAllTypesSchema],
       expr: `TestAllTypes{}.single_string_wrapper`,
       out: new NullRefVal(),
@@ -853,8 +853,18 @@ describe('interpreter', () => {
       out: true,
     },
     {
+      name: 'macro_has_not_map_key',
+      expr: `has({'a':1}.b)`,
+      out: false,
+    },
+    {
+      name: 'macro_has_map_key_single',
+      expr: `has({'a':1}.a)`,
+      out: true,
+    },
+    {
       name: 'macro_has_pb2_field_undefined',
-      container: 'google.api.expr.test.v1.proto2',
+      container: 'cel.expr.conformance.proto2',
       types: [TestAllTypesSchemaProto2],
       unchecked: true,
       expr: `has(TestAllTypes{}.invalid_field)`,
@@ -863,12 +873,12 @@ describe('interpreter', () => {
     // TODO: this one seems to fail because the expression expects fields with default values to return true for "has." This is probably due to a difference in the way proto2 default fields are handled by protobuf-es. The test immediately below this is very similar but for proto3, and it passes.
     // {
     //   name: 'macro_has_pb2_field',
-    //   container: 'google.api.expr.test.v1.proto2',
+    //   container: 'cel.expr.conformance.proto2',
     //   types: [TestAllTypesSchemaProto2, NestedTestAllTypesSchemaProto2],
     //   vars: [
     //     newVariableDecl(
     //       'pb2',
-    //       newObjectType('google.api.expr.test.v1.proto2.TestAllTypes')
+    //       newObjectType('cel.expr.conformance.proto2.TestAllTypes')
     //     ),
     //   ],
     //   in: objectToMap({
@@ -892,12 +902,12 @@ describe('interpreter', () => {
     // },
     {
       name: 'macro_has_pb3_field',
-      container: 'google.api.expr.test.v1.proto3',
+      container: 'cel.expr.conformance.proto3',
       types: [TestAllTypesSchema, NestedTestAllTypesSchema],
       vars: [
         newVariableDecl(
           'pb3',
-          newObjectType('google.api.expr.test.v1.proto3.TestAllTypes')
+          newObjectType('cel.expr.conformance.proto3.TestAllTypes')
         ),
       ],
       in: objectToMap({
@@ -969,7 +979,7 @@ describe('interpreter', () => {
       vars: [
         newVariableDecl(
           'pb3',
-          newObjectType('google.api.expr.test.v1.proto3.TestAllTypes')
+          newObjectType('cel.expr.conformance.proto3.TestAllTypes')
         ),
       ],
       in: objectToMap({
@@ -991,7 +1001,7 @@ describe('interpreter', () => {
       vars: [
         newVariableDecl(
           'pb3',
-          newObjectType('google.api.expr.test.v1.proto3.TestAllTypes')
+          newObjectType('cel.expr.conformance.proto3.TestAllTypes')
         ),
       ],
       in: objectToMap({
@@ -1220,13 +1230,13 @@ describe('interpreter', () => {
       expr: `a.b.c
 				&& pb3.repeated_nested_enum[0] == proto3.TestAllTypes.NestedEnum.BAR
 				&& json.list[0] == 'world'`,
-      container: 'google.api.expr.test.v1',
+      container: 'cel.expr.conformance',
       types: [TestAllTypesSchema],
       vars: [
         newVariableDecl('a.b', newMapType(StringType, BoolType)),
         newVariableDecl(
           'pb3',
-          newObjectType('google.api.expr.test.v1.proto3.TestAllTypes')
+          newObjectType('cel.expr.conformance.proto3.TestAllTypes')
         ),
         newVariableDecl('json', newMapType(StringType, DynType)),
       ],
@@ -1261,7 +1271,7 @@ describe('interpreter', () => {
     //   vars: [
     //     newVariableDecl(
     //       'a',
-    //       newObjectType('google.api.expr.test.v1.proto2.TestAllTypes')
+    //       newObjectType('cel.expr.conformance.proto2.TestAllTypes')
     //     ),
     //   ],
     //   out: true,
@@ -1278,7 +1288,7 @@ describe('interpreter', () => {
       vars: [
         newVariableDecl(
           'a',
-          newObjectType('google.api.expr.test.v1.proto3.TestAllTypes')
+          newObjectType('cel.expr.conformance.proto3.TestAllTypes')
         ),
       ],
       in: objectToMap({
@@ -1292,12 +1302,12 @@ describe('interpreter', () => {
     {
       name: 'select_pb3_compare',
       expr: `a.single_uint64 > 3u`,
-      container: 'google.api.expr.test.v1.proto3',
+      container: 'cel.expr.conformance.proto3',
       types: [TestAllTypesSchema],
       vars: [
         newVariableDecl(
           'a',
-          newObjectType('google.api.expr.test.v1.proto3.TestAllTypes')
+          newObjectType('cel.expr.conformance.proto3.TestAllTypes')
         ),
       ],
       in: objectToMap({
@@ -1310,13 +1320,13 @@ describe('interpreter', () => {
     {
       name: 'select_custom_pb3_compare',
       expr: `a.bb > 100`,
-      container: 'google.api.expr.test.v1.proto3',
+      container: 'cel.expr.conformance.proto3',
       types: [TestAllTypes_NestedMessageSchema],
       vars: [
         newVariableDecl(
           'a',
           newObjectType(
-            'google.api.expr.test.v1.proto3.TestAllTypes.NestedMessage'
+            'cel.expr.conformance.proto3.TestAllTypes.NestedMessage'
           )
         ),
       ],
@@ -1338,13 +1348,13 @@ describe('interpreter', () => {
     {
       name: 'select_custom_pb3_optional_field',
       expr: `a.?bb`,
-      container: 'google.api.expr.test.v1.proto3',
+      container: 'cel.expr.conformance.proto3',
       types: [TestAllTypes_NestedMessageSchema],
       vars: [
         newVariableDecl(
           'a',
           newObjectType(
-            'google.api.expr.test.v1.proto3.TestAllTypes.NestedMessage'
+            'cel.expr.conformance.proto3.TestAllTypes.NestedMessage'
           )
         ),
       ],
@@ -1405,14 +1415,14 @@ describe('interpreter', () => {
     {
       name: 'select_empty_repeated_nested',
       expr: `TestAllTypes{}.repeated_nested_message.size() == 0`,
-      container: 'google.api.expr.test.v1.proto3',
+      container: 'cel.expr.conformance.proto3',
       types: [TestAllTypesSchema],
       out: true,
     },
     {
       name: 'select_empty_map_nested',
       expr: `TestAllTypes{}.map_string_string.size() == 0`,
-      container: 'google.api.expr.test.v1.proto3',
+      container: 'cel.expr.conformance.proto3',
       types: [TestAllTypesSchema],
       out: true,
     },
@@ -1508,7 +1518,7 @@ describe('interpreter', () => {
     {
       name: 'literal_pb_optional_field',
       expr: `TestAllTypes{?single_int32: {'value': 1}.?value, ?single_string: {}.?missing}`,
-      container: 'google.api.expr.test.v1.proto3',
+      container: 'cel.expr.conformance.proto3',
       types: [TestAllTypesSchema],
       out: create(TestAllTypesSchema, {
         singleInt32: 1,
@@ -1517,7 +1527,7 @@ describe('interpreter', () => {
     {
       name: 'literal_pb_optional_field_bad_init',
       expr: `TestAllTypes{?single_int32: 1}`,
-      container: 'google.api.expr.test.v1.proto3',
+      container: 'cel.expr.conformance.proto3',
       types: [TestAllTypesSchema],
       unchecked: true,
       err: `cannot initialize optional entry 'single_int32' from non-optional`,

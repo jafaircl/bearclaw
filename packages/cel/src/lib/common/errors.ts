@@ -1,8 +1,8 @@
 import { Type } from './types/types';
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { HashSet } from '@bearclaw/collections';
-import { Expr } from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb';
 import { ErrorListener, RecognitionException, Recognizer, Token } from 'antlr4';
+import { Expr } from '../protogen/cel/expr/syntax_pb.js';
 import { ReferenceInfo } from './ast';
 import { Container } from './container';
 import { CELError } from './error';

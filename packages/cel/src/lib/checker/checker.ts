@@ -1,7 +1,6 @@
 /* eslint-disable no-case-declarations */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { isNil } from '@bearclaw/is';
-import { Expr } from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb';
 import { FunctionDecl, VariableDecl } from '../common/decls';
 import { Errors } from '../common/errors';
 import {
@@ -27,6 +26,7 @@ import {
   unwrapStringProtoExpr,
 } from '../common/pb/expressions';
 import { toQualifiedName } from '../common/utils';
+import { Expr } from '../protogen/cel/expr/syntax_pb.js';
 import {
   AST,
   CheckedAST,

@@ -1,14 +1,6 @@
-import {
-  EvalBinary,
-  EvalUnary,
-  EvalVarArgs,
-  EvalZeroArity,
-  Interpretable,
-} from './interpretable';
 /* eslint-disable no-case-declarations */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { isNil } from '@bearclaw/is';
-import { Expr } from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb.js';
 import { AST, ReferenceInfo } from '../common/ast';
 import { Container } from '../common/container';
 import { BinaryOp, FunctionOp, Overload, UnaryOp } from '../common/functions';
@@ -43,12 +35,14 @@ import {
 import { Adapter, Provider } from '../common/ref/provider';
 import { Trait } from '../common/types/traits/trait';
 import { Kind, Type } from '../common/types/types';
+import { Expr } from '../protogen/cel/expr/syntax_pb.js';
 import { Attribute, AttributeFactory, Qualifier } from './attributes';
 import { InterpretableDecorator } from './decorators';
 import { Dispatcher } from './dispatcher';
 import {
   EvalAnd,
   EvalAttr,
+  EvalBinary,
   EvalConst,
   EvalEq,
   EvalFold,
@@ -58,6 +52,10 @@ import {
   EvalObj,
   EvalOr,
   EvalTestOnly,
+  EvalUnary,
+  EvalVarArgs,
+  EvalZeroArity,
+  Interpretable,
   InterpretableAttribute,
   isInterpretableAttribute,
   isInterpretableConst,

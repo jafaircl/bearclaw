@@ -1,9 +1,6 @@
-import {
-  Value,
-  ValueSchema,
-} from '@buf/google_cel-spec.bufbuild_es/cel/expr/value_pb.js';
 import { create } from '@bufbuild/protobuf';
 import { NullValue } from '@bufbuild/protobuf/wkt';
+import { Value, ValueSchema } from '../../protogen/cel/expr/value_pb.js';
 
 /**
  * NewBoolProtoValue creates a new protobuf boolean value.

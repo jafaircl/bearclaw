@@ -1,12 +1,12 @@
 import { isString } from '@bearclaw/is';
+import { create } from '@bufbuild/protobuf';
 import {
   Constant,
   Expr,
   Expr_CreateStruct_Entry,
   Expr_CreateStruct_EntrySchema,
   ExprSchema,
-} from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb.js';
-import { create } from '@bufbuild/protobuf';
+} from '../../protogen/cel/expr/syntax_pb.js';
 import {
   isBoolProtoConstant,
   isBytesProtoConstant,

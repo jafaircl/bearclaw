@@ -1,12 +1,12 @@
+import { create } from '@bufbuild/protobuf';
 import {
   Decl,
   Decl_FunctionDecl_Overload,
   Decl_FunctionDecl_OverloadSchema,
   DeclSchema,
   Type,
-} from '@buf/google_cel-spec.bufbuild_es/cel/expr/checked_pb.js';
-import { Constant } from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb.js';
-import { create } from '@bufbuild/protobuf';
+} from '../../protogen/cel/expr/checked_pb.js';
+import { Constant } from '../../protogen/cel/expr/syntax_pb.js';
 
 /**
  * NewFunction creates a named function declaration with one or more overloads.

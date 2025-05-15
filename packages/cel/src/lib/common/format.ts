@@ -2,13 +2,13 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { isNil } from '@bearclaw/is';
+import { toJsonString } from '@bufbuild/protobuf';
 import {
   Type as ProtoType,
   Type_PrimitiveType,
   Type_WellKnownType,
   TypeSchema,
-} from '@buf/google_cel-spec.bufbuild_es/cel/expr/checked_pb.js';
-import { toJsonString } from '@bufbuild/protobuf';
+} from '../protogen/cel/expr/checked_pb.js';
 import { newPrimitiveProtoType } from './pb/types';
 import { Kind, Type } from './types/types';
 

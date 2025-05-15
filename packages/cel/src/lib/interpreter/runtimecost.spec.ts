@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { HashMap } from '@bearclaw/collections';
 import { isNil } from '@bearclaw/is';
-import { TestAllTypesSchema } from '@buf/cel_spec.bufbuild_es/proto/test/v1/proto3/test_all_types_pb.js';
 import { create, createRegistry } from '@bufbuild/protobuf';
 import { timestampNow } from '@bufbuild/protobuf/wkt';
 import { Checker } from '../checker/checker';
@@ -36,6 +35,7 @@ import {
 import { objectToMap } from '../common/utils';
 import { AllMacros } from '../parser/macro';
 import { macros, Parser } from '../parser/parser';
+import { TestAllTypesSchema } from '../protogen/cel/expr/conformance/proto3/test_all_types_pb.js';
 import { Activation, EmptyActivation, newActivation } from './activation';
 import { AttrFactory } from './attributes';
 import { DefaultDispatcher } from './dispatcher';
@@ -102,9 +102,7 @@ describe('runtimecost', () => {
   });
 
   describe('TestRuntimeCost', () => {
-    const allTypes = newObjectType(
-      'google.api.expr.test.v1.proto3.TestAllTypes'
-    );
+    const allTypes = newObjectType('cel.expr.conformance.proto3.TestAllTypes');
     const allList = newListType(allTypes);
     const intList = newListType(IntType);
     const nestedList = newListType(allList);
@@ -275,7 +273,7 @@ describe('runtimecost', () => {
       },
       {
         name: 'create struct',
-        expr: `google.api.expr.test.v1.proto3.TestAllTypes{single_int32: 1, single_float: 3.14, single_string: 'str'}`,
+        expr: `cel.expr.conformance.proto3.TestAllTypes{single_int32: 1, single_float: 3.14, single_string: 'str'}`,
         want: BigInt(40),
       },
       {

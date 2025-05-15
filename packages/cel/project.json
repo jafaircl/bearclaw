@@ -5,10 +5,9 @@
   "projectType": "library",
   "release": {
     "version": {
-      "generatorOptions": {
-        "packageRoot": "dist/{projectRoot}",
-        "currentVersionResolver": "git-tag"
-      }
+      "currentVersionResolver": "git-tag",
+      "preserveLocalDependencyProtocols": false,
+      "manifestRootsToUpdate": ["dist/{projectRoot}"]
     }
   },
   "tags": [],
@@ -49,6 +48,13 @@
       "options": {
         "command": "go run textproto-to-json.go",
         "cwd": "packages/cel/src/lib/conformance"
+      }
+    },
+    "genproto": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "npx buf generate",
+        "cwd": "packages/cel"
       }
     }
   }

@@ -2,7 +2,7 @@
 /* eslint-disable no-case-declarations */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { isNil } from '@bearclaw/is';
-import { Expr } from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb.js';
+import { Expr } from '../protogen/cel/expr/syntax_pb.js';
 
 export function unquote(str: string) {
   const reg = /['"`]/;

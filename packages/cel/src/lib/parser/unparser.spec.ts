@@ -132,10 +132,9 @@ describe('unparser', () => {
         name: 'msg_fields_opt',
         in: `v1alpha1.Expr{?id: id, call_expr: v1alpha1.Call_Expr{function: "name"}}`,
       },
-      // TODO: these tests request parser escape updates
-      //   { name: 'select_quoted', in: 'a.`b-c`' },
-      //   { name: 'opt_select_quoted', in: 'a.?`b.c`' },
-      //   { name: 'message_create_quoted', in: 'MyType{`in`: false}' },
+      { name: 'select_quoted', in: 'a.`b-c`' },
+      { name: 'opt_select_quoted', in: 'a.?`b.c`' },
+      { name: 'message_create_quoted', in: 'MyType{`in`: false}' },
 
       // Equivalent expressions form unparse which do not match the originals.
       { name: 'call_add_equiv', in: `a+b-c`, out: `a + b - c` },
@@ -160,58 +159,57 @@ describe('unparser', () => {
       //   },
       { name: 'select_equiv', in: `a . b . c`, out: `a.b.c` },
 
-      // TODO there is no unparse for comprehensions yet
-      //   // These expressions require macro call tracking to be enabled.
-      //   {
-      //     name: 'comp_all',
-      //     in: `[1, 2, 3].all(x, x > 0)`,
-      //     requiresMacroCalls: true,
-      //   },
-      //   {
-      //     name: 'comp_exists',
-      //     in: `[1, 2, 3].exists(x, x > 0)`,
-      //     requiresMacroCalls: true,
-      //   },
-      //   {
-      //     name: 'comp_map',
-      //     in: `[1, 2, 3].map(x, x >= 2, x * 4)`,
-      //     requiresMacroCalls: true,
-      //   },
-      //   {
-      //     name: 'comp_exists_one',
-      //     in: `[1, 2, 3].exists_one(x, x >= 2)`,
-      //     requiresMacroCalls: true,
-      //   },
-      //   {
-      //     name: 'comp_nested',
-      //     in: `[[1], [2], [3]].map(x, x.filter(y, y > 1))`,
-      //     requiresMacroCalls: true,
-      //   },
-      //   {
-      //       name:               "comp_chained",
-      //       in:                 `[1, 2, 3].map(x, x >= 2, x * 4).filter(x, x <= 10)`,
-      //       requiresMacroCalls: true,
-      //   },
-      //   {
-      //       name:               "comp_chained_opt",
-      //       in:                 `[?a, b[?0], c].map(x, x >= 2, x * 4).filter(x, x <= 10)`,
-      //       requiresMacroCalls: true,
-      //   },
-      //   {
-      //       name:               "comp_map_opt",
-      //       in:                 `{?a: b[?0]}.map(k, x >= 2, x * 4)`,
-      //       requiresMacroCalls: true,
-      //   },
-      //   {
-      //       name:               "comp_map_opt",
-      //       in:                 `{a: has(b.c)}.exists(k, k != "")`,
-      //       requiresMacroCalls: true,
-      //   },
-      //   {
-      //       name:               "comp_nested",
-      //       in:                 `{a: [1, 2].all(i > 0)}.exists(k, k != "")`,
-      //       requiresMacroCalls: true,
-      //   },
+      // These expressions require macro call tracking to be enabled.
+      {
+        name: 'comp_all',
+        in: `[1, 2, 3].all(x, x > 0)`,
+        requiresMacroCalls: true,
+      },
+      {
+        name: 'comp_exists',
+        in: `[1, 2, 3].exists(x, x > 0)`,
+        requiresMacroCalls: true,
+      },
+      {
+        name: 'comp_map',
+        in: `[1, 2, 3].map(x, x >= 2, x * 4)`,
+        requiresMacroCalls: true,
+      },
+      {
+        name: 'comp_exists_one',
+        in: `[1, 2, 3].exists_one(x, x >= 2)`,
+        requiresMacroCalls: true,
+      },
+      {
+        name: 'comp_nested',
+        in: `[[1], [2], [3]].map(x, x.filter(y, y > 1))`,
+        requiresMacroCalls: true,
+      },
+      {
+        name: 'comp_chained',
+        in: `[1, 2, 3].map(x, x >= 2, x * 4).filter(x, x <= 10)`,
+        requiresMacroCalls: true,
+      },
+      {
+        name: 'comp_chained_opt',
+        in: `[?a, b[?0], c].map(x, x >= 2, x * 4).filter(x, x <= 10)`,
+        requiresMacroCalls: true,
+      },
+      {
+        name: 'comp_map_opt',
+        in: `{?a: b[?0]}.map(k, x >= 2, x * 4)`,
+        requiresMacroCalls: true,
+      },
+      {
+        name: 'comp_map_opt',
+        in: `{a: has(b.c)}.exists(k, k != "")`,
+        requiresMacroCalls: true,
+      },
+      {
+        name: 'comp_nested',
+        in: `{a: [1, 2].all(i > 0)}.exists(k, k != "")`,
+        requiresMacroCalls: true,
+      },
 
       // These expressions will not be wrapped because they haven't met the
       // conditions required by the provided unparser options
@@ -373,17 +371,16 @@ describe('unparser', () => {
           wrapOnOperators(LOGICAL_AND_OPERATOR),
         ],
       },
-      // TODO: comprehensions
-      //   {
-      //     name: 'comp_chained_wrap_comparisons',
-      //     in: '[1, 2, 3].map(x, x >= 2, x * 4).filter(x, x <= 10)',
-      //     out: '[1, 2, 3].map(x, x >=\n2, x * 4).filter(x, x <=\n10)',
-      //     requiresMacroCalls: true,
-      //     unparserOptions: [
-      //       wrapOnColumn(3),
-      //       wrapOnOperators(GREATER_EQUALS_OPERATOR, LESS_EQUALS_OPERATOR),
-      //     ],
-      //   },
+      {
+        name: 'comp_chained_wrap_comparisons',
+        in: '[1, 2, 3].map(x, x >= 2, x * 4).filter(x, x <= 10)',
+        out: '[1, 2, 3].map(x, x >=\n2, x * 4).filter(x, x <=\n10)',
+        requiresMacroCalls: true,
+        unparserOptions: [
+          wrapOnColumn(3),
+          wrapOnOperators(GREATER_EQUALS_OPERATOR, LESS_EQUALS_OPERATOR),
+        ],
+      },
       {
         name: 'call_wrap_before_add',
         in: 'a + b - d * e',
@@ -439,22 +436,21 @@ describe('unparser', () => {
           wrapAfterColumnLimit(false),
         ],
       },
-      // TODO: comprehensions
-      //   {
-      //     // By default:
-      //     // - Column limit is at 80
-      //     // - && and || are wrapped
-      //     // - Wrapping occurs after the symbol
-      //     name: 'call_wrap_default',
-      //     in: `jwt.extra_claims.filter(c, c.startsWith("group")).all(c, jwt.extra_claims[c].all(g, g.endsWith("@acme.co"))) && jwt.extra_claims.exists(c, c.startsWith("group")) || request.auth.claims.group == "admin" || request.auth.principal == "user:me@acme.co"`,
-      //     out:
-      //       `jwt.extra_claims.filter(c, c.startsWith("group")).all(c, jwt.extra_claims[c].all(g, g.endsWith("@acme.co"))) &&` +
-      //       '\n' +
-      //       `jwt.extra_claims.exists(c, c.startsWith("group")) || request.auth.claims.group == "admin" ||` +
-      //       '\n' +
-      //       `request.auth.principal == "user:me@acme.co"`,
-      //     requiresMacroCalls: true,
-      //   },
+      {
+        // By default:
+        // - Column limit is at 80
+        // - && and || are wrapped
+        // - Wrapping occurs after the symbol
+        name: 'call_wrap_default',
+        in: `jwt.extra_claims.filter(c, c.startsWith("group")).all(c, jwt.extra_claims[c].all(g, g.endsWith("@acme.co"))) && jwt.extra_claims.exists(c, c.startsWith("group")) || request.auth.claims.group == "admin" || request.auth.principal == "user:me@acme.co"`,
+        out:
+          `jwt.extra_claims.filter(c, c.startsWith("group")).all(c, jwt.extra_claims[c].all(g, g.endsWith("@acme.co"))) &&` +
+          '\n' +
+          `jwt.extra_claims.exists(c, c.startsWith("group")) || request.auth.claims.group == "admin" ||` +
+          '\n' +
+          `request.auth.principal == "user:me@acme.co"`,
+        requiresMacroCalls: true,
+      },
       {
         // && and || are wrapped by default if only the column limit is specified
         name: 'call_wrap_default_operators',
@@ -466,8 +462,8 @@ describe('unparser', () => {
     for (const tc of testCases) {
       it(`should unparse ${tc.name}`, () => {
         const env = new Parser(
+          populateMacroCalls(tc.requiresMacroCalls ?? false),
           macros(...AllMacros),
-          populateMacroCalls((tc as any).requiresMacroCalls ?? false),
           enableOptionalSyntax(true),
           enableIdentEscapeSyntax(true)
         );

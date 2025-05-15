@@ -2,11 +2,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { isNil } from '@bearclaw/is';
-import {
-  Decl,
-  DeclSchema,
-  Type as ProtoType,
-} from '@buf/google_cel-spec.bufbuild_es/cel/expr/checked_pb.js';
 import { isMessage } from '@bufbuild/protobuf';
 import {
   FunctionDecl,
@@ -54,6 +49,11 @@ import {
   TypeType as œTypeType,
   UintType as œUintType,
 } from '../common/types/types';
+import {
+  Decl,
+  DeclSchema,
+  Type as ProtoType,
+} from '../protogen/cel/expr/checked_pb.js';
 import { EnvOption } from './options';
 
 /**

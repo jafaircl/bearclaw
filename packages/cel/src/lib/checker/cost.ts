@@ -4,7 +4,6 @@
 // WARNING: Any changes to cost calculations in this file require a corresponding change in interpreter/runtimecost.go
 
 import { isNil } from '@bearclaw/is';
-import { Expr } from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb.js';
 import { AST } from '../common/ast';
 import {
   ConstCost,
@@ -59,6 +58,7 @@ import {
 import { Kind, Type } from '../common/types/types';
 import { MAX_UINT64 } from '../common/types/uint';
 import { AccumulatorName } from '../parser/macro';
+import { Expr } from '../protogen/cel/expr/syntax_pb.js';
 
 /**
  * CostEstimator estimates the sizes of variable length input data and the

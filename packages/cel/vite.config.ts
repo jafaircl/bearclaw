@@ -42,8 +42,19 @@ export default defineConfig({
       formats: ['es', 'cjs'],
     },
     rollupOptions: {
+      treeshake: true,
       // External packages that should not be bundled into your library.
-      external: [],
+      external: [
+        '@bearclaw/collections',
+        '@bearclaw/is',
+        '@bufbuild/protobuf',
+        'antlr4',
+        'dequal',
+        'iso8601-duration',
+      ],
+      output: {
+        compact: true,
+      },
     },
   },
 

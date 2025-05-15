@@ -6,7 +6,7 @@ import {
   Type as ProtoType,
   Type_PrimitiveType,
   Type_WellKnownType,
-} from '@buf/google_cel-spec.bufbuild_es/cel/expr/checked_pb.js';
+} from '../../protogen/cel/expr/checked_pb.js';
 import {
   AnyProtoType,
   BoolProtoType,

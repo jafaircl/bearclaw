@@ -1,4 +1,4 @@
-import { Value } from '@buf/google_cel-spec.bufbuild_es/cel/expr/value_pb.js';
+import { Value } from '../../protogen/cel/expr/value_pb.js';
 import { newIntProtoValue } from '../pb/values';
 import { RefVal } from '../ref/reference';
 import { ErrorRefVal } from './error';

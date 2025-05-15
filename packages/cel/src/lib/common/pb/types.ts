@@ -1,12 +1,12 @@
 import { isNil } from '@bearclaw/is';
+import { create } from '@bufbuild/protobuf';
+import { NullValue } from '@bufbuild/protobuf/wkt';
 import {
   Type,
   Type_PrimitiveType,
   Type_WellKnownType,
   TypeSchema,
-} from '@buf/google_cel-spec.bufbuild_es/cel/expr/checked_pb.js';
-import { create } from '@bufbuild/protobuf';
-import { NullValue } from '@bufbuild/protobuf/wkt';
+} from '../../protogen/cel/expr/checked_pb.js';
 
 /**
  * ErrorProtoType represents a protobuf CEL error type.

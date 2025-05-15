@@ -1,16 +1,4 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-import {
-  NestedTestAllTypesSchema,
-  TestAllTypes_NestedEnum,
-  TestAllTypes_NestedEnumSchema,
-  TestAllTypes_NestedMessageSchema,
-  TestAllTypesSchema,
-} from '@buf/cel_spec.bufbuild_es/proto/test/v1/proto3/test_all_types_pb.js';
-import {
-  DeclSchema,
-  ReferenceSchema,
-} from '@buf/google_cel-spec.bufbuild_es/cel/expr/checked_pb.js';
-import { SourceInfoSchema } from '@buf/google_cel-spec.bufbuild_es/cel/expr/syntax_pb';
 import { create, Message } from '@bufbuild/protobuf';
 import {
   BoolValueSchema,
@@ -24,6 +12,18 @@ import {
   UInt64ValueSchema,
   ValueSchema,
 } from '@bufbuild/protobuf/wkt';
+import {
+  DeclSchema,
+  ReferenceSchema,
+} from '../../protogen/cel/expr/checked_pb.js';
+import {
+  NestedTestAllTypesSchema,
+  TestAllTypes_NestedEnum,
+  TestAllTypes_NestedEnumSchema,
+  TestAllTypes_NestedMessageSchema,
+  TestAllTypesSchema,
+} from '../../protogen/cel/expr/conformance/proto3/test_all_types_pb.js';
+import { SourceInfoSchema } from '../../protogen/cel/expr/syntax_pb.js';
 import { RefVal } from '../ref/reference';
 import { objectToMap } from '../utils';
 import { BoolRefVal } from './bool';
@@ -132,24 +132,24 @@ describe('Registry', () => {
 
     // Valid cases
     enumValue = registry.enumValue(
-      'google.api.expr.test.v1.proto3.TestAllTypes.NestedEnum.FOO'
+      'cel.expr.conformance.proto3.TestAllTypes.NestedEnum.FOO'
     );
     expect(enumValue.value()).toEqual(BigInt(TestAllTypes_NestedEnum.FOO));
     enumValue = registry.enumValue(
-      'google.api.expr.test.v1.proto3.TestAllTypes.NestedEnum.BAR'
+      'cel.expr.conformance.proto3.TestAllTypes.NestedEnum.BAR'
     );
     expect(enumValue.value()).toEqual(BigInt(TestAllTypes_NestedEnum.BAR));
     enumValue = registry.enumValue(
-      'google.api.expr.test.v1.proto3.TestAllTypes.NestedEnum.BAZ'
+      'cel.expr.conformance.proto3.TestAllTypes.NestedEnum.BAZ'
     );
     expect(enumValue.value()).toEqual(BigInt(TestAllTypes_NestedEnum.BAZ));
 
     // Valid enum but invalid value
     enumValue = registry.enumValue(
-      'google.api.expr.test.v1.proto3.TestAllTypes.NestedEnum.QUX'
+      'cel.expr.conformance.proto3.TestAllTypes.NestedEnum.QUX'
     );
     expect(enumValue.value().message).toEqual(
-      `unknown enum value 'google.api.expr.test.v1.proto3.TestAllTypes.NestedEnum.QUX'`
+      `unknown enum value 'cel.expr.conformance.proto3.TestAllTypes.NestedEnum.QUX'`
     );
   });
 
@@ -158,11 +158,11 @@ describe('Registry', () => {
     const err = registry.registerDescriptor(TestAllTypesSchema);
     expect(err).toBeNull();
 
-    const msgTypeName = '.google.api.expr.test.v1.proto3.TestAllTypes';
+    const msgTypeName = '.cel.expr.conformance.proto3.TestAllTypes';
     const celType = registry.findStructType(msgTypeName);
     expect(celType).not.toBeNull();
     expect(celType?.parameters()[0].typeName()).toEqual(
-      'google.api.expr.test.v1.proto3.TestAllTypes'
+      'cel.expr.conformance.proto3.TestAllTypes'
     );
 
     const und = registry.findStructType(`${msgTypeName}Undefined`);
@@ -189,7 +189,7 @@ describe('Registry', () => {
   it('findStructFieldType', () => {
     const registry = new Registry();
     registry.registerDescriptor(TestAllTypesSchema);
-    const msgTypeName = '.google.api.expr.test.v1.proto3.TestAllTypes';
+    const msgTypeName = '.cel.expr.conformance.proto3.TestAllTypes';
     const tests = [
       {
         msgTypeName,
@@ -378,12 +378,12 @@ describe('Registry', () => {
     }
     const testCases: TestCase[] = [
       {
-        typeName: 'google.api.expr.test.v1.proto3.TestAllTypes',
+        typeName: 'cel.expr.conformance.proto3.TestAllTypes',
         fields: new Map(),
         out: create(TestAllTypesSchema),
       },
       {
-        typeName: 'google.api.expr.test.v1.proto3.TestAllTypes',
+        typeName: 'cel.expr.conformance.proto3.TestAllTypes',
         fields: objectToMap({
           standalone_enum: new IntRefVal(BigInt(1)),
         }),
@@ -392,7 +392,7 @@ describe('Registry', () => {
         }),
       },
       {
-        typeName: 'google.api.expr.test.v1.proto3.TestAllTypes',
+        typeName: 'cel.expr.conformance.proto3.TestAllTypes',
         fields: objectToMap({
           single_int32_wrapper: new IntRefVal(BigInt(123)),
           single_int64_wrapper: new NullRefVal(),
@@ -402,7 +402,7 @@ describe('Registry', () => {
         }),
       },
       {
-        typeName: 'google.api.expr.test.v1.proto3.TestAllTypes',
+        typeName: 'cel.expr.conformance.proto3.TestAllTypes',
         fields: objectToMap({
           repeated_int64: reg.nativeToValue([BigInt(3), BigInt(2), BigInt(1)]),
         }),
@@ -412,7 +412,7 @@ describe('Registry', () => {
       },
       // TODO: this doesn't work
       // {
-      //   typeName: 'google.api.expr.test.v1.proto3.TestAllTypes',
+      //   typeName: 'cel.expr.conformance.proto3.TestAllTypes',
       //   fields: objectToMap({
       //     single_nested_enum: new IntRefVal(BigInt(2)),
       //   }),
@@ -424,7 +424,7 @@ describe('Registry', () => {
       //   }),
       // },
       {
-        typeName: 'google.api.expr.test.v1.proto3.TestAllTypes',
+        typeName: 'cel.expr.conformance.proto3.TestAllTypes',
         fields: objectToMap({
           single_value: BoolRefVal.True,
         }),
@@ -438,7 +438,7 @@ describe('Registry', () => {
         }),
       },
       {
-        typeName: 'google.api.expr.test.v1.proto3.TestAllTypes',
+        typeName: 'cel.expr.conformance.proto3.TestAllTypes',
         fields: objectToMap({
           single_value: reg.nativeToValue(['hello', 10.2]),
         }),
@@ -461,7 +461,7 @@ describe('Registry', () => {
         }),
       },
       {
-        typeName: 'google.api.expr.test.v1.proto3.TestAllTypes',
+        typeName: 'cel.expr.conformance.proto3.TestAllTypes',
         fields: objectToMap({
           repeated_nested_message: reg.nativeToValue([
             create(TestAllTypes_NestedMessageSchema, { bb: 123 }),
@@ -472,7 +472,7 @@ describe('Registry', () => {
         }),
       },
       {
-        typeName: 'google.api.expr.test.v1.proto3.TestAllTypes',
+        typeName: 'cel.expr.conformance.proto3.TestAllTypes',
         fields: objectToMap({
           map_int64_nested_type: reg.nativeToValue(
             new Map([

@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { TestAllTypesSchema } from '@buf/cel_spec.bufbuild_es/proto/test/v1/proto3/test_all_types_pb.js';
 import { create, createRegistry } from '@bufbuild/protobuf';
 import { anyPack } from '@bufbuild/protobuf/wkt';
 import { Container, name } from '../common/container';
@@ -11,6 +10,7 @@ import { Registry } from '../common/types/provider';
 import { IntType, newObjectType, Type } from '../common/types/types';
 import { UnknownRefVal } from '../common/types/unknown';
 import { objectToMap } from '../common/utils';
+import { TestAllTypesSchema } from '../protogen/cel/expr/conformance/proto3/test_all_types_pb.js';
 import { EmptyActivation, MapActivation } from './activation';
 import { AttrFactory, AttributeFactory, Qualifier } from './attributes';
 import { EvalConst } from './interpretable';
@@ -595,7 +595,7 @@ describe('attributes', () => {
         optQuals: [
           makeOptQualifier(
             attrs,
-            newObjectType('google.api.expr.test.v1.proto3.TestAllTypes'),
+            newObjectType('cel.expr.conformance.proto3.TestAllTypes'),
             BigInt(103),
             'single_int32'
           ),
@@ -688,10 +688,10 @@ describe('attributes', () => {
     });
     const attr = attrs.absoluteAttribute(BigInt(1), 'msg');
     const opType = reg.findStructType(
-      'google.api.expr.test.v1.proto3.TestAllTypes'
+      'cel.expr.conformance.proto3.TestAllTypes'
     );
     const fieldType = reg.findStructType(
-      'google.api.expr.test.v1.proto3.TestAllTypes.NestedMessage'
+      'cel.expr.conformance.proto3.TestAllTypes.NestedMessage'
     );
     attr.addQualifier(
       makeQualifier(attrs, opType, BigInt(2), 'single_nested_message')
@@ -721,7 +721,7 @@ describe('attributes', () => {
     attr.addQualifier(field);
     const out = attr.resolve(vars);
     expect(out).toEqual(
-      new Error(`unknown type: 'google.api.expr.test.v1.proto3.TestAllTypes'`)
+      new Error(`unknown type: 'cel.expr.conformance.proto3.TestAllTypes'`)
     );
   });
 

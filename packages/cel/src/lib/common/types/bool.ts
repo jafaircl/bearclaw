@@ -64,8 +64,8 @@ export class BoolRefVal implements RefVal, Comparer, Zeroer, Negater {
 
   equal(other: RefVal): RefVal {
     switch (other.type().typeName()) {
-      case 'bool':
-        return new BoolRefVal(this._value === other.value());
+      case this.type().typeName():
+        return new BoolRefVal(this._value === (other as BoolRefVal).value());
       default:
         return BoolRefVal.False;
     }

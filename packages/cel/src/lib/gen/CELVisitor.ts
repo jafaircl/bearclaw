@@ -16,7 +16,8 @@ import { MemberCallContext } from "./CELParser";
 import { SelectContext } from "./CELParser";
 import { PrimaryExprContext } from "./CELParser";
 import { IndexContext } from "./CELParser";
-import { IdentOrGlobalCallContext } from "./CELParser";
+import { IdentContext } from "./CELParser";
+import { GlobalCallContext } from "./CELParser";
 import { NestedContext } from "./CELParser";
 import { CreateListContext } from "./CELParser";
 import { CreateStructContext } from "./CELParser";
@@ -27,6 +28,8 @@ import { ListInitContext } from "./CELParser";
 import { FieldInitializerListContext } from "./CELParser";
 import { OptFieldContext } from "./CELParser";
 import { MapInitializerListContext } from "./CELParser";
+import { SimpleIdentifierContext } from "./CELParser";
+import { EscapedIdentifierContext } from "./CELParser";
 import { OptExprContext } from "./CELParser";
 import { IntContext } from "./CELParser";
 import { UintContext } from "./CELParser";
@@ -132,12 +135,19 @@ export default class CELVisitor<Result> extends ParseTreeVisitor<Result> {
 	 */
 	visitIndex?: (ctx: IndexContext) => Result;
 	/**
-	 * Visit a parse tree produced by the `IdentOrGlobalCall`
+	 * Visit a parse tree produced by the `Ident`
 	 * labeled alternative in `CELParser.primary`.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */
-	visitIdentOrGlobalCall?: (ctx: IdentOrGlobalCallContext) => Result;
+	visitIdent?: (ctx: IdentContext) => Result;
+	/**
+	 * Visit a parse tree produced by the `GlobalCall`
+	 * labeled alternative in `CELParser.primary`.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	visitGlobalCall?: (ctx: GlobalCallContext) => Result;
 	/**
 	 * Visit a parse tree produced by the `Nested`
 	 * labeled alternative in `CELParser.primary`.
@@ -203,6 +213,20 @@ export default class CELVisitor<Result> extends ParseTreeVisitor<Result> {
 	 * @return the visitor result
 	 */
 	visitMapInitializerList?: (ctx: MapInitializerListContext) => Result;
+	/**
+	 * Visit a parse tree produced by the `SimpleIdentifier`
+	 * labeled alternative in `CELParser.escapeIdent`.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	visitSimpleIdentifier?: (ctx: SimpleIdentifierContext) => Result;
+	/**
+	 * Visit a parse tree produced by the `EscapedIdentifier`
+	 * labeled alternative in `CELParser.escapeIdent`.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	visitEscapedIdentifier?: (ctx: EscapedIdentifierContext) => Result;
 	/**
 	 * Visit a parse tree produced by `CELParser.optExpr`.
 	 * @param ctx the parse tree

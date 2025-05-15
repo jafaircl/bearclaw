@@ -17,6 +17,7 @@ import { TextSource, Source as œSource } from '../common/source';
 import { Registry } from '../common/types/provider';
 import { Macro } from '../parser/macro';
 import {
+  enableIdentEscapeSyntax,
   enableVariadicOperatorASTs,
   macros,
   Parser,
@@ -202,6 +203,9 @@ export class EnvBase {
     }
     if (this.hasFeature(Feature.VariadicLogicalASTs)) {
       prsrOpts.push(enableVariadicOperatorASTs(true));
+    }
+    if (this.hasFeature(Feature.IdentEscapeSyntax)) {
+      prsrOpts.push(enableIdentEscapeSyntax(true));
     }
     this.prsr = new Parser(...prsrOpts);
 
