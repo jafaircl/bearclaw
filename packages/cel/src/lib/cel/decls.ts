@@ -42,6 +42,8 @@ import {
   exprTypeToType as œexprTypeToType,
   IntType as œIntType,
   Kind as œKind,
+  ListType as œListType,
+  MapType as œMapType,
   NullType as œNullType,
   StringType as œStringType,
   TimestampType as œTimestampType,
@@ -210,6 +212,16 @@ export const TypeType = œTypeType;
  * UintType represents a uint type.
  */
 export const UintType = œUintType;
+
+/**
+ * ListType represents a list type.
+ */
+export const ListType = œListType;
+
+/**
+ * MapType represents a map type.
+ */
+export const MapType = œMapType;
 
 // function references for instantiating new types.
 
