@@ -48,9 +48,13 @@ export {
   DurationType,
   DynType,
   IntType,
+  Kind,
+  ListType,
+  MapType,
   NullType,
   StringType,
   TimestampType,
+  Type,
   TypeType,
   UintType,
   constant,
@@ -75,7 +79,7 @@ export {
   typeToExprType,
   variable,
 } from './decls';
-export type { Declaration, Kind, Type } from './decls';
+export type { Declaration } from './decls';
 export { Ast, CustomEnv, Env, Issues, formatCELType } from './env';
 export type { Source } from './env';
 export { Feature, StdLib, isLibrary, isSingletonLibrary, lib } from './library';
@@ -86,11 +90,17 @@ export {
   container,
   contextProtoVars,
   costEstimatorOptions,
+  crossTypeNumericComparisons,
+  customDecorator,
   customTypeAdapter,
   customTypeProvider,
   declarations,
   declareContextProto,
+  defaultUTCTimeZone,
   eagerlyValidateDeclarations,
+  enableIdentifierEscapeSyntax,
+  enableMacroCallTracking,
+  globals,
   homogeneousAggregateLiterals,
   macros,
   types,

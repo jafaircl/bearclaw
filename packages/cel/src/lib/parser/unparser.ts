@@ -108,10 +108,7 @@ class Unparser {
       case 'selectExpr':
         return this._visitSelect(expr);
       case 'structExpr':
-        if (expr.exprKind.value.messageName) {
-          return this._visitStructMsg(expr);
-        }
-        return this._visitStructMap(expr);
+        return this._visitStruct(expr);
       default:
         throw new Error(`Unsupported expression: ${expr.exprKind.case}`);
     }
@@ -402,6 +399,16 @@ class Unparser {
     if (testOnly) {
       this._str += ')';
     }
+  }
+
+  private _visitStruct(expr: Expr) {
+    if (expr.exprKind.case !== 'structExpr') {
+      throw new Error('Expected structExpr');
+    }
+    if (expr.exprKind.value.messageName !== '') {
+      return this._visitStructMsg(expr);
+    }
+    return this._visitStructMap(expr);
   }
 
   private _visitStructMsg(expr: Expr) {
