@@ -19,19 +19,6 @@ export { StringRefVal as StringVal } from '../common/types/string';
 export { TimestampRefVal as TimestampVal } from '../common/types/timestamp';
 export { UintRefVal as UintVal } from '../common/types/uint';
 export { UnknownRefVal as UnknownVal } from '../common/types/unknown';
-// export {
-//   Parser,
-//   enableIdentEscapeSyntax,
-//   enableOptionalSyntax,
-//   enableVariadicOperatorASTs,
-//   errorRecoveryLimit,
-//   errorRecoveryLookaheadTokenLimit,
-//   errorReportingLimit,
-//   expressionSizeCodePointLimit,
-//   maxRecursionDepth,
-//   macros as parserMacros,
-//   populateMacroCalls,
-// } from '../parser/parser';
 export type { ParserOption } from '../parser/parser';
 export {
   unparse,
@@ -40,6 +27,26 @@ export {
   wrapOnOperators,
 } from '../parser/unparser';
 export type { UnparserOption } from '../parser/unparser';
+export type { ExprHelper } from './../parser/helper';
+export {
+  AccumulatorName,
+  AllMacro,
+  AllMacros,
+  ExistsMacro,
+  ExistsOneMacroNew as ExistsOneMacro,
+  FilterMacro,
+  GlobalMacro,
+  GlobalVarArgMacro,
+  HasMacro,
+  MapFilterMacro,
+  MapMacro,
+  QuantifierKind,
+  ReceiverMacro,
+  ReceiverVarArgMacro,
+  makeMacroKey,
+  makeVarArgMacroKey,
+} from './../parser/macro';
+export type { Macro, MacroExpander } from './../parser/macro';
 export {
   AnyType,
   BoolType,
