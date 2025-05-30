@@ -1,9 +1,12 @@
+export { ReferenceInfo, SourceInfo } from '../common/ast';
 export {
   checkedExprToAST,
   parsedExprToAST,
   toCheckedExprProto,
   toParsedExprProto,
 } from '../common/conversion';
+export { CELError } from '../common/error';
+export { Location, NoLocation } from '../common/location';
 export type { Registry } from '../common/ref/provider';
 export { BoolRefVal as BoolVal } from '../common/types/bool';
 export { BytesRefVal as BytesVal } from '../common/types/bytes';
