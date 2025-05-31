@@ -1,3 +1,138 @@
+export {
+  isAssignable,
+  isAssignableList,
+  isDyn,
+  isDynOrError,
+  isEqualOrLessSpecific,
+  isError,
+  isOptional,
+  isValidTypeSubstitution,
+} from '../checker/types';
+export {
+  isBoolProtoConstant,
+  isBytesProtoConstant,
+  isDoubleProtoConstant,
+  isIntProtoConstant,
+  isNullProtoConstant,
+  isStringProtoConstant,
+  isUintProtoConstant,
+} from '../common/pb/constants';
+export { isConstIdentDeclProto, isVarIdentDeclProto } from '../common/pb/decls';
+export {
+  isBoolProtoExpr,
+  isBytesProtoExpr,
+  isCallProtoExpr,
+  isComprehensionProtoExpr,
+  isConstantProtoExpr,
+  isDoubleProtoExpr,
+  isGlobalCallProtoExpr,
+  isIdentProtoExpr,
+  isIntProtoExpr,
+  isListProtoExpr,
+  isMapEntryProtoExpr,
+  isMapProtoExpr,
+  isMessageFieldProtoExpr,
+  isMessageProtoExpr,
+  isNullProtoExpr,
+  isReceiverCallProtoExpr,
+  isSelectProtoExpr,
+  isStringProtoExpr,
+  isStructProtoExpr,
+  isTestOnlySelectProtoExpr,
+  isUintProtoExpr,
+} from '../common/pb/expressions';
+export {
+  isAnyProtoType,
+  isBoolProtoType,
+  isBytesProtoType,
+  isDoubleProtoType,
+  isDurationProtoType,
+  isDynOrErrorProtoType,
+  isDynProtoType,
+  isErrorProtoType,
+  isFunctionProtoType,
+  isIntProtoType,
+  isNullProtoType,
+  isStringProtoType,
+  isTimestampProtoType,
+  isUintProtoType,
+} from '../common/pb/types';
+export {
+  isBoolProtoValue,
+  isBytesProtoValue,
+  isDoubleProtoValue,
+  isIntProtoValue,
+  isNullProtoValue,
+  isStringProtoValue,
+  isUintProtoValue,
+} from '../common/pb/values';
+export {
+  isAdapter,
+  isFieldType,
+  isProvider,
+  isRegistry,
+} from '../common/ref/provider';
+export { isRefType, isRefVal } from '../common/ref/reference';
+export { isBoolRefVal } from '../common/types/bool';
+export { isErrorRefVal } from '../common/types/error';
+export { isValidInt32, isValidInt64 } from '../common/types/int';
+export { isNullRefVal } from '../common/types/null';
+export { isNumberProtoValue, isNumberRefVal } from '../common/types/number';
+export { isMessageZeroValue } from '../common/types/object';
+export { isOptionalRefVal } from '../common/types/optional';
+export { isStringRefVal } from '../common/types/string';
+export { isValidTimestamp } from '../common/types/timestamp';
+export { isComparer } from '../common/types/traits/comparer';
+export { isContainer } from '../common/types/traits/container';
+export { isFieldTester } from '../common/types/traits/field-tester';
+export { isIndexer } from '../common/types/traits/indexer';
+export {
+  isFoldable,
+  isFolder,
+  isIterable,
+  isIterator,
+} from '../common/types/traits/iterator';
+export { isLister, isMutableLister } from '../common/types/traits/lister';
+export { isMapper, isMutableMapper } from '../common/types/traits/mapper';
+export { isMatcher } from '../common/types/traits/matcher';
+export {
+  isAdder,
+  isDivider,
+  isModder,
+  isMultiplier,
+  isNegater,
+  isSubtractor,
+} from '../common/types/traits/math';
+export { isReceiver } from '../common/types/traits/receiver';
+export { isSizer } from '../common/types/traits/sizer';
+export { isZeroer } from '../common/types/traits/zeroer';
+export { isType, isWellKnownType } from '../common/types/types';
+export { isValidUint32, isValidUint64 } from '../common/types/uint';
+export { isIdentifierCharater, isUnknownRefVal } from '../common/types/unknown';
+export { isUnknownOrError } from '../common/types/utils';
+export { isWrapperType } from '../common/types/wrapper';
+export {
+  isHexString,
+  isOctalString,
+  isScientificNotationString,
+} from '../common/utils';
+export { isQualifierValueEquator } from '../interpreter/attribute-patterns';
+export {
+  isAttribute,
+  isAttributeFactory,
+  isConditionalAttribute,
+  isConstantQualifier,
+  isNamespacedAttribute,
+  isQualifier,
+} from '../interpreter/attributes';
+export {
+  isInterpretable,
+  isInterpretableAttribute,
+  isInterpretableCall,
+  isInterpretableConst,
+  isInterpretableConstructor,
+} from '../interpreter/interpretable';
+
 export { ReferenceInfo, SourceInfo } from '../common/ast';
 export {
   checkedExprToAST,
