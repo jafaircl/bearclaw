@@ -114,7 +114,7 @@ export class prog implements Program {
   }
 
   clone() {
-    const costOptsCopy = [...this.costOptions];
+    const costOptsCopy = [...(this.costOptions ?? [])];
 
     return new prog(
       this.env,

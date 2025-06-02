@@ -492,7 +492,7 @@ export class EnvBase {
    * estimator.
    */
   estimateCost(ast: Ast, estimator: CostEstimator, ...opts: CostOption[]) {
-    const extendedOptions = [...this.costOptions, ...(opts ?? [])];
+    const extendedOptions = [...(this.costOptions ?? []), ...(opts ?? [])];
     return new Coster(ast.nativeRep(), estimator, ...extendedOptions).cost();
   }
 
