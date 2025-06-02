@@ -1,4 +1,11 @@
 export {
+  CostEstimate,
+  Coster,
+  overloadCostEstimate,
+  presenceTestHasCost,
+} from '../checker/cost';
+export type { CostEstimator, CostOption } from '../checker/cost';
+export {
   isAssignable,
   isAssignableList,
   isDyn,
