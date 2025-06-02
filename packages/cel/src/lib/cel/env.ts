@@ -378,7 +378,7 @@ export class EnvBase {
     const libsCopy = new Map(this.libraries);
     // validatorsCopy := make([]ASTValidator, len(e.validators))
     // copy(validatorsCopy, e.validators)
-    const costOptsCopy = { ...this.costOptions };
+    const costOptsCopy = { ...(this.costOptions ?? []) };
 
     const ext = new EnvBase({
       container: this.container,
@@ -492,7 +492,7 @@ export class EnvBase {
    * estimator.
    */
   estimateCost(ast: Ast, estimator: CostEstimator, ...opts: CostOption[]) {
-    const extendedOptions = [...this.costOptions, ...opts];
+    const extendedOptions = [...this.costOptions, ...(opts ?? [])];
     return new Coster(ast.nativeRep(), estimator, ...extendedOptions).cost();
   }
 
