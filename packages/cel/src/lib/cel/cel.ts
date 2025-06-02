@@ -1,8 +1,17 @@
 export {
+  AstNode,
+  CallEstimate,
   CostEstimate,
   Coster,
+  SizeEstimate,
+  constCost,
+  createListBaseCost,
+  createMapBaseCost,
+  createMessageBaseCost,
+  isScalar,
   overloadCostEstimate,
   presenceTestHasCost,
+  selectAndIdentCost,
 } from '../checker/cost';
 export type { CostEstimator, CostOption } from '../checker/cost';
 export {
